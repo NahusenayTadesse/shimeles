@@ -22,6 +22,68 @@ const handleBlockPublicSignup: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+/**
+ * Cross-site form-submission check, replacing SvelteKit's built-in one.
+ *
+ * `csrf.checkOrigin` is turned off in `vite.config.ts` in favour of this, for
+ * one reason: OpenLiteSpeed 1.9.0 — which fronts this app in production —
+ * duplicates the `Origin` header when it proxies. A browser sends
+ *
+ *   Origin: https://example.org
+ *
+ * and the Node process receives
+ *
+ *   Origin: https://example.org, https://example.org
+ *
+ * because Node joins repeated headers with ", ". SvelteKit compares that
+ * doubled string against `url.origin`, finds no match, and rejects every form
+ * POST with 403. The bug is specific to `Origin` — Referer, Cookie and custom
+ * headers all arrive intact — so there is no proxy setting to turn off.
+ *
+ * The security property is unchanged. A genuine cross-site POST still carries
+ * one foreign origin and is still refused; what is tolerated is *repetition of
+ * the expected origin and nothing else*. Any mix of distinct values fails on
+ * the `size === 1` test.
+ */
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const FORM_CONTENT_TYPES = [
+	'application/x-www-form-urlencoded',
+	'multipart/form-data',
+	'text/plain'
+];
+
+function isFormContentType(request: Request) {
+	const type = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
+	return !!type && FORM_CONTENT_TYPES.includes(type);
+}
+
+function originIsExpected(header: string | null, expected: string) {
+	if (!header) return false;
+	const seen = new Set(
+		header
+			.split(',')
+			.map((value) => value.trim())
+			.filter(Boolean)
+	);
+	return seen.size === 1 && seen.has(expected);
+}
+
+const handleCsrf: Handle = async ({ event, resolve }) => {
+	const { request, url } = event;
+
+	if (
+		UNSAFE_METHODS.has(request.method) &&
+		isFormContentType(request) &&
+		!originIsExpected(request.headers.get('origin'), url.origin)
+	) {
+		return new Response(`Cross-site ${request.method} form submissions are forbidden`, {
+			status: 403
+		});
+	}
+
+	return resolve(event);
+};
+
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 
@@ -58,4 +120,9 @@ const handleSecurity: Handle = async ({ event, resolve }) => {
 // visit. Started once per process, never during prerender.
 if (!building) startImpactSchedule();
 
-export const handle = sequence(handleSecurity, handleBlockPublicSignup, handleBetterAuth);
+export const handle = sequence(
+	handleSecurity,
+	handleCsrf,
+	handleBlockPublicSignup,
+	handleBetterAuth
+);

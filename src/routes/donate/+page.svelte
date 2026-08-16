@@ -86,8 +86,8 @@
 	image={data.page?.shareImage}
 />
 
-<div class="mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 md:py-24 lg:grid-cols-[1.2fr_1fr]">
-	<div class="order-2 flex flex-col gap-10 lg:order-1">
+<div class="mx-auto grid w-full lg:max-w-6xl gap-10 px-4 py-16 md:py-24 lg:grid-cols-[1.2fr_1fr]">
+	<div class="order-2 flex min-w-0 flex-col gap-10 lg:order-1">
 		{#if data.page && data.blocks}
 			<BlockRenderer
 				blocks={data.page.blocks}
@@ -99,7 +99,7 @@
 		{/if}
 	</div>
 
-	<div class="order-1 flex flex-col gap-6 lg:order-2">
+	<div class="order-1 flex min-w-0 flex-col gap-6 lg:order-2">
 		{#if data.campaigns?.length}
 			<Card.Root class="p-6">
 				<DonationCampaigns

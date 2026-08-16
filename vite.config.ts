@@ -14,6 +14,11 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
+			// Replaced by `handleCsrf` in src/hooks.server.ts, which does the same
+			// comparison but tolerates the duplicated `Origin` header that
+			// OpenLiteSpeed 1.9.0 produces when proxying. See the note there —
+			// this is not a relaxation of the check.
+			csrf: { checkOrigin: false },
 			preprocess: [mdsvex({ extensions: ['.svx', '.md'] })],
 			extensions: ['.svelte', '.svx', '.md'],
 			typescript: {

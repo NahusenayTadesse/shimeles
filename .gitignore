@@ -31,3 +31,8 @@ vite.config.ts.timestamp-*
 # this must never be committed — it would put beneficiary documents in git.
 /.tempFiles
 /files
+
+# Production bundle assembled by hand from `npm run build` — build output,
+# runtime node_modules, a copy of the database and of the uploaded files.
+/deploy
+build.tar.gz

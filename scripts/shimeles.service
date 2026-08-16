@@ -1,0 +1,60 @@
+# Install on the server as /etc/systemd/system/shimeles.service
+#
+#   sudo cp /home/admin/app/shimeles.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now shimeles
+#   journalctl -u shimeles -f
+
+[Unit]
+Description=Shimeles Abera Foundation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Runs as the same account that owns /home/admin/app. A dedicated system user
+# would be tidier, but it cannot read another user's home directory without
+# loosening the permissions on it, which is worse.
+User=admin
+Group=admin
+WorkingDirectory=/home/admin/app
+
+# DATABASE_URL and FILES_DIR in .env are relative, so they resolve against
+# WorkingDirectory. Keep them relative and keep WorkingDirectory correct.
+#
+# Node is installed through nvm in admin's home rather than system-wide, so
+# there is no /usr/bin/node. systemd does not read shell profiles and will not
+# find an nvm shim, so the full path is required.
+#
+# This path contains a version number and WILL break on `nvm install`. If the
+# service dies with status=203/EXEC after a Node upgrade, this line is why.
+# Installing Node system-wide would remove the trap.
+ExecStart=/home/admin/.nvm/versions/node/v24.19.0/bin/node --env-file=.env build/index.js
+
+Restart=always
+RestartSec=5
+
+# SIGTERM reaches the app's shutdown handler, which runs
+# wal_checkpoint(TRUNCATE) and closes SQLite cleanly. Give it room to finish
+# rather than having systemd SIGKILL it mid-checkpoint.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+
+# ProtectHome MUST stay false while the app lives under /home. With it set to
+# true systemd hides /home from the unit entirely and the service dies at
+# startup on a database file it cannot see. Moving the app to /opt/shimeles
+# would let this be true again.
+ProtectHome=false
+
+# ProtectSystem=strict makes the whole filesystem read-only, so the app's own
+# directory has to be named back. SQLite writes local.db-wal and local.db-shm
+# beside the database, and uploads land in .tempFiles/ — both need this.
+ReadWritePaths=/home/admin/app
+
+[Install]
+WantedBy=multi-user.target
