@@ -22,6 +22,22 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCAL="$ROOT/deploy"
 MODE="${1:-update}"
 
+# Build here rather than expecting the caller to have done it. Copying the
+# build into deploy/ by hand is one forgettable step, and forgetting it ships
+# the *previous* build silently — the deploy reports success and the change
+# simply isn't there. Skip with NO_BUILD=1 to re-send an existing bundle.
+if [ "${NO_BUILD:-}" != "1" ]; then
+	echo "==> building"
+	(cd "$ROOT" && npm run build)
+	rm -rf "$LOCAL/build"
+	cp -r "$ROOT/build" "$LOCAL/build"
+fi
+
+# deploy/ is gitignored, so the operations guide cannot live there — it would
+# vanish with the next `rm -rf deploy`. scripts/DEPLOYING.md is the tracked
+# original; this puts a copy on the server, where you want it at 2am.
+cp "$ROOT/scripts/DEPLOYING.md" "$LOCAL/OPERATIONS.md"
+
 [ -d "$LOCAL/build" ] || { echo "no build in $LOCAL — run 'npm run build' first" >&2; exit 1; }
 
 case "$MODE" in
@@ -83,6 +99,7 @@ update)
 	echo "==> sending manifests"
 	rsync -avz --human-readable \
 		"$LOCAL/package.json" "$LOCAL/package-lock.json" "$LOCAL/.npmrc" \
+		"$LOCAL/OPERATIONS.md" \
 		"$REMOTE:$REMOTE_DIR/"
 
 	# Cheap and idempotent when nothing changed; necessary when it did.

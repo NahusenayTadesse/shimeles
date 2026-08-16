@@ -40,7 +40,10 @@
 				alt=""
 				class="size-11 shrink-0 rounded-full object-contain ring-2 ring-olive/40 transition-transform group-hover:-rotate-6"
 			/>
-			<span class="truncate font-heading text-lg font-semibold">{siteName}</span>
+			<span class="truncate font-heading text-md font-semibold">{siteName}
+              <br />
+              ሽመልስ አበራ ፋውንዴሽን
+			</span>
 		</a>
 
 		<nav class="ml-auto hidden items-center gap-1 lg:flex">
