@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1786795705848,
+      "tag": "0000_nosy_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786815488544,
+      "tag": "0001_charming_kulan_gath",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786818459510,
+      "tag": "0002_robust_jigsaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786819687965,
+      "tag": "0003_funny_prodigy",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786826734026,
+      "tag": "0004_slimy_mauler",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786833120459,
+      "tag": "0005_lazy_white_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786866846853,
+      "tag": "0006_high_pride",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+# SQLite — the database and its write-ahead log. Both, or a restore from a
+# committed .db would be missing the last transactions still sitting in the WAL.
+*.db
+*.db-shm
+*.db-wal
+
+# Uploaded files. Public media and private case documents both land here, so
+# this must never be committed — it would put beneficiary documents in git.
+/.tempFiles
+/files

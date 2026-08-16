@@ -1,0 +1,454 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
+
+/* Sora — the display face. A confident, rounded-terminal geometric sans built
+   for big bold headlines: the Foundation's public site should feel alive and
+   inviting, not like a printed annual report. */
+@import '@fontsource-variable/sora';
+
+/* Manrope — the body and UI face. Open apertures, tall x-height, and a wide
+   enough range of weights to carry both the public site and the dashboard. */
+@import '@fontsource-variable/manrope';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   Shimeles Abera Foundation — Hope, Compassion, Opportunity.
+
+   The palette is built from two brand anchors — `--clay` (the Foundation's
+   deep forest green, `#0e3b2e`, the primary) and `--olive` (the Foundation's
+   gold, `#ccab59`, the secondary/accent) — plus `--sand`, an unbleached paper
+   ground. Nothing here is pure white or pure black — a nonprofit that sits
+   with people in hospitals should not read like a bank statement.
+
+   Each pillar also gets its own accent, exposed as a CSS variable so the
+   `pillars.color` column can name one (`clay`, `olive`, `plum`, `sky`) and the
+   dashboard can add a fifth pillar without a code change picking up a sane
+   default.
+--------------------------------------------------------------------------- */
+
+:root {
+	--clay: oklch(0.32 0.054 170); /* #0e3b2e */
+	--clay-bright: oklch(0.42 0.065 170);
+	--clay-deep: oklch(0.22 0.045 170);
+	--olive: oklch(0.75 0.108 88); /* #ccab59 */
+	--olive-bright: oklch(0.8 0.1 88);
+	--plum: oklch(0.48 0.11 330);
+	--sky: oklch(0.55 0.1 240);
+	--sand: oklch(0.97 0.012 80);
+	--ink: oklch(0.24 0.02 60);
+	/* Terracotta — a third warm accent, alongside the forest and the gold,
+	   pulled from the same family of Ethiopian textile colour. Used sparingly:
+	   pull-quotes, the odd tag, never a whole surface. */
+	--terracotta: oklch(0.53 0.15 35);
+	--terracotta-bright: oklch(0.63 0.15 38);
+	--shadow-tint: oklch(0.22 0.045 170 / 24%);
+
+	--background: oklch(0.985 0.008 80);
+	--foreground: oklch(0.24 0.02 60);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.24 0.02 60);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.24 0.02 60);
+	--primary: var(--clay);
+	--primary-foreground: oklch(0.985 0.008 80);
+	--secondary: oklch(0.94 0.018 80);
+	--secondary-foreground: oklch(0.3 0.025 55);
+	--muted: oklch(0.955 0.012 80);
+	--muted-foreground: oklch(0.5 0.02 60);
+	--accent: oklch(0.94 0.04 88);
+	--accent-foreground: oklch(0.35 0.06 87);
+	--destructive: oklch(0.577 0.245 27.325);
+	--success: oklch(0.55 0.13 150);
+	--warning: oklch(0.72 0.15 75);
+	--border: oklch(0.9 0.014 75);
+	--input: oklch(0.9 0.014 75);
+	--ring: var(--clay);
+	--chart-1: var(--clay);
+	--chart-2: var(--olive);
+	--chart-3: var(--plum);
+	--chart-4: var(--sky);
+	--chart-5: oklch(0.72 0.15 75);
+	--radius: 0.75rem;
+
+	/* The sidebar tracks the page theme rather than carrying its own fixed
+	   dark rail — light mode gets a light sidebar, dark mode a dark one.
+	   Active items invert foreground/background so they read as a solid,
+	   unambiguous "pressed" state against either theme. */
+	--sidebar: var(--background);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--foreground);
+	--sidebar-primary-foreground: var(--background);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--clay);
+}
+
+.dark {
+	--clay: oklch(0.62 0.09 170);
+	--clay-bright: oklch(0.72 0.1 170);
+	--clay-deep: oklch(0.45 0.07 170);
+	--olive: oklch(0.78 0.11 88); /* #ccab59, brightened for dark backgrounds */
+	--olive-bright: oklch(0.84 0.1 88);
+	--plum: oklch(0.66 0.11 330);
+	--sky: oklch(0.7 0.1 240);
+	--sand: oklch(0.24 0.014 60);
+	--ink: oklch(0.95 0.01 80);
+	--terracotta: oklch(0.68 0.14 38);
+	--terracotta-bright: oklch(0.74 0.13 40);
+	--shadow-tint: oklch(0.05 0.01 170 / 45%);
+
+	--background: oklch(0.16 0.02 170);
+	--foreground: oklch(0.95 0.01 80);
+	--card: oklch(0.2 0.022 170);
+	--card-foreground: oklch(0.95 0.01 80);
+	--popover: oklch(0.2 0.022 170);
+	--popover-foreground: oklch(0.95 0.01 80);
+	--primary: var(--clay);
+	--primary-foreground: oklch(0.16 0.02 170);
+	--secondary: oklch(0.26 0.024 170);
+	--secondary-foreground: oklch(0.95 0.01 80);
+	--muted: oklch(0.25 0.022 170);
+	--muted-foreground: oklch(0.7 0.016 70);
+	--accent: oklch(0.3 0.045 88);
+	--accent-foreground: oklch(0.88 0.08 88);
+	--destructive: oklch(0.65 0.2 25);
+	--success: oklch(0.7 0.13 150);
+	--warning: oklch(0.79 0.14 78);
+	--border: oklch(0.95 0.01 80 / 12%);
+	--input: oklch(0.95 0.01 80 / 16%);
+	--ring: var(--clay);
+	--chart-1: var(--clay);
+	--chart-2: var(--olive);
+	--chart-3: var(--plum);
+	--chart-4: var(--sky);
+	--chart-5: oklch(0.79 0.14 78);
+
+	--sidebar: var(--background);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--foreground);
+	--sidebar-primary-foreground: var(--background);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--clay);
+}
+
+@theme inline {
+	--font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-heading: 'Sora Variable', 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+	--ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+	--ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+	--color-clay: var(--clay);
+	--color-clay-bright: var(--clay-bright);
+	--color-clay-deep: var(--clay-deep);
+	--color-olive: var(--olive);
+	--color-olive-bright: var(--olive-bright);
+	--color-plum: var(--plum);
+	--color-sky: var(--sky);
+	--color-sand: var(--sand);
+	--color-ink: var(--ink);
+	--color-terracotta: var(--terracotta);
+	--color-terracotta-bright: var(--terracotta-bright);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.5);
+	--radius-md: calc(var(--radius) * 0.75);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 2);
+	--radius-3xl: calc(var(--radius) * 2.8);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+		scroll-behavior: smooth;
+	}
+	body {
+		/* A little warmth in the ground itself — two soft, off-corner glows
+		   rather than a flat fill. Fixed so it reads as the room's light, not a
+		   panel that scrolls with the content. */
+		background-image:
+			radial-gradient(
+				1100px 620px at 92% -8%,
+				color-mix(in oklch, var(--olive) 16%, transparent),
+				transparent 62%
+			),
+			radial-gradient(
+				900px 560px at -8% 18%,
+				color-mix(in oklch, var(--clay) 12%, transparent),
+				transparent 60%
+			);
+		background-attachment: fixed;
+	}
+	h1,
+	h2,
+	h3 {
+		@apply font-heading font-bold;
+		letter-spacing: -0.02em;
+		line-height: 1.08;
+	}
+}
+
+@layer components {
+	/* Body copy coming out of `content_blocks.rich_text`, which staff author in
+	   the dashboard editor. Tailwind's own reset strips list markers and heading
+	   sizes, so admin-authored HTML needs them handed back. */
+	.prose-block {
+		@apply text-base leading-relaxed text-foreground/90;
+	}
+	.prose-block :where(p) {
+		@apply mb-4;
+	}
+	.prose-block :where(h2) {
+		@apply mt-8 mb-3 font-heading text-2xl font-semibold;
+	}
+	.prose-block :where(h3) {
+		@apply mt-6 mb-2 font-heading text-xl font-semibold;
+	}
+	.prose-block :where(ul) {
+		@apply mb-4 list-disc space-y-1 pl-6;
+	}
+	.prose-block :where(ol) {
+		@apply mb-4 list-decimal space-y-1 pl-6;
+	}
+	.prose-block :where(a) {
+		@apply text-primary underline underline-offset-4;
+	}
+	.prose-block :where(blockquote) {
+		@apply my-6 border-l-4 border-primary/40 pl-4 font-heading text-lg italic;
+	}
+	.prose-block :where(strong) {
+		@apply font-semibold;
+	}
+	.prose-block :where(img) {
+		@apply my-4 rounded-lg;
+	}
+
+	/* Small flanked label above a section heading. */
+	.eyebrow {
+		@apply text-xs font-semibold tracking-[0.18em] text-primary uppercase;
+	}
+
+	/* First paragraph of a story gets a dropped capital — the one typographic
+	   flourish that says "someone wrote this", not "a CMS rendered this". Only
+	   the very first block of a page's rich text carries it. */
+	.prose-block.prose-lede > :where(p):first-of-type::first-letter {
+		@apply float-left mt-1 mr-3 font-heading text-6xl leading-[0.85] text-primary;
+	}
+
+	/* Prose sitting on a dark surface (the In Memoriam card) — the default
+	   link colour is the forest primary, which disappears against a forest
+	   card, so it swaps to gold. */
+	.prose-block.prose-invert :where(a) {
+		@apply text-olive;
+	}
+	.prose-block.prose-invert :where(blockquote) {
+		@apply border-olive/40;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+   The public site's own voice
+
+   Everything under `.site-shell` (the public header/main/footer — never the
+   dashboard) softens the shadcn defaults: pill buttons instead of sharp
+   uppercase ones, rounded cards with a warm lifted shadow instead of a flat
+   hairline ring. The primitives themselves are untouched, so the dashboard
+   keeps its brisk, flat, operational look.
+--------------------------------------------------------------------------- */
+
+.site-shell {
+	--shadow-warm:
+		0 30px 60px -32px var(--shadow-tint), 0 8px 24px -12px var(--shadow-tint);
+}
+
+/* Most public CTAs are `<a class={buttonVariants(...)}>`, not `<Button>`
+   instances, so they carry no `data-slot`. This rule catches those too by
+   matching the base class `tailwind-variants` always emits, alongside the
+   `[data-slot="button"]` a real `<Button>` renders. */
+.site-shell [data-slot='button'],
+.site-shell a[class*='tracking-widest'],
+.site-shell button[class*='tracking-widest'] {
+	border-radius: 9999px;
+	text-transform: none;
+	letter-spacing: normal;
+	font-weight: 600;
+	font-size: 0.875rem;
+}
+
+.site-shell [data-slot='badge'] {
+	border-radius: 9999px;
+	padding: 0.3rem 0.75rem;
+	letter-spacing: 0.04em;
+}
+
+.site-shell .shadow-warm {
+	box-shadow: var(--shadow-warm);
+}
+
+.site-shell [data-slot='card'] {
+	border-radius: var(--radius-3xl);
+	box-shadow: var(--shadow-warm);
+	transition:
+		transform 400ms var(--ease-soft),
+		box-shadow 400ms var(--ease-soft);
+}
+
+/* Applied per-card, not globally — a form or a bank-details card should not
+   float away from the finger. */
+.site-shell .card-lift:hover {
+	transform: translateY(-4px);
+	box-shadow:
+		0 40px 70px -30px var(--shadow-tint),
+		0 10px 30px -10px var(--shadow-tint);
+}
+
+/* ---------------------------------------------------------------------------
+   Trim band — the Foundation's one recurring ornament.
+
+   A woven-look band of triangles, the way a tibeb border runs along the edge
+   of a shawl. Pure CSS gradients so it costs nothing and never blurs, in two
+   weights: a hairline divider between sections, and a thicker interlocking
+   version used as a card's top edge.
+--------------------------------------------------------------------------- */
+
+.trim-band {
+	--trim-size: 14px;
+	height: var(--trim-size);
+	background-image:
+		linear-gradient(135deg, var(--olive) 25%, transparent 25.5%),
+		linear-gradient(225deg, var(--olive) 25%, transparent 25.5%),
+		linear-gradient(45deg, var(--clay) 25%, transparent 25.5%),
+		linear-gradient(315deg, var(--clay) 25%, transparent 25.5%);
+	background-position:
+		0 0,
+		calc(var(--trim-size) / 2) 0,
+		calc(var(--trim-size) / 2) calc(var(--trim-size) / -2),
+		0 calc(var(--trim-size) / 2);
+	background-size: var(--trim-size) var(--trim-size);
+	background-repeat: repeat-x;
+	transform-origin: left center;
+}
+
+.trim-band--thin {
+	--trim-size: 9px;
+	opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Dot field & floating badge
+
+   A loose grid of dots — the kind of small, cheerful ornament that keeps a
+   hero or a section corner from feeling like empty space, without competing
+   with a photograph. And the "stat card pinned to the corner of a photo"
+   pattern used wherever a number needs to feel earned rather than printed.
+--------------------------------------------------------------------------- */
+
+.dot-field {
+	background-image: radial-gradient(currentColor 1.6px, transparent 1.6px);
+	background-size: 16px 16px;
+}
+
+.site-shell .floating-badge {
+	@apply rounded-2xl border bg-card px-4 py-3;
+	box-shadow: var(--shadow-warm);
+}
+
+/* ---------------------------------------------------------------------------
+   Photo tilt — a card pinned very slightly off true, the way a print sits in
+   a family album rather than a stock-photo grid. Applied selectively, never
+   to more than one element in a group.
+--------------------------------------------------------------------------- */
+
+.tilt-left {
+	transform: rotate(-1.6deg);
+}
+.tilt-right {
+	transform: rotate(1.4deg);
+}
+.site-shell .tilt-left:hover,
+.site-shell .tilt-right:hover {
+	transform: rotate(0deg) translateY(-2px);
+}
+
+/* ---------------------------------------------------------------------------
+   Reveal-on-scroll
+
+   The `use:reveal` action only ever flips `data-reveal` between `out` and
+   `in`; the geometry lives here, driven by the custom properties the action
+   sets. Elements start hidden in CSS rather than in JavaScript so there is no
+   flash of positioned content before hydration.
+--------------------------------------------------------------------------- */
+
+[data-reveal] {
+	transition:
+		opacity var(--reveal-duration, 900ms) var(--ease-soft) var(--reveal-delay, 0ms),
+		transform var(--reveal-duration, 900ms) var(--ease-soft) var(--reveal-delay, 0ms),
+		filter var(--reveal-duration, 900ms) var(--ease-soft) var(--reveal-delay, 0ms);
+}
+
+[data-reveal='out'] {
+	opacity: 0;
+	transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 24px), 0) scale(var(--reveal-scale, 1));
+	filter: blur(var(--reveal-blur, 0px));
+}
+
+[data-reveal='in'] {
+	opacity: 1;
+	transform: none;
+	filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-reveal],
+	[data-reveal='out'],
+	[data-reveal='in'] {
+		opacity: 1;
+		transform: none;
+		filter: none;
+		transition: none;
+	}
+}

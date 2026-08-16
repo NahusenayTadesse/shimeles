@@ -1,0 +1,66 @@
+<script lang="ts">
+	import DataTable from '$lib/components/Table/data-table.svelte';
+	import BadgeCell from '$lib/dashboard/badge-cell.svelte';
+	import { column, indexColumn } from '$lib/dashboard/columns';
+	import { renderComponent } from '$lib/components/ui/data-table/index.js';
+	import { formatMoney } from '$lib/money';
+
+	let { data } = $props();
+
+	const fmt = (value: Date | string | null) =>
+		value
+			? new Intl.DateTimeFormat('en-GB', {
+					day: 'numeric',
+					month: 'short',
+					year: 'numeric'
+				}).format(new Date(value))
+			: '—';
+
+	const columns = [
+		indexColumn,
+		column('fullName', 'Name'),
+		{
+			id: 'contact',
+			header: 'Contact',
+			enableSorting: false,
+			cell: ({ row }: any) => row.original.email ?? row.original.phone ?? '—'
+		},
+		{
+			id: 'lifetime',
+			header: 'Lifetime',
+			cell: ({ row }: any) => formatMoney(row.original.lifetimeTotal, row.original.lifetimeCurrency)
+		},
+		column('donationCount', 'Gifts'),
+		{
+			id: 'lastDonationAt',
+			header: 'Last gift',
+			cell: ({ row }: any) => fmt(row.original.lastDonationAt)
+		},
+		{
+			id: 'isDiaspora',
+			header: 'Where',
+			enableSorting: false,
+			cell: ({ row }: any) =>
+				renderComponent(BadgeCell, {
+					label: row.original.isDiaspora ? 'Diaspora' : 'Ethiopia',
+					variant: row.original.isDiaspora ? 'secondary' : 'outline'
+				})
+		}
+	];
+</script>
+
+<svelte:head><title>Donors · Dashboard</title></svelte:head>
+
+<div class="flex flex-col gap-4">
+	<div>
+		<h1 class="font-heading text-2xl font-bold">Donors</h1>
+		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+			Lifetime totals count confirmed gifts only, and are recomputed when a gift is reconciled —
+			they cannot be edited by hand, so they always agree with the ledger.
+		</p>
+	</div>
+
+	{#key data.rows}
+		<DataTable {columns} data={data.rows} fileName="Donors" />
+	{/key}
+</div>

@@ -1,0 +1,108 @@
+import { and, asc, eq, isNull } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { siteSettings, translations } from '$lib/server/db/schema';
+import { cached, invalidate } from '$lib/server/cache';
+
+/* ==========================================================================
+   Site settings
+   ========================================================================== */
+
+export interface SettingRow {
+	key: string;
+	value: string | null;
+	valueType: string;
+	label: string;
+	hint: string | null;
+	group: string;
+	sortOrder: number;
+}
+
+/** Every live setting, keyed for O(1) lookup. Cached — see `$lib/server/cache`. */
+export const loadSettings = (): Promise<Map<string, SettingRow>> =>
+	cached('settings', async () => {
+		const rows = await db
+			.select({
+				key: siteSettings.key,
+				value: siteSettings.value,
+				valueType: siteSettings.valueType,
+				label: siteSettings.label,
+				hint: siteSettings.hint,
+				group: siteSettings.group,
+				sortOrder: siteSettings.sortOrder
+			})
+			.from(siteSettings)
+			.where(and(eq(siteSettings.isActive, true), isNull(siteSettings.deletedAt)))
+			.orderBy(asc(siteSettings.group), asc(siteSettings.sortOrder));
+
+		return new Map(rows.map((row) => [row.key, row]));
+	});
+
+/**
+ * Settings as a plain object, for handing to components through `load`.
+ * Returns `''` rather than `undefined` for an unset key, so a template can
+ * interpolate it without a guard.
+ */
+export async function settingsMap(): Promise<Record<string, string>> {
+	const map = await loadSettings();
+	const out: Record<string, string> = {};
+	for (const [key, row] of map) out[key] = row.value ?? '';
+	return out;
+}
+
+/** One setting. Empty string when unset, never `undefined`. */
+export async function setting(key: string): Promise<string> {
+	return (await loadSettings()).get(key)?.value ?? '';
+}
+
+/** Numeric settings — the impact-counter overrides. Null when unset or blank. */
+export async function settingNumber(key: string): Promise<number | null> {
+	const raw = (await loadSettings()).get(key)?.value;
+	if (raw == null || raw.trim() === '') return null;
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+export const invalidateSettings = () => invalidate('settings');
+
+/* ==========================================================================
+   UI strings
+   ========================================================================== */
+
+/**
+ * The `t(key)` helper the spec asks for: reads from the `translations` table
+ * rather than a static i18n JSON file, so fixing a wrong or clumsy button label
+ * is a dashboard edit and not a deploy.
+ *
+ * v1 is English-only. The table keeps its `am` column and the dashboard screen
+ * keeps writing to it, so adding Amharic back is a rendering change rather than
+ * a migration and a re-translation — but nothing reads it today.
+ *
+ * Returns the key itself when a string is missing, which makes the gap obvious
+ * on the page instead of rendering a blank button.
+ */
+const loadStrings = () =>
+	cached('translations', () =>
+		db
+			.select({ key: translations.key, en: translations.en })
+			.from(translations)
+			.where(and(eq(translations.isActive, true), isNull(translations.deletedAt)))
+	);
+
+export async function translator(): Promise<(key: string, fallback?: string) => string> {
+	const rows = await loadStrings();
+	const map = new Map(rows.map((row) => [row.key, row.en]));
+	return (key: string, fallback?: string) => map.get(key) || fallback || key;
+}
+
+/**
+ * The same strings as a plain object, for handing to components through
+ * `load`. Functions do not survive serialisation across the load boundary.
+ */
+export async function stringsMap(): Promise<Record<string, string>> {
+	const rows = await loadStrings();
+	const out: Record<string, string> = {};
+	for (const row of rows) out[row.key] = row.en || row.key;
+	return out;
+}
+
+export const invalidateTranslations = () => invalidate('translations');
