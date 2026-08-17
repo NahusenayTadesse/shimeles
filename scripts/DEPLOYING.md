@@ -274,6 +274,53 @@ not optional.
 
 ---
 
+## 5a. Changing environment variables
+
+`.env` is **not** shipped by the deploy script — it holds the auth secret, and
+the development copy must never overwrite the server's. So env changes are made
+on the server by hand, and `deploy/.env.example` is where you record them so the
+next person can rebuild the file:
+
+```sh
+ssh hstgr 'cd /home/admin/app && nano .env'
+ssh root@148.230.83.102 'systemctl restart shimeles && sleep 3 && systemctl is-active shimeles'
+```
+
+`--env-file` is read once at process start, so **a restart is mandatory** — an
+env change with no restart does nothing at all, which is a confusing hour if you
+do not know it. `--env-file` strips surrounding quotes, so quoted and unquoted
+values behave the same.
+
+### `BODY_SIZE_LIMIT`
+
+Worth knowing about specifically, because its failure mode is so misleading.
+adapter-node caps request bodies at **512K** by default. That is smaller than
+almost any photo taken on a phone, so file uploads fail with a bare 413:
+
+```
+[413] POST /dashboard/homepage
+Error: Content-length of 997162 exceeds limit of 524288 bytes.
+```
+
+The browser shows no useful message, and because a resized desktop image
+sometimes lands under the limit while a phone photo never does, it presents as
+"uploads work on some devices but not others" rather than as a size problem.
+It is set to `100M` in production.
+
+Note the three separate ceilings, which are easy to confuse:
+
+| Limit | Where | Value |
+| --- | --- | --- |
+| Whole request body | `BODY_SIZE_LIMIT` in `.env` | 100M |
+| Per file | `MAX_UPLOAD_BYTES`, `src/lib/server/forms.ts` | 10 MB |
+| Proxy | OpenLiteSpeed `maxReqBodySize` | 2047M |
+
+Only the first two ever bite. The per-file limit produces a friendly validation
+message; `BODY_SIZE_LIMIT` produces a raw 413. If a user reports "payload too
+big" or a silent upload failure, check `journalctl` for `413` first.
+
+---
+
 ## 6. Traps
 
 Each of these has already cost real debugging time.
@@ -331,6 +378,8 @@ ssh root@148.230.83.102 'journalctl -u shimeles -f'        # follow live
 | `no such table` / `no such column` | Code deployed ahead of its migration |
 | 403 on every form POST | The CSRF hook or `checkOrigin` was reverted |
 | 502 from LiteSpeed | App is down; check `systemctl status` |
+| Uploads fail / "payload too large" | `BODY_SIZE_LIMIT` — see section 5a |
+| Env change had no effect | The service was not restarted |
 | Changes not visible | Browser cache — confirm with `curl` first |
 
 ## 8. Still outstanding
