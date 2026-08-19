@@ -43,6 +43,8 @@
 	<div class="site-shell flex min-h-screen flex-col">
 		<SiteNav
 			items={data.navigation?.header ?? []}
+			siteNameAmharic={data.settings?.['site.name_am'] || "ሽመልስ አበራ ፋውንዴሽን"}
+
 			siteName={data.settings?.['site.name'] || 'Shimeles Abera Foundation'}
 		/>
 		<main class="flex-1">

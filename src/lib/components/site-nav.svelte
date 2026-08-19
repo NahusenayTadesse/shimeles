@@ -20,8 +20,9 @@
 	 */
 	let {
 		items = [],
-		siteName = 'Shimeles Abera Foundation'
-	}: { items?: RenderNavItem[]; siteName?: string } = $props();
+		siteName = 'Shimeles Abera Foundation',
+		siteNameAmharic = "ሽመልስ አበራ ፋውንዴሽን"
+	}: { items?: RenderNavItem[]; siteName?: string; siteNameAmharic: string; } = $props();
 
 	let open = $state(false);
 
@@ -42,7 +43,7 @@
 			/>
 			<span class="truncate font-heading text-md font-semibold">{siteName}
               <br />
-              ሽመልስ አበራ ፋውንዴሽን
+              {siteNameAmharic}
 			</span>
 		</a>
 

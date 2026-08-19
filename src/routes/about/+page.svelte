@@ -269,7 +269,7 @@
 				class="flex flex-col justify-center gap-5 py-4 md:border-l md:border-olive/15 md:py-0 md:pl-12"
 			>
 				{#if content?.memoriamBody}
-					<div class="prose-block prose-invert text-[oklch(0.97_0.01_80)]/80">
+					<div class="prose-block prose-invert text-justify text-[oklch(0.97_0.01_80)]/80">
 						{@html content.memoriamBody}
 					</div>
 				{/if}
