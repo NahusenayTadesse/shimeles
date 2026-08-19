@@ -63,7 +63,10 @@ async function loadEmbeddedForms(slugs: string[]) {
 		slugs.map(async (slug) => {
 			const definition = await loadForm(slug);
 			if (!definition) return null;
-			return [slug, { definition, data: await superValidate(zod4(buildSchema(definition))) }] as const;
+			return [
+				slug,
+				{ definition, data: await superValidate(zod4(buildSchema(definition))) }
+			] as const;
 		})
 	);
 

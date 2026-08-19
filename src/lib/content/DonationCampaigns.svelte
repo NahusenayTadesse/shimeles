@@ -4,7 +4,9 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { assetUrl } from '$lib/assets';
 	import { PAYPAL_ACTION } from '$lib/donations';
-	import { ArrowUpRight, CreditCard, Info } from '@lucide/svelte';
+	import { ArrowUpRight, ChevronDown, CreditCard, Info, Play } from '@lucide/svelte';
+	import { slide } from 'svelte/transition';
+	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
 	import { cn } from '$lib/utils';
 	import type { RenderDonationCampaign } from '$lib/content/types';
 
@@ -22,15 +24,29 @@
 	 */
 	let {
 		campaigns = [],
+		/** Videos per campaign id, from `getMediaByOwner('campaign', …)`. */
+		videos = {},
 		heading = 'Give by card',
 		description = '',
 		class: className = ''
 	}: {
 		campaigns?: RenderDonationCampaign[];
+		videos?: Record<number, { id: number; youtubeUrl: string; caption: string | null }[]>;
 		heading?: string;
 		description?: string;
 		class?: string;
 	} = $props();
+
+	/**
+	 * Which campaign's appeal is expanded.
+	 *
+	 * Collapsed by default, and the player is only mounted once opened. These
+	 * cards live in a narrow column whose job is the Give button; an embed
+	 * sitting open under each one would push that button below the fold and
+	 * would call YouTube on every page load for a video most donors will not
+	 * watch. One at a time, so opening a second closes the first.
+	 */
+	let openVideo = $state<number | null>(null);
 
 	const label = (campaign: RenderDonationCampaign) =>
 		campaign.buttonLabel || `Give with ${campaign.companyName}`;
@@ -131,6 +147,48 @@
 							{label(campaign)}
 							<ArrowUpRight class="size-4" />
 						</a>
+					{/if}
+
+					{#if videos[campaign.id]?.length}
+						{@const clips = videos[campaign.id]}
+						{@const isOpen = openVideo === campaign.id}
+						<div class="flex flex-col gap-3">
+							<button
+								type="button"
+								onclick={() => (openVideo = isOpen ? null : campaign.id)}
+								aria-expanded={isOpen}
+								class="group flex w-full items-center gap-2.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors hover:border-primary/50 hover:bg-primary/5"
+							>
+								<span
+									class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110"
+								>
+									<Play class="size-3.5" fill="currentColor" />
+								</span>
+								<span class="min-w-0 flex-1 truncate font-medium">
+									{clips[0].caption || `Why we work with ${campaign.companyName}`}
+								</span>
+								<ChevronDown
+									class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 {isOpen
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+
+							{#if isOpen}
+								<div transition:slide={{ duration: 220 }} class="flex flex-col gap-4">
+									{#each clips as clip, clipIndex (clip.id)}
+										<!-- The first clip's caption is already the toggle's label, so
+										     repeating it under the player would say the same thing
+										     twice. Later clips still need naming. -->
+										<VideoEmbed
+											url={clip.youtubeUrl}
+											caption={clipIndex === 0 ? null : clip.caption}
+											title={campaign.name}
+										/>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					{/if}
 
 					{#if campaign.note}

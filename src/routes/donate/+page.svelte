@@ -86,7 +86,7 @@
 	image={data.page?.shareImage}
 />
 
-<div class="mx-auto grid w-full lg:max-w-6xl gap-10 px-4 py-16 md:py-24 lg:grid-cols-[1.2fr_1fr]">
+<div class="mx-auto grid w-full gap-10 px-4 py-16 md:py-24 lg:max-w-6xl lg:grid-cols-[1.2fr_1fr]">
 	<div class="order-2 flex min-w-0 flex-col gap-10 lg:order-1">
 		{#if data.page && data.blocks}
 			<BlockRenderer
@@ -104,6 +104,7 @@
 			<Card.Root class="p-6">
 				<DonationCampaigns
 					campaigns={data.campaigns}
+					videos={data.campaignVideos}
 					heading={s('donate.card_heading', 'Give by card')}
 					description={s(
 						'donate.card_description',

@@ -12,6 +12,8 @@ import {
 	Landmark,
 	ListChecks,
 	MapPin,
+	MessageSquareQuote,
+	Newspaper,
 	ScrollText,
 	Settings,
 	Sparkles,
@@ -143,6 +145,22 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 					items: [
 						{ title: 'Pages', url: '/dashboard/pages' },
 						{ title: 'Navigation', url: '/dashboard/navigation' }
+					]
+				},
+				{
+					title: 'Testimonials',
+					url: '/dashboard/testimonials',
+					icon: MessageSquareQuote,
+					permission: 'content.manage'
+				},
+				{
+					title: 'Blog',
+					url: '/dashboard/blog',
+					icon: Newspaper,
+					permission: 'content.manage',
+					items: [
+						{ title: 'Posts', url: '/dashboard/blog' },
+						{ title: 'Categories', url: '/dashboard/blog-categories' }
 					]
 				},
 				{

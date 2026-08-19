@@ -5,24 +5,26 @@ import { z } from 'zod/v4';
 import { db } from '$lib/server/db';
 import { newsletterSubscribers } from '$lib/server/db/schema';
 import { loadPageData } from '$lib/server/pageData';
-import { getHeroGallery, getHomepageGallery } from '$lib/server/content';
+import { getFeaturedTestimonials, getHeroGallery, getHomepageGallery } from '$lib/server/content';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
  * The homepage is the `home` page row — nothing about it is special-cased
  * beyond the slug. Its hero, its pillar grid and its counters are all blocks a
  * staff member can reorder or remove. Two photo sets are the exception —
- * `hero_gallery_images` (the header collage) and `homepage_gallery_images`
- * (a gallery section further down) — so a program manager can add or reorder
- * photos in either without touching the page's block list.
+ * the `hero` and `homepage` collections in `media_items` (the header collage
+ * and a gallery section further down) — so a program manager can add or
+ * reorder photos in either without touching the page's block list. The
+ * featured testimonials come along too, for a `testimonial_slider` block.
  */
 export const load: PageServerLoad = async () => {
-	const [page, heroGallery, gallery] = await Promise.all([
+	const [page, heroGallery, gallery, testimonials] = await Promise.all([
 		loadPageData('home'),
 		getHeroGallery(),
-		getHomepageGallery()
+		getHomepageGallery(),
+		getFeaturedTestimonials()
 	]);
-	return { ...page, heroGallery, gallery };
+	return { ...page, heroGallery, gallery, testimonials };
 };
 
 const subscribeSchema = z.object({

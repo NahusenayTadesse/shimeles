@@ -130,7 +130,10 @@ export const contentBlocks = sqliteTable(
 				'initiative_grid',
 				'form_embed',
 				'donation_details',
-				'memoriam'
+				'memoriam',
+				'gallery',
+				'video',
+				'testimonial_slider'
 			]
 		})
 			.default('rich_text')
@@ -389,59 +392,208 @@ export const aboutContent = sqliteTable('about_content', {
 	updatedAt: timestampMs('updated_at').default(nowMs).notNull()
 });
 
-/** The photo gallery under the In Memoriam section. Ordered, captioned. */
-export const aboutGalleryImages = sqliteTable(
-	'about_gallery_images',
+/* ==========================================================================
+   BLOG
+
+   The Foundation's own writing: programme updates, field notes, donor
+   stories. Three tables rather than one because a post has a category a
+   staff member should be able to add without a deploy (§0), and because the
+   photographs from a distribution day are a set, not a single cover image.
+   ========================================================================== */
+
+/**
+ * The editable list behind the blog's filter chips. A new category is a
+ * dashboard row, never a code branch — the public `/blog` page builds its
+ * filters from whatever is here.
+ */
+export const blogCategories = sqliteTable(
+	'blog_categories',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		fileId: integer('file_id')
-			.notNull()
-			.references(() => files.id, { onDelete: 'cascade' }),
-		caption: text('caption'),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		/** Theme accent token, same vocabulary as `pillars.color`. */
+		color: text('color').default('olive').notNull(),
 		sortOrder: integer('sort_order').default(0).notNull(),
-		createdAt: timestampMs('created_at').default(nowMs).notNull()
+		...secureFields
 	},
-	(table) => [index('about_gallery_sort_idx').on(table.sortOrder)]
+	(table) => [index('blog_categories_active_idx').on(table.isActive, table.sortOrder)]
 );
 
 /**
- * The homepage hero's photo gallery — replaces the old single `hero.image`
- * setting with an ordered, captioned set the header rotates through. Shaped
- * exactly like `about_gallery_images` so `$lib/components/GalleryUpload` and
- * the same dashboard CRUD pattern work unchanged.
+ * One article.
+ *
+ * `body` is HTML from the dashboard's rich-text editor and renders through
+ * `.prose-block`, exactly like `pillars.description` — staff author the whole
+ * article, so there is no block model here.
+ *
+ * Publication is `publishedAt` plus `isPublished`, not a status enum: the
+ * public list filters on "published, and the date has passed", which is what
+ * makes scheduling a post for Monday possible without a second mechanism.
  */
-export const heroGalleryImages = sqliteTable(
-	'hero_gallery_images',
+export const blogPosts = sqliteTable(
+	'blog_posts',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		fileId: integer('file_id')
-			.notNull()
-			.references(() => files.id, { onDelete: 'cascade' }),
-		caption: text('caption'),
+		slug: text('slug').notNull().unique(),
+		title: text('title').notNull(),
+		titleAm: text('title_am'),
+		/** One paragraph for cards, search results and the share preview. */
+		excerpt: text('excerpt'),
+		excerptAm: text('excerpt_am'),
+		/** Rich text from the dashboard editor. */
+		body: text('body'),
+		bodyAm: text('body_am'),
+		/** A bare filename served by `/files`, like every other image column. */
+		coverImage: text('cover_image'),
+		categoryId: integer('category_id').references(() => blogCategories.id, {
+			onDelete: 'set null'
+		}),
+		/** Free text, so a guest writer needs no staff account to be credited. */
+		authorName: text('author_name'),
+		metaDescription: text('meta_description'),
+		/** Drives the "N min read" line; 0 means "work it out from the body". */
+		readMinutes: integer('read_minutes').default(0).notNull(),
+		isFeatured: integer('is_featured', { mode: 'boolean' }).default(false).notNull(),
+		isPublished: integer('is_published', { mode: 'boolean' }).default(true).notNull(),
+		/** Null means "not scheduled"; the public list treats that as a draft. */
+		publishedAt: timestampMs('published_at'),
 		sortOrder: integer('sort_order').default(0).notNull(),
-		createdAt: timestampMs('created_at').default(nowMs).notNull()
+		...secureFields
 	},
-	(table) => [index('hero_gallery_sort_idx').on(table.sortOrder)]
+	(table) => [
+		index('blog_posts_published_idx').on(table.isPublished, table.publishedAt),
+		index('blog_posts_category_idx').on(table.categoryId)
+	]
 );
 
+/* ==========================================================================
+   MEDIA
+
+   One table for every photo gallery and every video on the site.
+
+   This started as four near-identical gallery tables — About, the homepage
+   hero, the homepage strip, and the blog — which is three copies too many.
+   They had already drifted: three keyed their image by `files.id`, the fourth
+   stored the path. That drift appeared on the very first copy after the
+   pattern was set, which is the argument for stopping.
+
+   So media is keyed by *what owns it* rather than by a column per owner.
+   Adding a gallery to the next entity is a new `owner_type` value and no
+   migration at all.
+
+   The cost, stated plainly: SQLite cannot foreign-key one column at several
+   parent tables, so `owner_id` carries no referential integrity and cascade
+   deletes are application code — `deleteMediaFor()` in `$lib/server/media`,
+   which every owner's delete path calls. That is a real guarantee given up.
+   It buys one upload component, one set of server actions and one query for
+   nine kinds of owner, which at this number of owners is the better trade.
+   ========================================================================== */
+
 /**
- * A general photo section further down the homepage — moments from the
- * programmes, distinct from the hero collage at the top. Same shape again,
- * same reason: the dashboard CRUD and the public `Gallery` component both
- * already know how to work with a table like this.
+ * What a media item can hang off.
+ *
+ * `hero` and `homepage` are site-level collections with no row of their own —
+ * they carry `owner_id` 0. Everything else names a real row's id.
  */
-export const homepageGalleryImages = sqliteTable(
-	'homepage_gallery_images',
+export const MEDIA_OWNERS = [
+	'about',
+	'hero',
+	'homepage',
+	'blog_post',
+	'pillar',
+	'initiative',
+	'campaign',
+	'testimonial',
+	'content_block'
+] as const;
+
+export type MediaOwner = (typeof MEDIA_OWNERS)[number];
+
+export const mediaItems = sqliteTable(
+	'media_items',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		fileId: integer('file_id')
-			.notNull()
-			.references(() => files.id, { onDelete: 'cascade' }),
+		ownerType: text('owner_type', { enum: MEDIA_OWNERS }).notNull(),
+		/** 0 for the site-level collections; a row id for everything else. */
+		ownerId: integer('owner_id').default(0).notNull(),
+		kind: text('kind', { enum: ['image', 'video'] }).notNull(),
+		/**
+		 * What to render.
+		 *
+		 * For an image: the bare filename `/files` serves, like every other image
+		 * column in this schema. For a video: the YouTube link exactly as a staff
+		 * member pasted it, parsed back into a player by `$lib/youtube`.
+		 */
+		url: text('url').notNull(),
+		/**
+		 * The `files` row behind an uploaded image, so deleting the item can also
+		 * delete the bytes. Null for videos, and for images that predate the
+		 * upload path or were seeded from files already on disk.
+		 */
+		fileId: integer('file_id').references(() => files.id, { onDelete: 'set null' }),
 		caption: text('caption'),
 		sortOrder: integer('sort_order').default(0).notNull(),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: timestampMs('created_at').default(nowMs).notNull()
 	},
-	(table) => [index('homepage_gallery_sort_idx').on(table.sortOrder)]
+	(table) => [
+		index('media_owner_idx').on(table.ownerType, table.ownerId, table.sortOrder),
+		index('media_file_idx').on(table.fileId)
+	]
+);
+
+/* ==========================================================================
+   TESTIMONIALS
+   ========================================================================== */
+
+/**
+ * What the people the Foundation works with say about it.
+ *
+ * Two independent flags, because they answer two different questions and a
+ * single "featured" would conflate them:
+ *
+ *  - `showOnSite` puts it on `/testimonials`, the full wall.
+ *  - `isFeatured` puts it in the homepage slider, which holds a handful.
+ *
+ * A quote can be on the wall without being on the front page, which is the
+ * common case, and the front page's selection can be changed without hiding
+ * anything from the wall.
+ */
+export const testimonials = sqliteTable(
+	'testimonials',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		/** Who said it. A first name alone is fine, and often the right choice. */
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		/** "Parent, Kolfe" — context, not a job title. */
+		role: text('role'),
+		roleAm: text('role_am'),
+		/** The pull quote. Short; this is what the slider shows. */
+		quote: text('quote').notNull(),
+		quoteAm: text('quote_am'),
+		/** The longer story, rich text from the dashboard editor. Optional. */
+		body: text('body'),
+		bodyAm: text('body_am'),
+		photo: text('photo'),
+		/** Which programme this speaks to, for filtering the wall. */
+		pillarId: integer('pillar_id').references(() => pillars.id, { onDelete: 'set null' }),
+		/** Shown on `/testimonials`. */
+		showOnSite: integer('show_on_site', { mode: 'boolean' }).default(true).notNull(),
+		/** Shown in the homepage slider. */
+		isFeatured: integer('is_featured', { mode: 'boolean' }).default(false).notNull(),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('testimonials_site_idx').on(table.showOnSite, table.sortOrder),
+		index('testimonials_featured_idx').on(table.isFeatured, table.sortOrder),
+		index('testimonials_pillar_idx').on(table.pillarId)
+	]
 );
 
 /* ==========================================================================
@@ -1451,14 +1603,21 @@ export const regionsRelations = relations(regions, ({ many }) => ({
 	beneficiaries: many(beneficiaries)
 }));
 
-export const aboutGalleryImagesRelations = relations(aboutGalleryImages, ({ one }) => ({
-	file: one(files, { fields: [aboutGalleryImages.fileId], references: [files.id] })
+export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
+	posts: many(blogPosts)
 }));
 
-export const heroGalleryImagesRelations = relations(heroGalleryImages, ({ one }) => ({
-	file: one(files, { fields: [heroGalleryImages.fileId], references: [files.id] })
+export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
+	category: one(blogCategories, {
+		fields: [blogPosts.categoryId],
+		references: [blogCategories.id]
+	})
 }));
 
-export const homepageGalleryImagesRelations = relations(homepageGalleryImages, ({ one }) => ({
-	file: one(files, { fields: [homepageGalleryImages.fileId], references: [files.id] })
+export const mediaItemsRelations = relations(mediaItems, ({ one }) => ({
+	file: one(files, { fields: [mediaItems.fileId], references: [files.id] })
+}));
+
+export const testimonialsRelations = relations(testimonials, ({ one }) => ({
+	pillar: one(pillars, { fields: [testimonials.pillarId], references: [pillars.id] })
 }));

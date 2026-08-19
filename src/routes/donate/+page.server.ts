@@ -15,6 +15,7 @@ import {
 } from '$lib/server/db/schema';
 import {
 	getDonationCampaigns,
+	getMediaByOwner,
 	getInitiatives,
 	getPage,
 	getPaymentOptions,
@@ -88,6 +89,15 @@ export const load: PageServerLoad = async ({ url }) => {
 		initiatives,
 		payments,
 		campaigns,
+		// Keyed by campaign id, so a card can find its own appeal video.
+		campaignVideos: Object.fromEntries(
+			Object.entries(
+				await getMediaByOwner(
+					'campaign',
+					campaigns.map((c) => c.id)
+				)
+			).map(([id, media]) => [id, media.videos])
+		),
 		metrics: metrics.values,
 		blocks: blockData,
 		preselectedPillarId: preselected?.id ?? null,

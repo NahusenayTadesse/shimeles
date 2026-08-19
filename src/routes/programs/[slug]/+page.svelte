@@ -4,6 +4,9 @@
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
+	import Gallery from '$lib/components/Gallery.svelte';
+	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import SectionHeading from '$lib/components/section-heading.svelte';
 	import { ArrowRight, HeartHandshake } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
@@ -26,7 +29,13 @@
 	{#if pillar.summary}<meta name="description" content={pillar.summary} />{/if}
 </svelte:head>
 
-<PageHero eyebrow="One of four programmes" title={pillar.name} description={pillar.summary} image={pillar.image} imageAlt={pillar.name}>
+<PageHero
+	eyebrow="One of four programmes"
+	title={pillar.name}
+	description={pillar.summary}
+	image={pillar.image}
+	imageAlt={pillar.name}
+>
 	{#snippet icon()}
 		<div class={cn('w-fit rounded-2xl border p-4', accent)}>
 			<DynamicIcon name={pillar.icon} class="size-8" />
@@ -58,6 +67,26 @@
 	</div>
 {/if}
 
+{#if data.media.videos.length}
+	<div class="mx-auto w-full max-w-4xl px-4 pt-16 md:pt-24">
+		<SectionHeading title="Watch" eyebrow={data.media.videos.length === 1 ? 'Video' : 'Videos'} />
+		<div class="mt-8 flex flex-col gap-8">
+			{#each data.media.videos as video, index (video.id)}
+				<VideoEmbed url={video.youtubeUrl} caption={video.caption} title={pillar.name} {index} />
+			{/each}
+		</div>
+	</div>
+{/if}
+
+{#if data.media.gallery.length}
+	<div class="mx-auto w-full max-w-6xl px-4 pt-16 md:pt-24">
+		<SectionHeading title="From this programme" eyebrow="Photographs" />
+		<div class="mt-8">
+			<Gallery images={data.media.gallery} />
+		</div>
+	</div>
+{/if}
+
 {#if data.applicationForm}
 	<!-- The form renders right here rather than sending an applicant to
 	     `/forms/[slug]` — that route still exists for shared links, but the
@@ -67,7 +96,7 @@
 			<h2 class="text-3xl md:text-4xl">Apply for support</h2>
 			<span class="h-[3px] w-14 rounded-full bg-olive"></span>
 		</div>
-		<div use:reveal class="rounded-[2rem] border bg-card p-6 shadow-warm md:p-10">
+		<div use:reveal class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 			<DynamicForm
 				form={data.applicationForm.definition}
 				data={data.applicationForm.data}

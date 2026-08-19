@@ -10,6 +10,8 @@
 	} from '$lib/dashboard/columns';
 	import { iconItems } from '$lib/components/dynamic-icon.svelte';
 	import { yesNo } from '$lib/dashboard/options';
+	import { renderComponent } from '$lib/components/ui/data-table/index.js';
+	import RowLink from '$lib/dashboard/row-link.svelte';
 	import type { CrudField } from '$lib/components/Table/crud-dialog.svelte';
 
 	let { data } = $props();
@@ -52,6 +54,16 @@
 		longColumn('description', 'Description'),
 		imageColumn('image', 'Photo'),
 		column('sortOrder', 'Order'),
+		{
+			id: 'media',
+			header: 'Photos & video',
+			enableSorting: false,
+			cell: ({ row }: any) =>
+				renderComponent(RowLink, {
+					href: `/dashboard/media/initiative/${row.original.id}`,
+					label: 'Photos & video'
+				})
+		},
 		editColumn({
 			data: data.editForm,
 			fields,

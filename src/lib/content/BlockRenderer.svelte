@@ -10,9 +10,17 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { ArrowRight, Copy, Quote } from '@lucide/svelte';
+	import Gallery from '$lib/components/Gallery.svelte';
+	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import TestimonialSlider from '$lib/content/TestimonialSlider.svelte';
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
-	import type { RenderBlock, RenderInitiative, RenderPillar } from '$lib/content/types';
+	import type {
+		RenderBlock,
+		RenderInitiative,
+		RenderPillar,
+		RenderTestimonial
+	} from '$lib/content/types';
 	import type { RenderForm } from '$lib/forms/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
 
@@ -36,6 +44,7 @@
 		metrics = {},
 		payments = [],
 		forms = {},
+		testimonials = [],
 		labels = {},
 		class: className = ''
 	}: {
@@ -56,7 +65,12 @@
 			instructions: string | null;
 		}[];
 		/** `form_embed` blocks render inline using these — see `hydrateBlocks`. */
-		forms?: Record<string, { definition: RenderForm; data: SuperValidated<Record<string, unknown>> }>;
+		forms?: Record<
+			string,
+			{ definition: RenderForm; data: SuperValidated<Record<string, unknown>> }
+		>;
+		/** `testimonial_slider` blocks render these. */
+		testimonials?: RenderTestimonial[];
 		labels?: Record<string, string>;
 		class?: string;
 	} = $props();
@@ -82,8 +96,17 @@
 		toast.success('Copied');
 	};
 
-	/** The first rich-text block on a page reads as its opening paragraph. */
-	const isLede = (block: RenderBlock, index: number) => block.type === 'rich_text' && index === 0;
+	/**
+	 * The first rich-text block on a page reads as its opening paragraph, and
+	 * gets the drop cap.
+	 *
+	 * Unless it says otherwise: `{ lede: false }` opts out. A drop cap is a
+	 * flourish for prose that opens a page, and it is actively wrong on a
+	 * document that opens with a label — on the privacy policy it turned
+	 * "Website:" into a giant W sitting apart from "ebsite:".
+	 */
+	const isLede = (block: RenderBlock, index: number) =>
+		block.type === 'rich_text' && index === 0 && block.content.lede !== false;
 </script>
 
 <div class={cn('flex flex-col gap-20 md:gap-28', className)}>
@@ -106,7 +129,7 @@
 				</div>
 			{:else if block.type === 'image'}
 				<!-- `{ src, alt, caption }` -->
-				<figure class="relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem] shadow-warm">
+				<figure class="shadow-warm relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem]">
 					<img
 						src={assetUrl(str(block, 'src'))}
 						alt={str(block, 'alt')}
@@ -120,7 +143,9 @@
 						></div>
 						<figcaption class="absolute inset-x-0 bottom-0 flex items-end gap-4 p-8 md:p-12">
 							<Quote class="size-9 shrink-0 text-olive-bright/90 md:size-11" fill="currentColor" />
-							<p class="font-heading text-xl leading-snug text-white italic drop-shadow-sm md:text-2xl">
+							<p
+								class="font-heading text-xl leading-snug text-white italic drop-shadow-sm md:text-2xl"
+							>
 								{str(block, 'caption')}
 							</p>
 						</figcaption>
@@ -130,12 +155,14 @@
 				<!-- `{ stats: [{ metric, label, suffix, is_money }] }`
 				     `metric` names a key in `impact_metrics_cache`; the value comes
 				     from there, or from an `impact.override_*` setting. -->
-				<div class="relative overflow-hidden rounded-[2rem] bg-clay-deep shadow-warm">
+				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
 					<div
 						class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-olive/10 blur-3xl"
 						aria-hidden="true"
 					></div>
-					<div class="relative grid divide-y divide-olive/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+					<div
+						class="relative grid divide-y divide-olive/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
+					>
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							{@const value = metrics[key] ?? 0}
@@ -150,9 +177,11 @@
 											? (n) => formatMoney(n)
 											: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 									}}
-									class="font-heading text-2xl font-semibold tabular-nums text-olive transition-transform duration-300 group-hover:scale-110"
+									class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
 								>
-									{stat.is_money ? formatMoney(value) : `${formatCompact(value)}${stat.suffix ?? ''}`}
+									{stat.is_money
+										? formatMoney(value)
+										: `${formatCompact(value)}${stat.suffix ?? ''}`}
 								</p>
 								<p class="text-sm text-[oklch(0.94_0.012_80)]/65">
 									{stat.label ?? key}
@@ -165,7 +194,7 @@
 				<!-- `{ text, attribution }` -->
 				<div class="mx-auto flex max-w-2xl justify-center">
 					<div
-						class="tilt-left relative rounded-[2rem] bg-card px-8 py-12 text-center shadow-warm sm:px-14"
+						class="tilt-left shadow-warm relative rounded-[2rem] bg-card px-8 py-12 text-center sm:px-14"
 					>
 						<Quote
 							class="absolute top-4 left-6 size-16 text-terracotta/15 sm:size-20"
@@ -175,7 +204,9 @@
 							{str(block, 'text')}
 						</p>
 						{#if str(block, 'attribution')}
-							<footer class="relative mt-5 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+							<footer
+								class="relative mt-5 flex items-center justify-center gap-3 text-sm text-muted-foreground"
+							>
 								<span class="h-px w-8 bg-olive/50"></span>
 								{str(block, 'attribution')}
 								<span class="h-px w-8 bg-olive/50"></span>
@@ -186,7 +217,7 @@
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
 				<div
-					class="relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] bg-clay-deep p-8 shadow-warm sm:flex-row sm:items-center sm:justify-between sm:p-10"
+					class="shadow-warm relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] bg-clay-deep p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10"
 				>
 					<div
 						class="pointer-events-none absolute -bottom-12 -left-10 size-48 rounded-full bg-olive/10 blur-3xl"
@@ -211,7 +242,10 @@
 				     `pillars` table, never from this block's JSON. -->
 				<div class="grid items-stretch gap-6 md:grid-cols-2">
 					{#each pillars as pillar, pillarIndex (pillar.id)}
-						<div use:reveal={{ delay: stagger(pillarIndex, 80, 4), scale: 0.95, blur: 6 }} class="flex">
+						<div
+							use:reveal={{ delay: stagger(pillarIndex, 80, 4), scale: 0.95, blur: 6 }}
+							class="flex"
+						>
 							<Card.Root class="card-lift group flex w-full flex-col gap-3 overflow-hidden p-0">
 								{#if pillar.image}
 									<div class="overflow-hidden">
@@ -334,7 +368,7 @@
 						<p class="text-lg text-muted-foreground">{str(block, 'label')}</p>
 					{/if}
 					{#if embed}
-						<div class="rounded-[2rem] border bg-card p-6 shadow-warm md:p-10">
+						<div class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 							<DynamicForm
 								form={embed.definition}
 								data={embed.data}
@@ -405,10 +439,32 @@
 						</Card.Root>
 					{/each}
 				</div>
+			{:else if block.type === 'gallery'}
+				<!-- Photographs live in `media_items` keyed by this block, not in
+				     `content` — they are managed on the shared media screen. -->
+				<Gallery images={block.media?.gallery ?? []} />
+			{:else if block.type === 'video'}
+				<div class="mx-auto flex max-w-4xl flex-col gap-8">
+					{#each block.media?.videos ?? [] as video, videoIndex (video.id)}
+						<VideoEmbed
+							url={video.youtubeUrl}
+							caption={video.caption}
+							title={block.heading ?? 'Video'}
+							index={videoIndex}
+						/>
+					{/each}
+				</div>
+			{:else if block.type === 'testimonial_slider'}
+				<!-- `{ show_all_href }` — the quotes come from `testimonials` where
+				     `is_featured`, passed in by the page's `load`. -->
+				<TestimonialSlider
+					{testimonials}
+					showAllHref={str(block, 'show_all_href') || '/testimonials'}
+				/>
 			{:else if block.type === 'memoriam'}
 				<!-- `{ name, photo, body, linkHref, linkLabel }` — a tribute, set apart
 				     from the surrounding prose rather than folded into it. -->
-				<div class="relative overflow-hidden rounded-[2rem] bg-clay-deep shadow-warm">
+				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
 					<div
 						class="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-olive/10 blur-3xl"
 						aria-hidden="true"
@@ -425,7 +481,9 @@
 							/>
 						{/if}
 						{#if str(block, 'name')}
-							<h3 class="font-heading text-2xl font-semibold text-[oklch(0.97_0.01_80)] md:text-3xl">
+							<h3
+								class="font-heading text-2xl font-semibold text-[oklch(0.97_0.01_80)] md:text-3xl"
+							>
 								{str(block, 'name')}
 							</h3>
 						{/if}

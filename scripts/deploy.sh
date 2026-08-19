@@ -97,9 +97,11 @@ update)
 		"$LOCAL/build/" "$REMOTE:$REMOTE_DIR/build/"
 
 	echo "==> sending manifests"
+	# `migrate.mjs` rides along so it is always present when a migration is
+	# needed — see §3 of OPERATIONS.md. It is inert unless it is run.
 	rsync -avz --human-readable \
 		"$LOCAL/package.json" "$LOCAL/package-lock.json" "$LOCAL/.npmrc" \
-		"$LOCAL/OPERATIONS.md" \
+		"$LOCAL/OPERATIONS.md" "$LOCAL/migrate.mjs" \
 		"$REMOTE:$REMOTE_DIR/"
 
 	# Cheap and idempotent when nothing changed; necessary when it did.

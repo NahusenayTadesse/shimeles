@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { PERMISSIONS, ROLE_PERMISSIONS, ROLE } from '../../permissions';
+import { PRIVACY_POLICY_BODY, TERMS_AND_CONDITIONS_BODY } from './legal-content';
 
 /**
  * Seeds every configuration table the system needs to render.
@@ -1161,6 +1162,23 @@ async function seedPages() {
 			title: 'Contact',
 			metaDescription: 'Get in touch with the Foundation.',
 			sortOrder: 4
+		},
+		// The two legal pages are ordinary `pages` rows, so they render through
+		// the catch-all route and are edited from Pages & content like any
+		// other page. Neither needs a route or a dashboard screen of its own.
+		{
+			slug: 'privacy',
+			title: 'Privacy Policy',
+			metaDescription:
+				'How the Shimelesabera Foundation collects, uses, retains and protects personal information.',
+			sortOrder: 90
+		},
+		{
+			slug: 'terms',
+			title: 'Terms & Conditions',
+			metaDescription:
+				'The terms governing use of the Shimelesabera Foundation website, donations and applications.',
+			sortOrder: 91
 		}
 	];
 
@@ -1256,6 +1274,15 @@ async function seedPages() {
 		},
 		{
 			page: 'home',
+			blockType: 'testimonial_slider',
+			heading: 'In their own words',
+			// The quotes are not in `content` — the block renders whatever is
+			// flagged `is_featured` in `testimonials`, so changing what the front
+			// page says is a checkbox rather than a page edit.
+			content: { show_all_href: '/testimonials' }
+		},
+		{
+			page: 'home',
 			blockType: 'memoriam',
 			heading: 'In Memoriam',
 			content: {
@@ -1307,6 +1334,21 @@ async function seedPages() {
 			page: 'contact',
 			blockType: 'form_embed',
 			content: { slug: 'contact-form', label: 'Send us a message' }
+		},
+		// One long rich-text block each. Seeded once and never updated after
+		// that, like every other body of copy here — a lawyer's revisions must
+		// survive a re-run of this script.
+		// `lede: false` turns off the drop cap — see `isLede` in `BlockRenderer`.
+		// These documents open with a dated label, not with prose.
+		{
+			page: 'privacy',
+			blockType: 'rich_text',
+			content: { body: PRIVACY_POLICY_BODY, lede: false }
+		},
+		{
+			page: 'terms',
+			blockType: 'rich_text',
+			content: { body: TERMS_AND_CONDITIONS_BODY, lede: false }
 		}
 	];
 
@@ -1353,6 +1395,12 @@ async function seedPages() {
 	}[] = [
 		{ label: 'About', url: '/about', placement: 'both' },
 		{ label: 'Programs', pageSlug: 'programs', placement: 'both' },
+		// Same as About: `/blog` is a hand-built route, so it is a raw URL.
+		{ label: 'Blog', url: '/blog', placement: 'both' },
+		// Also a hand-built route, so a raw URL like About and Blog.
+		{ label: 'Testimonials', url: '/testimonials', placement: 'footer' },
+		{ label: 'Privacy Policy', pageSlug: 'privacy', placement: 'footer' },
+		{ label: 'Terms & Conditions', pageSlug: 'terms', placement: 'footer' },
 		{ label: 'Volunteer', pageSlug: 'volunteer', placement: 'both' },
 		{ label: 'Contact', pageSlug: 'contact', placement: 'both' },
 		{
@@ -1865,6 +1913,62 @@ async function seedMedia() {
 }
 
 /* ==========================================================================
+   Media
+   ========================================================================== */
+
+/**
+ * Attaches images or videos to an owner in `media_items`.
+ *
+ * Keyed on (owner, url), so re-running adds nothing that is already attached
+ * and never disturbs an ordering staff have since changed. Images are looked
+ * up in `files` so the item carries a file id and deleting it can clean the
+ * bytes; a filename with no `files` row is skipped, because `/files/:name`
+ * would refuse to serve it anyway.
+ */
+async function attachMedia(
+	ownerType: (typeof schema.MEDIA_OWNERS)[number],
+	ownerId: number,
+	kind: 'image' | 'video',
+	urls: string[],
+	captions: Record<string, string> = {}
+) {
+	const existing = await db
+		.select({ url: schema.mediaItems.url })
+		.from(schema.mediaItems)
+		.where(
+			sql`${schema.mediaItems.ownerType} = ${ownerType} and ${schema.mediaItems.ownerId} = ${ownerId} and ${schema.mediaItems.kind} = ${kind}`
+		);
+	const attached = new Set(existing.map((row) => row.url));
+
+	let sortOrder = existing.length;
+	for (const url of urls) {
+		if (attached.has(url)) continue;
+
+		let fileId: number | null = null;
+		if (kind === 'image') {
+			const [file] = await db
+				.select({ id: schema.files.id })
+				.from(schema.files)
+				.where(eq(schema.files.storagePath, url))
+				.limit(1);
+			if (!file) continue;
+			fileId = file.id;
+		}
+
+		await db.insert(schema.mediaItems).values({
+			ownerType,
+			ownerId,
+			kind,
+			url,
+			fileId,
+			caption: captions[url] ?? null,
+			sortOrder: sortOrder++,
+			createdAt: now()
+		});
+	}
+}
+
+/* ==========================================================================
    About page (hand-built route, not content_blocks)
    ========================================================================== */
 
@@ -1878,7 +1982,10 @@ async function seedMedia() {
  * adds nothing once every photo is already attached.
  */
 async function seedAboutPage() {
-	const [existing] = await db.select({ id: schema.aboutContent.id }).from(schema.aboutContent).limit(1);
+	const [existing] = await db
+		.select({ id: schema.aboutContent.id })
+		.from(schema.aboutContent)
+		.limit(1);
 
 	if (!existing) {
 		await db.insert(schema.aboutContent).values({
@@ -1899,29 +2006,360 @@ async function seedAboutPage() {
 	}
 
 	const galleryFiles = ['memoriumGallery1.webp', 'memoriumGallery2.webp', 'memoriumGallery3.webp'];
-	const fileRows = await db
-		.select({ id: schema.files.id, storagePath: schema.files.storagePath })
-		.from(schema.files)
-		.where(inArray(schema.files.storagePath, galleryFiles));
-
-	const existingGallery = await db
-		.select({ fileId: schema.aboutGalleryImages.fileId })
-		.from(schema.aboutGalleryImages);
-	const attached = new Set(existingGallery.map((row) => row.fileId));
-
-	let sortOrder = existingGallery.length;
-	for (const filename of galleryFiles) {
-		const file = fileRows.find((row) => row.storagePath === filename);
-		if (!file || attached.has(file.id)) continue;
-
-		await db.insert(schema.aboutGalleryImages).values({
-			fileId: file.id,
-			sortOrder: sortOrder++,
-			createdAt: now()
-		});
-	}
+	await attachMedia('about', 1, 'image', galleryFiles);
 
 	console.log('✓ about page gallery');
+}
+
+/* ==========================================================================
+   Blog
+   ========================================================================== */
+
+/**
+ * Seeds the blog's categories and a first set of posts.
+ *
+ * Same rule as everywhere else in this file: keyed on the natural key (the
+ * slug), insert-only, so re-running never overwrites an article a
+ * communications officer has since rewritten. The bodies below are HTML
+ * because that is what the dashboard's rich-text editor produces — and, like
+ * the rest of the copy here, they are placeholder and meant to be replaced.
+ *
+ * Runs after `seedMedia`, which registers the photographs the covers and
+ * galleries point at.
+ */
+async function seedBlog() {
+	const categories = [
+		{
+			slug: 'field-notes',
+			name: 'Field notes',
+			description: 'What a week of case work actually looks like.',
+			color: 'olive'
+		},
+		{
+			slug: 'programme-updates',
+			name: 'Programme updates',
+			description: 'Where each of the four pillars has got to.',
+			color: 'clay'
+		},
+		{
+			slug: 'stories',
+			name: 'Stories',
+			description: 'The families, elders and students behind the numbers.',
+			color: 'plum'
+		},
+		{
+			slug: 'volunteering',
+			name: 'Volunteering',
+			description: 'For the people who give their Saturdays.',
+			color: 'sky'
+		}
+	];
+
+	for (const [index, category] of categories.entries()) {
+		await db
+			.insert(schema.blogCategories)
+			.values({ ...category, sortOrder: index })
+			.onConflictDoNothing({ target: schema.blogCategories.slug });
+	}
+
+	const categoryRows = await db
+		.select({ id: schema.blogCategories.id, slug: schema.blogCategories.slug })
+		.from(schema.blogCategories);
+	const categoryId = (slug: string) => categoryRows.find((row) => row.slug === slug)?.id ?? null;
+
+	/** Days before today, so a fresh seed never lands a post in the future. */
+	const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+
+	const posts: {
+		slug: string;
+		title: string;
+		excerpt: string;
+		body: string;
+		category: string;
+		coverImage: string;
+		authorName: string;
+		daysAgo: number;
+		isFeatured?: boolean;
+		gallery?: string[];
+	}[] = [
+		{
+			slug: 'what-a-medical-case-actually-costs',
+			title: 'What a medical case actually costs',
+			excerpt:
+				'A family arrives with a referral letter and no way to pay for it. Here is where the money goes, line by line, on a case we closed last month.',
+			category: 'field-notes',
+			coverImage: 'image7.webp',
+			authorName: 'Programme team',
+			daysAgo: 6,
+			isFeatured: true,
+			body:
+				'<p>The referral letter is usually the first thing we see. It is a single sheet, often folded into quarters, and it names a procedure and a hospital and nothing about how any of it will be paid for.</p>' +
+				'<h2>The line items</h2>' +
+				'<p>On the case we closed in July, the total came to 41,200 birr. Of that, 28,000 was the procedure itself, 7,400 was four nights on the ward, 3,600 was medication for the eight weeks afterwards, and 2,200 was transport — the family lives two hours outside the city, and someone had to be with her.</p>' +
+				'<p>That last line is the one people are surprised by. It is also the one that quietly decides whether a family follows through on a treatment plan or gives up on it halfway.</p>' +
+				'<h2>Why we publish it</h2>' +
+				'<p>We pay the hospital directly and we keep the receipt. A nonprofit that says <strong>“we helped a family”</strong> is making a claim. One that can say “we paid this hospital this amount on this date for this case” is showing its work — and that is what earns the next gift.</p>' +
+				'<blockquote>Every disbursement in our records names the supplier, the amount and the date. None of it is aggregated away.</blockquote>',
+			gallery: ['image8.webp', 'image9.webp', 'image10.webp']
+		},
+		{
+			slug: 'elder-care-first-year',
+			title: 'Elder care: the first year, honestly',
+			excerpt:
+				'Twelve months into the elder care programme, the thing we underestimated was not money. It was loneliness, and how little it costs to interrupt.',
+			category: 'programme-updates',
+			coverImage: 'image21.webp',
+			authorName: 'Programme team',
+			daysAgo: 18,
+			body:
+				'<p>When we set the elder care programme up, we budgeted for medication, for food support, and for the occasional emergency. All of that was right, and all of it turned out to be the smaller half of the problem.</p>' +
+				'<h2>What we got wrong</h2>' +
+				'<p>The elders on our list are not, for the most part, going hungry. They are sitting alone in a room for most of the day. The volunteer who comes on Thursday afternoon and stays for two hours is doing more measurable good than the food parcel that arrives on Monday, and costs us almost nothing.</p>' +
+				'<h2>What changes this year</h2>' +
+				'<ul><li>Two scheduled visits a week rather than one, for everyone on the list.</li><li>A phone, and credit for it, for the eleven people who did not have one.</li><li>A standing Thursday gathering, because several of them turned out to live within walking distance of each other and had never met.</li></ul>' +
+				'<p>None of that was in the original budget. All of it is in this one.</p>',
+			gallery: ['image12.webp', 'image13.webp']
+		},
+		{
+			slug: 'meron-goes-back-to-school',
+			title: 'Meron goes back to school',
+			excerpt:
+				'She left in grade nine because the fees were the difference between school and the family eating. She sat her exams last month.',
+			category: 'stories',
+			coverImage: 'image1.webp',
+			authorName: 'Communications',
+			daysAgo: 27,
+			body:
+				'<p>Meron was seventeen when she stopped going to school, and the reason was arithmetic rather than anything else. Her mother sells vegetables. The school fees, the uniform and the exercise books came to slightly more than the household could carry, and Meron was the one who noticed first and stopped asking.</p>' +
+				'<p>She was out for two years. The thing she says about those two years is not that they were hard — she is matter-of-fact about hard — but that she thought the decision was permanent, because everyone she knew who had left had stayed left.</p>' +
+				'<h2>Going back</h2>' +
+				'<p>The youth education pillar covers fees, uniform and materials for a full academic year at a time, renewable. It is deliberately not a one-off grant: a child who returns for a term and drops out again is worse off than one who never returned, because now they know exactly what they are missing.</p>' +
+				'<p>Meron sat her exams last month. She wants to study accounting, on the grounds that she has been doing the family’s books since she was twelve and may as well be paid for it.</p>',
+			gallery: ['image14.webp', 'image15.webp', 'image16.webp']
+		},
+		{
+			slug: 'talking-about-mental-health-in-addis',
+			title: 'Talking about mental health in Addis',
+			excerpt:
+				'The cost of a session is not the barrier we were told it would be. Being seen walking into the building is.',
+			category: 'programme-updates',
+			coverImage: 'image18.webp',
+			authorName: 'Programme team',
+			daysAgo: 39,
+			body:
+				'<p>We started the mental wellness pillar expecting cost to be the obstacle. It is an obstacle. It is not the first one.</p>' +
+				'<h2>What people actually said</h2>' +
+				'<p>In the intake conversations we ran before the programme opened, the reason people gave for not seeking help was, overwhelmingly, that someone would see them do it. A neighbour, a cousin, someone from church. The session fee came up too, but second, and usually as the reason they gave <em>out loud</em> for not going.</p>' +
+				'<h2>What we changed</h2>' +
+				'<p>Sessions are held in a building that also houses several other things, so arriving at it says nothing about why you are there. Appointments can be made by phone rather than in person. And referrals go through the same intake process as everything else we do, so being on our list does not identify which pillar you are on it for.</p>' +
+				'<p>None of that is clever. All of it doubled uptake in the first quarter.</p>'
+		},
+		{
+			slug: 'a-saturday-with-the-volunteers',
+			title: 'A Saturday with the volunteers',
+			excerpt:
+				'Fourteen people, one distribution, and a system for who carries what that took three months to get right.',
+			category: 'volunteering',
+			coverImage: 'image19.webp',
+			authorName: 'Volunteer coordination',
+			daysAgo: 52,
+			body:
+				'<p>A distribution day looks chaotic from outside and is, from inside, almost entirely a logistics problem that somebody solved in advance.</p>' +
+				'<h2>The shape of the day</h2>' +
+				'<p>Fourteen volunteers, arriving at seven. Two on the list at the door, four carrying, four handing out, two on the vehicle, two floating. Everyone knows which they are before they arrive, because the alternative is fourteen people standing in a room at seven in the morning deciding.</p>' +
+				'<h2>What we ask of a volunteer</h2>' +
+				'<ul><li>Safeguarding clearance before any placement that involves children or elders — no exceptions, and no “we will sort it out afterwards”.</li><li>A commitment to a shift pattern rather than to individual days, because the families on the other end need the same faces.</li><li>Turning up. Which sounds obvious and is the whole thing.</li></ul>' +
+				'<p>If that sounds like something you have a Saturday for, the volunteer form is on this site.</p>',
+			gallery: ['image17.webp', 'image20.webp']
+		},
+		{
+			slug: 'how-we-decide-who-we-help',
+			title: 'How we decide who we help',
+			excerpt:
+				'We cannot fund every application. This is the process that decides, written down, so that nobody has to wonder whether it was arbitrary.',
+			category: 'field-notes',
+			coverImage: 'image2.webp',
+			authorName: 'Programme team',
+			daysAgo: 71,
+			body:
+				'<p>Every application that reaches us gets read. Not every one gets funded, and the honest reason is that the money runs out before the need does.</p>' +
+				'<h2>The process</h2>' +
+				'<ol><li>An application arrives — through this site, through a partner clinic, or because a neighbour told us.</li><li>A caseworker verifies the circumstances. This means a conversation and, where there is one, a document: a referral letter, a school fee notice, a diagnosis.</li><li>The case goes to a review with the pillar lead, who decides on the amount and the schedule.</li><li>We pay the supplier directly and record it.</li></ol>' +
+				'<h2>What we weigh</h2>' +
+				'<p>Urgency, first — a treatment with a date on it outranks one without. Then whether our help is decisive: 40,000 birr that completes a treatment plan does more than 40,000 birr against a bill of half a million. Then household circumstances, which is where a caseworker’s judgement does real work and where we accept that judgement is not the same as a formula.</p>' +
+				'<p>If we cannot fund a case, we say so, and we say why. A silent no is the worst thing an organisation like this can do to a family that has already had to ask.</p>',
+			gallery: ['image3.webp', 'image4.webp', 'image5.webp']
+		}
+	];
+
+	for (const [index, post] of posts.entries()) {
+		await db
+			.insert(schema.blogPosts)
+			.values({
+				slug: post.slug,
+				title: post.title,
+				excerpt: post.excerpt,
+				body: post.body,
+				coverImage: post.coverImage,
+				categoryId: categoryId(post.category),
+				authorName: post.authorName,
+				metaDescription: post.excerpt.slice(0, 300),
+				// Left at 0 so the public read estimates it from the body — the
+				// bodies here will be replaced, and a stale hand-typed number
+				// would outlive the text it described.
+				readMinutes: 0,
+				isFeatured: post.isFeatured ?? false,
+				isPublished: true,
+				publishedAt: daysAgo(post.daysAgo),
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.blogPosts.slug });
+	}
+
+	// Galleries go into `media_items`, keyed on (owner, filename), so re-running
+	// adds nothing to a post whose photos are already attached.
+	const postRows = await db
+		.select({ id: schema.blogPosts.id, slug: schema.blogPosts.slug })
+		.from(schema.blogPosts);
+
+	for (const post of posts) {
+		if (!post.gallery?.length) continue;
+		const row = postRows.find((r) => r.slug === post.slug);
+		if (!row) continue;
+		await attachMedia('blog_post', row.id, 'image', post.gallery);
+	}
+
+	console.log(`✓ ${categories.length} blog categories and ${posts.length} posts`);
+}
+
+/* ==========================================================================
+   Testimonials
+   ========================================================================== */
+
+/**
+ * Seeds the testimonials wall and the homepage slider.
+ *
+ * Insert-only and keyed on slug, like everything else here, so a re-run never
+ * overwrites a quote someone has since corrected. Placeholder copy — the real
+ * words have to come from the people who said them, with their consent.
+ *
+ * `showOnSite` puts a quote on `/testimonials`; `isFeatured` also puts it in
+ * the homepage slider. Three of the six are featured, which is about the right
+ * number for a slider nobody has to sit through.
+ */
+async function seedTestimonials() {
+	const pillarRows = await db
+		.select({ id: schema.pillars.id, slug: schema.pillars.slug })
+		.from(schema.pillars);
+	const pillarId = (slug: string) => pillarRows.find((row) => row.slug === slug)?.id ?? null;
+
+	const rows: {
+		slug: string;
+		name: string;
+		role: string;
+		quote: string;
+		body?: string;
+		pillar: string | null;
+		photo: string;
+		featured?: boolean;
+		gallery?: string[];
+	}[] = [
+		{
+			slug: 'meron-k',
+			name: 'Meron',
+			role: 'Student, Kolfe',
+			quote:
+				'I thought leaving school was permanent, because everyone I knew who left stayed left. I sat my exams last month.',
+			pillar: 'youth-education',
+			photo: 'image1.webp',
+			featured: true,
+			gallery: ['image14.webp', 'image15.webp']
+		},
+		{
+			slug: 'tigist-a',
+			name: 'Tigist',
+			role: 'Mother of two, Addis Ababa',
+			quote:
+				'They paid the hospital directly and showed me the receipt. Nobody had ever handed me a piece of paper like that before.',
+			body:
+				'<p>My daughter needed a procedure we could not pay for. I had the referral letter for three weeks before I found anyone who would even read it.</p>' +
+				'<p>What I remember is not the money. It is that someone sat down and went through it with me, line by line, and then told me exactly what would happen next — and then that is what happened.</p>',
+			pillar: 'medical-hardship',
+			photo: 'image7.webp',
+			featured: true,
+			gallery: ['image8.webp', 'image9.webp']
+		},
+		{
+			slug: 'ato-bekele',
+			name: 'Ato Bekele',
+			role: 'Elder, Gullele',
+			quote:
+				'Thursday afternoon is the part of my week I count towards. Not the food parcel — the company.',
+			pillar: 'elder-care',
+			photo: 'image21.webp',
+			featured: true,
+			gallery: ['image12.webp', 'image13.webp']
+		},
+		{
+			slug: 'sara-t',
+			name: 'Sara',
+			role: 'Volunteer since 2024',
+			quote:
+				'I came expecting to hand out parcels. What I actually do is turn up for the same four families every fortnight, which turned out to be the whole point.',
+			pillar: null,
+			photo: 'image19.webp',
+			gallery: ['image17.webp', 'image20.webp']
+		},
+		{
+			slug: 'dawit-m',
+			name: 'Dawit',
+			role: 'Referred through a partner clinic',
+			quote:
+				'Asking for help with your head costs you something socially here. They understood that before I had to explain it.',
+			pillar: 'mental-wellness',
+			photo: 'image18.webp'
+		},
+		{
+			slug: 'hanna-g',
+			name: 'Hanna',
+			role: 'Teacher, partner school',
+			quote:
+				'Three of my students are still in my classroom because of this Foundation. That is not a statistic to me, it is three desks.',
+			pillar: 'youth-education',
+			photo: 'image2.webp'
+		}
+	];
+
+	for (const [index, row] of rows.entries()) {
+		await db
+			.insert(schema.testimonials)
+			.values({
+				slug: row.slug,
+				name: row.name,
+				role: row.role,
+				quote: row.quote,
+				body: row.body ?? null,
+				photo: row.photo,
+				pillarId: row.pillar ? pillarId(row.pillar) : null,
+				showOnSite: true,
+				isFeatured: row.featured ?? false,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.testimonials.slug });
+	}
+
+	const saved = await db
+		.select({ id: schema.testimonials.id, slug: schema.testimonials.slug })
+		.from(schema.testimonials);
+
+	for (const row of rows) {
+		if (!row.gallery?.length) continue;
+		const match = saved.find((t) => t.slug === row.slug);
+		if (!match) continue;
+		await attachMedia('testimonial', match.id, 'image', row.gallery);
+	}
+
+	console.log(`✓ ${rows.length} testimonials`);
 }
 
 /* ==========================================================================
@@ -1946,6 +2384,8 @@ async function main() {
 	await seedTranslations();
 	await seedMedia();
 	await seedAboutPage();
+	await seedBlog();
+	await seedTestimonials();
 
 	console.log('\nDone. Create the first administrator at /setup.');
 	client.close();

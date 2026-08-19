@@ -4,7 +4,7 @@ import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { db } from '$lib/server/db';
 import { formDefinitions } from '$lib/server/db/schema';
-import { getPillar } from '$lib/server/content';
+import { getOwnerMedia, getPillar } from '$lib/server/content';
 import { buildSchema, loadForm } from '$lib/server/forms';
 import { handleFormSubmission } from '$lib/server/formSubmit';
 import type { Actions, PageServerLoad } from './$types';
@@ -38,13 +38,16 @@ export const load: PageServerLoad = async ({ params }) => {
 				.limit(1)
 		: [];
 
-	if (!formRow) return { pillar, applicationForm: null };
+	const media = await getOwnerMedia('pillar', pillar.id);
+
+	if (!formRow) return { pillar, media, applicationForm: null };
 
 	const definition = await loadForm(formRow.slug);
-	if (!definition) return { pillar, applicationForm: null };
+	if (!definition) return { pillar, media, applicationForm: null };
 
 	return {
 		pillar,
+		media,
 		applicationForm: {
 			slug: formRow.slug,
 			title: formRow.title,

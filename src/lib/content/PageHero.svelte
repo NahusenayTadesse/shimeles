@@ -83,7 +83,7 @@
 				<img
 					src={assetUrl(image)}
 					alt={imageAlt}
-					class="tilt-right aspect-[4/3] w-full rounded-[2rem] object-cover shadow-warm"
+					class="tilt-right shadow-warm aspect-[4/3] w-full rounded-[2rem] object-cover"
 				/>
 			</div>
 		{/if}

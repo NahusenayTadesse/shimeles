@@ -21,6 +21,7 @@
 	metrics={data.metrics}
 	payments={data.payments}
 	settings={data.settings}
+	testimonials={data.testimonials}
 >
 	{#snippet header()}
 		<div class="relative overflow-hidden">
@@ -74,7 +75,9 @@
 						<div
 							class="floating-badge absolute -bottom-6 -left-6 flex items-center gap-3 md:-bottom-8 md:-left-8"
 						>
-							<span class="flex size-10 items-center justify-center rounded-full bg-clay text-primary-foreground">
+							<span
+								class="flex size-10 items-center justify-center rounded-full bg-clay text-primary-foreground"
+							>
 								<Users class="size-5" />
 							</span>
 							<span class="flex flex-col leading-tight">

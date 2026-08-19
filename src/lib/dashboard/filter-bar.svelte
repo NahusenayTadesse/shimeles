@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { applyFilter as applyToUrl } from '$lib/dashboard/apply-filter';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Search, X } from '@lucide/svelte';
@@ -35,13 +36,8 @@
 	} = $props();
 
 	/** Filters live in the URL, so a filtered list is a shareable link. */
-	function applyFilter(key: string, value: string | null) {
-		const url = new URL(page.url);
-		if (value === null || value === '') url.searchParams.delete(key);
-		else url.searchParams.set(key, value);
-		if (resetsPage) url.searchParams.delete('page');
-		goto(`${url.pathname}${url.search}`, { keepFocus: true, noScroll: true });
-	}
+	const applyFilter = (key: string, value: string | null) =>
+		applyToUrl(page.url, key, value, { resetsPage });
 
 	function clearAll() {
 		search = '';

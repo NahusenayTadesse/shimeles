@@ -1,7 +1,12 @@
 <script lang="ts">
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
 	import PageHero from '$lib/content/PageHero.svelte';
-	import type { RenderInitiative, RenderPage, RenderPillar } from '$lib/content/types';
+	import type {
+		RenderInitiative,
+		RenderPage,
+		RenderPillar,
+		RenderTestimonial
+	} from '$lib/content/types';
 	import type { RenderForm } from '$lib/forms/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
 
@@ -19,6 +24,7 @@
 		payments = [],
 		settings = {},
 		forms = {},
+		testimonials = [],
 		labels = {},
 		/** Rendered above the blocks, for routes with their own hero. */
 		header,
@@ -30,7 +36,11 @@
 		metrics?: Record<string, number>;
 		payments?: any[];
 		settings?: Record<string, string>;
-		forms?: Record<string, { definition: RenderForm; data: SuperValidated<Record<string, unknown>> }>;
+		forms?: Record<
+			string,
+			{ definition: RenderForm; data: SuperValidated<Record<string, unknown>> }
+		>;
+		testimonials?: RenderTestimonial[];
 		labels?: Record<string, string>;
 		header?: import('svelte').Snippet;
 		children?: import('svelte').Snippet;
@@ -60,6 +70,15 @@
 {/if}
 
 <div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
-	<BlockRenderer blocks={page.blocks} {pillars} {initiatives} {metrics} {payments} {forms} {labels} />
+	<BlockRenderer
+		blocks={page.blocks}
+		{pillars}
+		{initiatives}
+		{metrics}
+		{payments}
+		{forms}
+		{testimonials}
+		{labels}
+	/>
 	{@render children?.()}
 </div>

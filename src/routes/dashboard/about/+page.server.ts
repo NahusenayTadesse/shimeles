@@ -1,12 +1,18 @@
 import { fail } from '@sveltejs/kit';
-import { asc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod/v4';
 import { db } from '$lib/server/db';
-import { aboutContent, aboutGalleryImages, files } from '$lib/server/db/schema';
+import { aboutContent } from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
 import { invalidateContent } from '$lib/server/content';
-import { savePublicImage, deleteStoredFile } from '$lib/server/upload';
+import { savePublicImage } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
+import {
+	listMediaSplit,
+	mediaActions,
+	mediaVideoActions,
+	type MediaScope
+} from '$lib/server/media';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -18,24 +24,31 @@ import type { Actions, PageServerLoad } from './$types';
  * exactly one `about_content` row; this screen creates it on first save
  * rather than requiring a migration to seed one.
  */
+/**
+ * The About page's media — the In Memoriam photographs and the page's videos.
+ *
+ * `about_content` is a singleton, so its owner id is fixed at 1. This screen
+ * keeps its own media controls rather than linking to the shared media route,
+ * because here the photographs are one part of a larger editor rather than
+ * the whole point of the page.
+ */
+const galleryScope: MediaScope = {
+	ownerType: 'about',
+	ownerId: 1,
+	permission: 'content.manage',
+	invalidates: 'about'
+};
+
 export const load: PageServerLoad = async (event) => {
 	await requirePermission(event, 'content.manage');
 
 	const [content] = await db.select().from(aboutContent).limit(1);
 
-	const gallery = await db
-		.select({
-			id: aboutGalleryImages.id,
-			caption: aboutGalleryImages.caption,
-			storagePath: files.storagePath
-		})
-		.from(aboutGalleryImages)
-		.innerJoin(files, eq(files.id, aboutGalleryImages.fileId))
-		.orderBy(asc(aboutGalleryImages.sortOrder), asc(aboutGalleryImages.id));
+	const { images: gallery, videos } = await listMediaSplit(galleryScope);
 
 	audit({ event, action: 'viewed', entityType: 'about_content', entityId: content?.id ?? null });
 
-	return { content: content ?? null, gallery };
+	return { content: content ?? null, gallery, videos };
 };
 
 const contentSchema = z.object({
@@ -93,106 +106,16 @@ export const actions: Actions = {
 		}
 
 		invalidateContent('about');
-		audit({ event, action: 'updated', entityType: 'about_content', entityId: existing?.id ?? null });
-
-		return { ok: true };
-	},
-
-	addGalleryImages: async (event) => {
-		const access = await guard(event as never);
-		const formData = await event.request.formData();
-		const uploads = formData.getAll('images').filter((f): f is File => f instanceof File && f.size > 0);
-
-		if (!uploads.length) return fail(400, { error: 'Choose at least one photo.' });
-
-		const existingCount = (await db.select({ id: aboutGalleryImages.id }).from(aboutGalleryImages))
-			.length;
-
-		let sortOrder = existingCount;
-		for (const upload of uploads) {
-			const saved = await savePublicImage(upload, access.userId);
-			const [fileRow] = await db
-				.select({ id: files.id })
-				.from(files)
-				.where(eq(files.storagePath, saved))
-				.limit(1);
-			if (!fileRow) continue;
-
-			await db.insert(aboutGalleryImages).values({
-				fileId: fileRow.id,
-				sortOrder: sortOrder++,
-				createdAt: new Date()
-			});
-		}
-
-		invalidateContent('about');
-		audit({ event, action: 'created', entityType: 'about_gallery_image', entityId: null });
-
-		return { ok: true };
-	},
-
-	updateGalleryCaption: async (event) => {
-		await guard(event as never);
-		const formData = await event.request.formData();
-		const imageId = Number(formData.get('imageId'));
-		const caption = String(formData.get('caption') ?? '').trim();
-
-		if (!Number.isFinite(imageId)) return fail(400, { error: 'Unknown photo.' });
-
-		await db
-			.update(aboutGalleryImages)
-			.set({ caption: caption || null })
-			.where(eq(aboutGalleryImages.id, imageId));
-
-		invalidateContent('about');
-		audit({ event, action: 'updated', entityType: 'about_gallery_image', entityId: imageId });
-
-		return { ok: true };
-	},
-
-	deleteGalleryImage: async (event) => {
-		await guard(event as never);
-		const formData = await event.request.formData();
-		const imageId = Number(formData.get('imageId'));
-		if (!Number.isFinite(imageId)) return fail(400, { error: 'Unknown photo.' });
-
-		const [row] = await db
-			.select({ fileId: aboutGalleryImages.fileId })
-			.from(aboutGalleryImages)
-			.where(eq(aboutGalleryImages.id, imageId))
-			.limit(1);
-
-		await db.delete(aboutGalleryImages).where(eq(aboutGalleryImages.id, imageId));
-		if (row) await deleteStoredFile(row.fileId);
-
-		invalidateContent('about');
-		audit({ event, action: 'deleted', entityType: 'about_gallery_image', entityId: imageId });
-
-		return { ok: true };
-	},
-
-	reorderGallery: async (event) => {
-		await guard(event as never);
-		const formData = await event.request.formData();
-		const order = String(formData.get('order') ?? '')
-			.split(',')
-			.map(Number)
-			.filter(Number.isFinite);
-
-		if (order.length === 0) return fail(400, { error: 'Nothing to reorder.' });
-
-		db.transaction((tx) => {
-			order.forEach((imageId, index) => {
-				tx.update(aboutGalleryImages)
-					.set({ sortOrder: index })
-					.where(eq(aboutGalleryImages.id, imageId))
-					.run();
-			});
+		audit({
+			event,
+			action: 'updated',
+			entityType: 'about_content',
+			entityId: existing?.id ?? null
 		});
 
-		invalidateContent('about');
-		audit({ event, action: 'updated', entityType: 'about_gallery_image', entityId: null });
-
 		return { ok: true };
-	}
+	},
+
+	...mediaActions(() => galleryScope),
+	...mediaVideoActions(() => galleryScope)
 };

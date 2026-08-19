@@ -56,7 +56,10 @@ const BLOCK_TYPES = [
 	'initiative_grid',
 	'form_embed',
 	'donation_details',
-	'memoriam'
+	'memoriam',
+	'gallery',
+	'video',
+	'testimonial_slider'
 ] as const;
 
 const blockSchema = z.object({

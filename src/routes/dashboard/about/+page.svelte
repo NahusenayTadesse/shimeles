@@ -10,6 +10,7 @@
 	import RichTextEditor from '$lib/formComponents/RichTextEditor.svelte';
 	import FileUpload from '$lib/formComponents/FileUpload.svelte';
 	import GalleryUpload from '$lib/components/GalleryUpload.svelte';
+	import VideoLinks from '$lib/components/VideoLinks.svelte';
 	import { ExternalLink } from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -68,11 +69,7 @@
 				/>
 			</div>
 
-			<FileUpload
-				name="heroImage"
-				label="Top banner photo"
-				image={data.content?.heroImage}
-			/>
+			<FileUpload name="heroImage" label="Top banner photo" image={data.content?.heroImage} />
 
 			<div class="flex flex-col gap-2">
 				<Label>Story body</Label>
@@ -95,7 +92,12 @@
 				</div>
 				<div class="flex flex-col gap-2">
 					<Label for="visionText">Our vision</Label>
-					<Textarea id="visionText" name="visionText" rows={5} value={data.content?.visionText ?? ''} />
+					<Textarea
+						id="visionText"
+						name="visionText"
+						rows={5}
+						value={data.content?.visionText ?? ''}
+					/>
 				</div>
 			</div>
 		</Card.Root>
@@ -134,6 +136,19 @@
 			{saving ? 'Saving…' : 'Save changes'}
 		</Button>
 	</form>
+
+	<Separator class="my-2" />
+
+	<Card.Root class="flex flex-col gap-4 p-6">
+		<div>
+			<h2 class="font-heading text-lg font-semibold">Video</h2>
+			<p class="text-sm text-muted-foreground">
+				Shown after Our Story, before the tribute. Paste a YouTube link and the site builds the
+				player itself.
+			</p>
+		</div>
+		<VideoLinks videos={data.videos} />
+	</Card.Root>
 
 	<Separator class="my-2" />
 

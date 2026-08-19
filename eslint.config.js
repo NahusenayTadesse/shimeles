@@ -47,6 +47,18 @@ export default defineConfig(
 	},
 	{
 		/**
+		 * The same exemption, for the one navigation call site that is a plain
+		 * module rather than a component: the shared `applyFilter` helper every
+		 * list filter goes through. The block above is scoped to `.svelte` files
+		 * because it also configures the Svelte parser, which this does not need.
+		 */
+		files: ['src/lib/dashboard/apply-filter.ts'],
+		rules: {
+			'svelte/no-navigation-without-resolve': 'off'
+		}
+	},
+	{
+		/**
 		 * The generic toolkit — the CRUD generator, the dynamic table, the column
 		 * builders — is deliberately untyped at its edges: it accepts any table and
 		 * any row shape, which is what makes one implementation serve twenty
@@ -72,17 +84,23 @@ export default defineConfig(
 	{
 		/**
 		 * Admin-authored rich text is rendered as HTML on purpose — that is what
-		 * the block editor and the pillar description editor produce, and stripping
+		 * the block editor, the pillar description editor and the blog editor
+		 * produce, and stripping
 		 * it would defeat the point of giving staff an editor at all.
 		 *
 		 * The exposure is bounded: only signed-in users holding `content.manage` or
-		 * `pillars.manage` can write these fields, so this is the same trust level
+		 * `pillars.manage` can write these fields — a blog post's body is written
+		 * on `/dashboard/blog/[id]`, which requires `content.manage`, so this is the same trust level
 		 * as any CMS. It is not a place to render anything a visitor submitted —
 		 * public form answers are rendered as text everywhere they appear.
 		 */
 		// The bracket in `[slug]` is a glob character class, so the directory has
 		// to be matched with a wildcard rather than written out literally.
-		files: ['src/lib/content/BlockRenderer.svelte', 'src/routes/programs/*/+page.svelte'],
+		files: [
+			'src/lib/content/BlockRenderer.svelte',
+			'src/routes/programs/*/+page.svelte',
+			'src/routes/blog/*/+page.svelte'
+		],
 		rules: {
 			'svelte/no-at-html-tags': 'off'
 		}

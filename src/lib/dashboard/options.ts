@@ -20,3 +20,16 @@ export const toItems = <T extends Record<string, unknown>>(
 	valueKey: keyof T = 'id' as keyof T
 ): Item[] =>
 	rows.map((row) => ({ value: String(row[valueKey]), name: String(row[nameKey] ?? '') }));
+
+/**
+ * The theme accent tokens content rows may carry (`pillars.color`,
+ * `blog_categories.color`). Deliberately a closed list: these map to CSS
+ * custom properties in `layout.css`, so a free-text colour would render as
+ * nothing at all.
+ */
+export const accentItems: Item[] = [
+	{ value: 'olive', name: 'Olive' },
+	{ value: 'clay', name: 'Clay' },
+	{ value: 'plum', name: 'Plum' },
+	{ value: 'sky', name: 'Sky' }
+];
