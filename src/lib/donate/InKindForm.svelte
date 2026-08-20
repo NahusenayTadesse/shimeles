@@ -190,7 +190,7 @@
 </script>
 
 {#if confirmation}
-	<div class="flex flex-col items-center gap-4 text-center">
+	<div class="mx-auto flex max-w-xl flex-col items-center gap-4 text-center">
 		<div class="rounded-full bg-accent p-4 text-accent-foreground">
 			<CircleCheck class="size-8" />
 		</div>
@@ -252,39 +252,41 @@
 						{/if}
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label for="category-{index}">Kind of thing</Label>
-						<Select.Root
-							type="single"
-							value={item.categoryId ? String(item.categoryId) : ''}
-							onValueChange={(value) => chooseCategory(index, value ? Number(value) : null)}
-						>
-							<Select.Trigger id="category-{index}" class="w-full">
-								{category?.name ?? 'Choose a category'}
-							</Select.Trigger>
-							<Select.Content>
-								{#each categories as option (option.id)}
-									<Select.Item value={String(option.id)} disabled={!option.isAcceptingNow}>
-										{option.name}{option.isAcceptingNow ? '' : ' — paused'}
-									</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
-						{#if category?.description}
-							<p class="text-xs text-muted-foreground">{category.description}</p>
-						{/if}
+					<div class="grid gap-3 md:grid-cols-2">
+						<div class="flex flex-col gap-2">
+							<Label for="category-{index}">Kind of thing</Label>
+							<Select.Root
+								type="single"
+								value={item.categoryId ? String(item.categoryId) : ''}
+								onValueChange={(value) => chooseCategory(index, value ? Number(value) : null)}
+							>
+								<Select.Trigger id="category-{index}" class="w-full">
+									{category?.name ?? 'Choose a category'}
+								</Select.Trigger>
+								<Select.Content>
+									{#each categories as option (option.id)}
+										<Select.Item value={String(option.id)} disabled={!option.isAcceptingNow}>
+											{option.name}{option.isAcceptingNow ? '' : ' — paused'}
+										</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+							{#if category?.description}
+								<p class="text-xs text-muted-foreground">{category.description}</p>
+							{/if}
+						</div>
+
+						<div class="flex flex-col gap-2">
+							<Label for="description-{index}">Describe it</Label>
+							<Input
+								id="description-{index}"
+								bind:value={item.description}
+								placeholder="Children's winter coats"
+							/>
+						</div>
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label for="description-{index}">Describe it</Label>
-						<Input
-							id="description-{index}"
-							bind:value={item.description}
-							placeholder="Children's winter coats"
-						/>
-					</div>
-
-					<div class="grid gap-2 sm:grid-cols-2">
+					<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
 						<div class="flex flex-col gap-2">
 							<Label for="quantity-{index}">How many</Label>
 							<Input id="quantity-{index}" type="number" min="1" bind:value={item.quantity} />
@@ -298,31 +300,30 @@
 								placeholder="bags, boxes, kg…"
 							/>
 						</div>
-					</div>
-
-					<div class="flex flex-col gap-2">
-						<Label for="condition-{index}">Condition</Label>
-						<Select.Root
-							type="single"
-							value={item.condition}
-							onValueChange={(value) =>
-								(item.condition = (value || 'good') as typeof item.condition)}
-						>
-							<Select.Trigger id="condition-{index}" class="w-full">
-								{CONDITION_LABELS[item.condition]}
-							</Select.Trigger>
-							<Select.Content>
-								{#each ITEM_CONDITIONS as condition (condition)}
-									<Select.Item value={condition}>{CONDITION_LABELS[condition]}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						<div class="flex flex-col gap-2">
+							<Label for="condition-{index}">Condition</Label>
+							<Select.Root
+								type="single"
+								value={item.condition}
+								onValueChange={(value) =>
+									(item.condition = (value || 'good') as typeof item.condition)}
+							>
+								<Select.Trigger id="condition-{index}" class="w-full">
+									{CONDITION_LABELS[item.condition]}
+								</Select.Trigger>
+								<Select.Content>
+									{#each ITEM_CONDITIONS as condition (condition)}
+										<Select.Item value={condition}>{CONDITION_LABELS[condition]}</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+						</div>
 					</div>
 
 					<!-- Sizing, for anything that has to fit somebody. Driven by the
 					     category, so a new clothing category asks these too. -->
 					{#if category?.requiresSizing}
-						<div class="grid gap-2 sm:grid-cols-2">
+						<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
 							<div class="flex flex-col gap-2">
 								<Label for="ageGroup-{index}">Who would it fit?</Label>
 								<Select.Root
@@ -359,7 +360,7 @@
 									</Select.Content>
 								</Select.Root>
 							</div>
-							<div class="flex flex-col gap-2 sm:col-span-2">
+							<div class="flex flex-col gap-2 sm:col-span-2 md:col-span-1">
 								<Label for="sizeRange-{index}">Sizes</Label>
 								<Input
 									id="sizeRange-{index}"
@@ -372,7 +373,7 @@
 
 					<!-- Anything with a clock on it: food, medicine, formula. -->
 					{#if category?.requiresExpiry}
-						<div class="grid gap-2 sm:grid-cols-2">
+						<div class="grid gap-3 sm:grid-cols-2">
 							<div class="flex flex-col gap-2">
 								<Label for="expiresOn-{index}">Use by</Label>
 								<Input id="expiresOn-{index}" type="date" bind:value={item.expiresOn} />
@@ -390,7 +391,7 @@
 						</div>
 					{/if}
 
-					<div class="grid gap-2 sm:grid-cols-2">
+					<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
 						<div class="flex flex-col gap-2">
 							<Label for="brandOrModel-{index}">Make or model</Label>
 							<Input
@@ -413,11 +414,10 @@
 								placeholder="If you know"
 							/>
 						</div>
-					</div>
-
-					<div class="flex flex-col gap-2">
-						<Label for="notes-{index}">Anything else about it?</Label>
-						<Input id="notes-{index}" bind:value={item.notes} placeholder="Optional" />
+						<div class="flex flex-col gap-2">
+							<Label for="notes-{index}">Anything else about it?</Label>
+							<Input id="notes-{index}" bind:value={item.notes} placeholder="Optional" />
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -480,7 +480,7 @@
 		<!-- ==================== Getting hold of it ==================== -->
 		<div class="flex flex-col gap-2">
 			<Label>{s('donate.goods_handover', 'How should we take it from you?')}</Label>
-			<div class="grid gap-2">
+			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 				{#each HANDOVER_METHODS as method (method)}
 					<button
 						type="button"
@@ -598,7 +598,7 @@
 			</Select.Root>
 		</div>
 
-		<div class="grid gap-2 sm:grid-cols-2">
+		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="estimatedWeightKg">Rough weight (kg)</Label>
 				<Input
@@ -625,7 +625,7 @@
 			</div>
 		</div>
 
-		<div class="grid gap-2 sm:grid-cols-2">
+		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="availableFrom">Ready from</Label>
 				<Input id="availableFrom" type="date" bind:value={$form.availableFrom} />
@@ -692,23 +692,31 @@
 		<Separator />
 
 		<!-- ==================== Who is giving ==================== -->
-		<div class="flex flex-col gap-2">
-			<Label for="in-kind-donorType">This gift is from</Label>
-			<Select.Root
-				type="single"
-				value={$form.donorType}
-				onValueChange={(value) =>
-					($form.donorType = (value || 'individual') as typeof $form.donorType)}
-			>
-				<Select.Trigger id="in-kind-donorType" class="w-full">
-					{DONOR_TYPE_LABELS[$form.donorType]}
-				</Select.Trigger>
-				<Select.Content>
-					{#each DONOR_TYPES as type (type)}
-						<Select.Item value={type}>{DONOR_TYPE_LABELS[type]}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+		<div class="grid gap-3 md:grid-cols-2">
+			<div class="flex flex-col gap-2">
+				<Label for="in-kind-donorType">This gift is from</Label>
+				<Select.Root
+					type="single"
+					value={$form.donorType}
+					onValueChange={(value) =>
+						($form.donorType = (value || 'individual') as typeof $form.donorType)}
+				>
+					<Select.Trigger id="in-kind-donorType" class="w-full">
+						{DONOR_TYPE_LABELS[$form.donorType]}
+					</Select.Trigger>
+					<Select.Content>
+						{#each DONOR_TYPES as type (type)}
+							<Select.Item value={type}>{DONOR_TYPE_LABELS[type]}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex flex-col gap-2">
+				<Label for="in-kind-donorName">{s('donate.name', 'Your name')}</Label>
+				<Input id="in-kind-donorName" bind:value={$form.donorName} required />
+				{#if $errors.donorName}<p class="text-sm text-destructive">{$errors.donorName}</p>{/if}
+			</div>
 		</div>
 
 		{#if isOrganisation}
@@ -721,13 +729,7 @@
 			</div>
 		{/if}
 
-		<div class="flex flex-col gap-2">
-			<Label for="in-kind-donorName">{s('donate.name', 'Your name')}</Label>
-			<Input id="in-kind-donorName" bind:value={$form.donorName} required />
-			{#if $errors.donorName}<p class="text-sm text-destructive">{$errors.donorName}</p>{/if}
-		</div>
-
-		<div class="grid gap-2 sm:grid-cols-2">
+		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="in-kind-donorEmail">{s('donate.email', 'Email')}</Label>
 				<Input id="in-kind-donorEmail" type="email" bind:value={$form.donorEmail} />
@@ -740,7 +742,7 @@
 			</div>
 		</div>
 
-		<div class="grid gap-2 sm:grid-cols-2">
+		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="preferredContactChannel">Best way to reach you</Label>
 				<Select.Root
@@ -832,7 +834,7 @@
 				{s('donate.anonymous', 'Keep my gift anonymous')}
 			</label>
 			{#if !$form.isAnonymous}
-				<div class="flex flex-col gap-2">
+				<div class="mt-2 flex flex-col gap-2">
 					<Label for="recognitionName">Name us to thank, if not your own</Label>
 					<Input
 						id="recognitionName"
@@ -883,7 +885,7 @@
 			/>
 		</div>
 
-		<Button type="submit" size="lg">
+		<Button type="submit" size="lg" class="lg:w-fit lg:self-end lg:px-10">
 			{#if $delayed}
 				<LoadingBtn name={s('donate.goods_sending', 'Recording your offer')} />
 			{:else}
