@@ -10,23 +10,23 @@ wherever you are standing. Those two copies are generated; changes to them are
 overwritten by the next deploy. (`deploy/` is gitignored, which is why the
 original cannot live there.)
 
-`deploy/README.md` describes *what* is deployed; this describes *how to change
-it*.
+`deploy/README.md` describes _what_ is deployed; this describes _how to change
+it_.
 
 ## The server
 
-| | |
-| --- | --- |
-| Host | `admin@148.230.83.102`, ssh alias `hstgr`, AlmaLinux 9.8 |
-| Root | `root@148.230.83.102` — needed for `systemctl`, `admin` has no passwordless sudo |
-| Directory | `/home/admin/app` |
-| Service | `shimeles.service`, enabled, runs as `admin` |
-| Node | v24.19.0, **nvm-installed under `/home/admin/.nvm`** |
-| npm | 11.17.0 |
-| Web server | OpenLiteSpeed 1.9.0 (CyberPanel) proxying to `127.0.0.1:3000` |
-| Database | `/home/admin/app/local.db`, SQLite in WAL mode |
-| Uploads | `/home/admin/app/.tempFiles/` |
-| `sqlite3` CLI | present, `/usr/bin/sqlite3` |
+|               |                                                                                  |
+| ------------- | -------------------------------------------------------------------------------- |
+| Host          | `admin@148.230.83.102`, ssh alias `hstgr`, AlmaLinux 9.8                         |
+| Root          | `root@148.230.83.102` — needed for `systemctl`, `admin` has no passwordless sudo |
+| Directory     | `/home/admin/app`                                                                |
+| Service       | `shimeles.service`, enabled, runs as `admin`                                     |
+| Node          | v24.19.0, **nvm-installed under `/home/admin/.nvm`**                             |
+| npm           | 11.17.0                                                                          |
+| Web server    | OpenLiteSpeed 1.9.0 (CyberPanel) proxying to `127.0.0.1:3000`                    |
+| Database      | `/home/admin/app/local.db`, SQLite in WAL mode                                   |
+| Uploads       | `/home/admin/app/.tempFiles/`                                                    |
+| `sqlite3` CLI | present, `/usr/bin/sqlite3`                                                      |
 
 The app binds loopback only and is never reachable except through LiteSpeed.
 
@@ -110,8 +110,8 @@ the server, and code that imports it at runtime will crash on boot with
 `ERR_MODULE_NOT_FOUND`. Anything imported from `src/lib/server/**` or any
 `+page.server.ts` must be a real `dependency`.
 
-`--omit=optional` is not cosmetic either: `better-auth` declares an *optional
-peer* on `drizzle-kit`, so a plain `--omit=dev` still drags in drizzle-kit,
+`--omit=optional` is not cosmetic either: `better-auth` declares an _optional
+peer_ on `drizzle-kit`, so a plain `--omit=dev` still drags in drizzle-kit,
 whose nested `esbuild@0.18` fails its postinstall version check against the
 hoisted `esbuild`. The install dies outright.
 
@@ -183,6 +183,52 @@ migrate(db, { migrationsFolder: 'drizzle' });
 console.log('migrations applied');
 ```
 
+### Step 3b — ship catalogue rows, when a migration adds a catalogue
+
+A schema migration creates empty tables. If the new code renders a page _from_
+those tables — the skills on `/volunteer`, the kinds of help and languages on
+`/apply`, the enquiry topics on `/contact` — then migrating alone ships a page
+that renders blank.
+
+**Do not run `db:seed` against production.** It inserts blog posts,
+testimonials and media the Foundation has not asked for, and `tsx` is not
+installed on the server anyway. Generate a targeted seeder instead:
+
+```sh
+node scripts/make-catalog-seed.mjs        # writes deploy/seed-catalog.mjs
+rsync -avz deploy/seed-catalog.mjs hstgr:/home/admin/app/
+```
+
+It emits configuration rows only, and every foreign key as a **slug** rather
+than an id — the two databases were seeded independently and their `pillars.id`
+values do not line up, so copying raw ids would file "school fees" against
+whichever programme happened to hold that number. It is idempotent: re-running
+adds what is missing and overwrites nothing anyone has edited.
+
+Run it in the same window as the migration, after it:
+
+```sh
+ssh hstgr 'cd /home/admin/app && node seed-catalog.mjs'
+```
+
+### Step 3c — rehearse on a copy first
+
+Cheap, and it catches a bad migration before it touches the live database:
+
+```sh
+ssh hstgr 'set -e
+  cd /home/admin/app
+  rm -rf /tmp/migtest && mkdir -p /tmp/migtest
+  cp backups/$(ls -t backups | head -1) /tmp/migtest/local.db
+  cp -r drizzle migrate.mjs seed-catalog.mjs /tmp/migtest/
+  ln -s /home/admin/app/node_modules /tmp/migtest/node_modules
+  cd /tmp/migtest && node migrate.mjs && node seed-catalog.mjs'
+```
+
+Then inspect `/tmp/migtest/local.db` and confirm the pre-existing counts —
+submissions, donations, files — are untouched. Run both a second time; both
+must report zero changes.
+
 ### Step 4 — stop, migrate, start
 
 Stop the app first. A migration that rewrites a table while the app is writing
@@ -204,7 +250,7 @@ Then deploy the code that expects the new schema:
 **Order matters.** Migrate first, then ship code — new code against an old
 schema is a guaranteed error, whereas old code against a new schema is usually
 harmless for the minute in between (added columns and tables are simply
-ignored). If the migration *drops* something the running code still reads,
+ignored). If the migration _drops_ something the running code still reads,
 that ordering flips: take the app down for the whole window instead.
 
 ### The alternative, if you prefer raw SQL
@@ -309,11 +355,11 @@ It is set to `100M` in production.
 
 Note the three separate ceilings, which are easy to confuse:
 
-| Limit | Where | Value |
-| --- | --- | --- |
-| Whole request body | `BODY_SIZE_LIMIT` in `.env` | 100M |
-| Per file | `MAX_UPLOAD_BYTES`, `src/lib/server/forms.ts` | 10 MB |
-| Proxy | OpenLiteSpeed `maxReqBodySize` | 2047M |
+| Limit              | Where                                         | Value |
+| ------------------ | --------------------------------------------- | ----- |
+| Whole request body | `BODY_SIZE_LIMIT` in `.env`                   | 100M  |
+| Per file           | `MAX_UPLOAD_BYTES`, `src/lib/server/forms.ts` | 10 MB |
+| Proxy              | OpenLiteSpeed `maxReqBodySize`                | 2047M |
 
 Only the first two ever bite. The per-file limit produces a friendly validation
 message; `BODY_SIZE_LIMIT` produces a raw 413. If a user reports "payload too
@@ -370,17 +416,17 @@ ssh root@148.230.83.102 'journalctl -u shimeles -n 100 --no-pager'
 ssh root@148.230.83.102 'journalctl -u shimeles -f'        # follow live
 ```
 
-| Symptom | Almost always |
-| --- | --- |
-| `status=203/EXEC` | Node moved — nvm upgrade broke the `ExecStart` path |
-| `ERR_MODULE_NOT_FOUND` on boot | A runtime import is declared as a `devDependency` |
-| `ERR_DLOPEN_FAILED` | Native binding not built — missing `allow-scripts[]` |
-| `no such table` / `no such column` | Code deployed ahead of its migration |
-| 403 on every form POST | The CSRF hook or `checkOrigin` was reverted |
-| 502 from LiteSpeed | App is down; check `systemctl status` |
-| Uploads fail / "payload too large" | `BODY_SIZE_LIMIT` — see section 5a |
-| Env change had no effect | The service was not restarted |
-| Changes not visible | Browser cache — confirm with `curl` first |
+| Symptom                            | Almost always                                        |
+| ---------------------------------- | ---------------------------------------------------- |
+| `status=203/EXEC`                  | Node moved — nvm upgrade broke the `ExecStart` path  |
+| `ERR_MODULE_NOT_FOUND` on boot     | A runtime import is declared as a `devDependency`    |
+| `ERR_DLOPEN_FAILED`                | Native binding not built — missing `allow-scripts[]` |
+| `no such table` / `no such column` | Code deployed ahead of its migration                 |
+| 403 on every form POST             | The CSRF hook or `checkOrigin` was reverted          |
+| 502 from LiteSpeed                 | App is down; check `systemctl status`                |
+| Uploads fail / "payload too large" | `BODY_SIZE_LIMIT` — see section 5a                   |
+| Env change had no effect           | The service was not restarted                        |
+| Changes not visible                | Browser cache — confirm with `curl` first            |
 
 ## 8. Still outstanding
 
