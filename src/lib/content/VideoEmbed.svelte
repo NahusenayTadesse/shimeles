@@ -14,20 +14,31 @@
 		url,
 		caption = null,
 		title = 'Video',
-		index = 0
+		index = 0,
+		animate = true
 	}: {
 		url: string;
 		caption?: string | null;
 		/** Used for the iframe's accessible name. */
 		title?: string;
 		index?: number;
+		/**
+		 * Fade-and-rise on first sight. Turned off inside `VideoCarousel`: the
+		 * reveal action hides an element until it intersects the viewport, and a
+		 * slide waiting off to the side would either sit invisible or replay the
+		 * animation on every swipe. Neither is what a carousel should do.
+		 */
+		animate?: boolean;
 	} = $props();
 
 	const video = $derived(parseYouTubeUrl(url));
 </script>
 
 {#if video}
-	<figure use:reveal={{ delay: stagger(index, 70, 4) }} class="flex flex-col gap-3">
+	<figure
+		use:reveal={animate ? { delay: stagger(index, 70, 4) } : { duration: 0, y: 0, threshold: 0 }}
+		class="flex flex-col gap-3"
+	>
 		<div class="shadow-warm overflow-hidden rounded-[1.5rem] border bg-muted">
 			<iframe
 				src={youtubeEmbedUrl(video)}

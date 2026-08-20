@@ -36,3 +36,6 @@ vite.config.ts.timestamp-*
 # runtime node_modules, a copy of the database and of the uploaded files.
 /deploy
 build.tar.gz
+
+# Playwright MCP scratch output from browser checks.
+.playwright-mcp

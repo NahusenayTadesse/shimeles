@@ -5,7 +5,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
-	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import SectionHeading from '$lib/components/section-heading.svelte';
 	import { ArrowRight, HeartHandshake } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
@@ -70,10 +70,8 @@
 {#if data.media.videos.length}
 	<div class="mx-auto w-full max-w-4xl px-4 pt-16 md:pt-24">
 		<SectionHeading title="Watch" eyebrow={data.media.videos.length === 1 ? 'Video' : 'Videos'} />
-		<div class="mt-8 flex flex-col gap-8">
-			{#each data.media.videos as video, index (video.id)}
-				<VideoEmbed url={video.youtubeUrl} caption={video.caption} title={pillar.name} {index} />
-			{/each}
+		<div class="mt-8">
+			<VideoCarousel videos={data.media.videos} title={pillar.name} />
 		</div>
 	</div>
 {/if}

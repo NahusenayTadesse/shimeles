@@ -6,7 +6,7 @@
 	import { PAYPAL_ACTION } from '$lib/donations';
 	import { ArrowUpRight, ChevronDown, CreditCard, Info, Play } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
-	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import { cn } from '$lib/utils';
 	import type { RenderDonationCampaign } from '$lib/content/types';
 
@@ -175,17 +175,17 @@
 							</button>
 
 							{#if isOpen}
-								<div transition:slide={{ duration: 220 }} class="flex flex-col gap-4">
-									{#each clips as clip, clipIndex (clip.id)}
-										<!-- The first clip's caption is already the toggle's label, so
-										     repeating it under the player would say the same thing
-										     twice. Later clips still need naming. -->
-										<VideoEmbed
-											url={clip.youtubeUrl}
-											caption={clipIndex === 0 ? null : clip.caption}
-											title={campaign.name}
-										/>
-									{/each}
+								<div transition:slide={{ duration: 220 }}>
+									<!-- The first clip's caption is already the toggle's label, so
+									     it is blanked here rather than repeated under the player.
+									     Later clips still need naming. -->
+									<VideoCarousel
+										videos={clips.map((clip, clipIndex) => ({
+											...clip,
+											caption: clipIndex === 0 ? null : clip.caption
+										}))}
+										title={campaign.name}
+									/>
 								</div>
 							{/if}
 						</div>

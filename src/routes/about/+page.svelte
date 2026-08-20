@@ -5,7 +5,7 @@
 	import PageHero from '$lib/content/PageHero.svelte';
 	import TrimBand from '$lib/components/trim-band.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
-	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { BookOpen, Compass, Film, Quote, Target } from '@lucide/svelte';
@@ -84,8 +84,6 @@
 	     is what stops a black rectangle reading as a foreign object on a page
 	     this warm. -->
 	{#if data.videos.length}
-		{@const featured = data.videos[0]}
-		{@const rest = data.videos.slice(1)}
 		<section class="flex flex-col gap-8">
 			<!-- Shares the video's container so the label sits flush with the
 			     frame rather than floating off at the page edge. -->
@@ -112,27 +110,12 @@
 					class="pointer-events-none absolute -top-16 right-0 -z-10 size-56 rounded-full bg-olive/15 blur-3xl"
 					aria-hidden="true"
 				></div>
-				<VideoEmbed
-					url={featured.youtubeUrl}
-					caption={featured.caption}
-					title="About the Foundation"
-				/>
+				<!-- Every clip gets the framed treatment now, rather than the first
+				     one full-width and the rest demoted to a grid of half-size
+				     players below it. They are all the Foundation talking about
+				     itself; the carousel lets them share the one good frame. -->
+				<VideoCarousel videos={data.videos} title="About the Foundation" />
 			</div>
-
-			{#if rest.length}
-				<!-- Anything beyond the first is a supporting clip, so it is sized
-				     as one rather than repeating the full-width treatment. -->
-				<div class="mx-auto grid w-full max-w-4xl gap-6 sm:grid-cols-2">
-					{#each rest as video, index (video.id)}
-						<VideoEmbed
-							url={video.youtubeUrl}
-							caption={video.caption}
-							title="About the Foundation"
-							index={index + 1}
-						/>
-					{/each}
-				</div>
-			{/if}
 		</section>
 	{/if}
 

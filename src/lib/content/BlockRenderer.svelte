@@ -11,7 +11,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { ArrowRight, Copy, Quote } from '@lucide/svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
-	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import TestimonialSlider from '$lib/content/TestimonialSlider.svelte';
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
@@ -444,15 +444,10 @@
 				     `content` — they are managed on the shared media screen. -->
 				<Gallery images={block.media?.gallery ?? []} />
 			{:else if block.type === 'video'}
-				<div class="mx-auto flex max-w-4xl flex-col gap-8">
-					{#each block.media?.videos ?? [] as video, videoIndex (video.id)}
-						<VideoEmbed
-							url={video.youtubeUrl}
-							caption={video.caption}
-							title={block.heading ?? 'Video'}
-							index={videoIndex}
-						/>
-					{/each}
+				<!-- One clip renders as one clip; several become a carousel rather
+				     than a long column the reader has to scroll past. -->
+				<div class="mx-auto w-full max-w-4xl">
+					<VideoCarousel videos={block.media?.videos ?? []} title={block.heading ?? 'Video'} />
 				</div>
 			{:else if block.type === 'testimonial_slider'}
 				<!-- `{ show_all_href }` — the quotes come from `testimonials` where

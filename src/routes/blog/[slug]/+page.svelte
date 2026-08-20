@@ -2,7 +2,7 @@
 	import PageHero from '$lib/content/PageHero.svelte';
 	import BlogCard, { accentClass, formatPostDate } from '$lib/content/BlogCard.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
-	import VideoEmbed from '$lib/content/VideoEmbed.svelte';
+	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import SectionHeading from '$lib/components/section-heading.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
@@ -62,10 +62,8 @@
 	{#if post.videos.length}
 		<div class="mt-16">
 			<SectionHeading title="Watch" eyebrow={post.videos.length === 1 ? 'Video' : 'Videos'} />
-			<div class="mt-8 flex flex-col gap-8">
-				{#each post.videos as video, index (video.id)}
-					<VideoEmbed url={video.youtubeUrl} caption={video.caption} title={post.title} {index} />
-				{/each}
+			<div class="mt-8">
+				<VideoCarousel videos={post.videos} title={post.title} />
 			</div>
 		</div>
 	{/if}
