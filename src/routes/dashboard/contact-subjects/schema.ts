@@ -23,7 +23,7 @@ export const addSchema = z.object({
 	/** One address per line. Empty falls back to the primary contact email. */
 	notifyEmails: optionalText(1000),
 	defaultAssigneeId: z
-		.union([z.string().trim().min(1), z.literal(''), z.null()])
+		.union([z.string().trim().min(1).max(64), z.literal(''), z.null()])
 		.optional()
 		.transform((value) => (typeof value === 'string' && value ? value : null)),
 	/** Drives the overdue flag on the message list. Blank promises nothing. */

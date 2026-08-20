@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
+	import { MAX_CONTACT_MESSAGE } from './schema';
 	import { toast } from 'svelte-sonner';
 	import PageHero from '$lib/content/PageHero.svelte';
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
@@ -252,7 +253,21 @@
 
 					<div class="flex flex-col gap-2">
 						<Label for="message">Your message</Label>
-						<Textarea id="message" name="message" rows={6} bind:value={$form.message} />
+						<Textarea
+							id="message"
+							name="message"
+							rows={4}
+							maxlength={MAX_CONTACT_MESSAGE}
+							bind:value={$form.message}
+						/>
+						<div class="flex items-start justify-between gap-3">
+							<p class="text-sm text-muted-foreground">
+								A sentence or two is plenty — we will reply and take it from there.
+							</p>
+							<span class="shrink-0 text-sm text-muted-foreground tabular-nums">
+								{$form.message?.length ?? 0}/{MAX_CONTACT_MESSAGE}
+							</span>
+						</div>
 						{#if $errors.message}<p class="text-sm text-destructive">{$errors.message}</p>{/if}
 					</div>
 

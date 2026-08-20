@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { emailField, optionalEmailField } from '$lib/forms/fields';
 
 /**
  * The volunteer application form.
@@ -16,6 +17,16 @@ import { z } from 'zod/v4';
  * live catalogue before writing. Nothing here trusts that a posted id refers to
  * something real.
  */
+
+/**
+ * A ceiling on how many catalogue rows one applicant may tick.
+ *
+ * Every one of these arrays is checked against the live catalogue in
+ * `createVolunteerApplication`, so a wrong id is caught there — but only after
+ * a round trip per id. The cap is what stops a posted array of fifty thousand
+ * entries from becoming fifty thousand queries.
+ */
+const MAX_CHOICES = 60;
 
 const optional = (max: number) => z.string().trim().max(max).optional().or(z.literal(''));
 
@@ -50,7 +61,7 @@ export const referenceSchema = z.object({
 	fullName: z.string().trim().min(2, 'Enter their name').max(150),
 	relationship: z.string().trim().min(2, 'How do they know you?').max(120),
 	organization: optional(150),
-	email: z.union([z.email('Enter a valid email address'), z.literal('')]).optional(),
+	email: optionalEmailField(),
 	phone: optional(32)
 });
 
@@ -58,7 +69,7 @@ export const volunteerSchema = z
 	.object({
 		/* --- About you ---------------------------------------------------- */
 		fullName: z.string().trim().min(2, 'Enter your full name').max(150),
-		email: z.email('Enter a valid email address'),
+		email: emailField(),
 		phone: z.string().trim().min(7, 'Enter a phone number we can reach you on').max(32),
 		city: optional(120),
 		regionId: z.coerce.number().int().positive().nullable().default(null),
@@ -75,15 +86,19 @@ export const volunteerSchema = z
 		emergencyContactRelationship: optional(120),
 
 		/* --- What you would like to do ------------------------------------- */
-		pillarIds: z.array(z.coerce.number().int().positive()).min(1, 'Choose at least one programme'),
-		skills: z.array(skillClaimSchema).default([]),
+		pillarIds: z
+			.array(z.coerce.number().int().positive())
+			.min(1, 'Choose at least one programme')
+			.max(MAX_CHOICES, 'That is more programmes than we run'),
+		skills: z.array(skillClaimSchema).max(MAX_CHOICES, 'Choose your strongest skills').default([]),
 		/** One per line, for anything the catalogue does not list. */
 		otherSkills: optional(600),
 
 		/* --- When you are free ---------------------------------------------- */
 		timeSlotIds: z
 			.array(z.coerce.number().int().positive())
-			.min(1, 'Choose at least one time you are usually free'),
+			.min(1, 'Choose at least one time you are usually free')
+			.max(MAX_CHOICES, 'That is more slots than the week has'),
 		availabilityNote: optional(600),
 		hoursPerWeek: z.coerce
 			.number()
@@ -103,10 +118,13 @@ export const volunteerSchema = z
 
 		/* --- Professional standing ------------------------------------------ */
 		isProfessional: z.coerce.boolean().default(false),
-		credentials: z.array(credentialSchema).default([]),
+		credentials: z.array(credentialSchema).max(12, 'Twelve qualifications is plenty').default([]),
 
 		/* --- References ------------------------------------------------------ */
-		references: z.array(referenceSchema).min(2, 'Please give us two references'),
+		references: z
+			.array(referenceSchema)
+			.min(2, 'Please give us two references')
+			.max(6, 'Six references is more than enough'),
 
 		/* --- Declarations ---------------------------------------------------- */
 		hasPriorConviction: z.coerce.boolean().nullable().default(null),

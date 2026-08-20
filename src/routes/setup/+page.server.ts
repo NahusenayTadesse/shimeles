@@ -3,6 +3,7 @@ import { count, eq } from 'drizzle-orm';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod/v4';
+import { emailField } from '$lib/forms/fields';
 import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { roles, user } from '$lib/server/db/schema';
@@ -25,9 +26,9 @@ import type { Actions, PageServerLoad } from './$types';
 const setupSchema = z
 	.object({
 		name: z.string().trim().min(2, 'Enter your name').max(150),
-		email: z.email('Enter a valid email address'),
+		email: emailField(),
 		password: z.string().min(12, 'Use at least 12 characters').max(200),
-		confirmPassword: z.string()
+		confirmPassword: z.string().max(200)
 	})
 	.refine((data) => data.password === data.confirmPassword, {
 		message: 'The two passwords do not match',

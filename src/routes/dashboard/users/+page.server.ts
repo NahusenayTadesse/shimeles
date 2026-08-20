@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod/v4';
+import { emailField } from '$lib/forms/fields';
 import { db } from '$lib/server/db';
 import { pillars, roles, user, userPillarAssignments } from '$lib/server/db/schema';
 import { auth } from '$lib/server/auth';
@@ -69,7 +70,7 @@ export const load: PageServerLoad = async (event) => {
 
 const createSchema = z.object({
 	name: z.string().trim().min(2, 'Enter a name').max(150),
-	email: z.email('Enter a valid email address'),
+	email: emailField(),
 	password: z.string().min(12, 'Use at least 12 characters').max(200),
 	roleId: z.coerce.number().int().positive('Pick a role')
 });

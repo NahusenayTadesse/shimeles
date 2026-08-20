@@ -1016,9 +1016,14 @@ async function seedForms() {
 				{
 					fieldKey: 'message',
 					label: 'Your message',
+					hint: 'A sentence or two is plenty — we will reply and take it from there.',
 					fieldType: 'textarea' as const,
 					isRequired: true,
-					validation: { minLength: 10, maxLength: 3000 }
+					// Matches `MAX_CONTACT_MESSAGE` on the hand-written `/contact`
+					// route. An enquiry is routed and answered, not read in full
+					// here; the long story belongs on an application form, which is
+					// why the four above keep their 3000.
+					validation: { minLength: 10, maxLength: 250 }
 				}
 			]
 		}

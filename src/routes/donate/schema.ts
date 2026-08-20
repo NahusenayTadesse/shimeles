@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { optionalEmailField } from '$lib/forms/fields';
 
 /**
  * The public donation form.
@@ -26,7 +27,7 @@ export const donateSchema = z.object({
 	paymentAccountId: z.coerce.number().int().positive().nullable().optional(),
 
 	donorName: z.string().trim().min(2, 'Enter your name').max(150),
-	donorEmail: z.union([z.email('Enter a valid email address'), z.literal('')]).optional(),
+	donorEmail: optionalEmailField(),
 	donorPhone: z.string().trim().max(32).optional().or(z.literal('')),
 	isDiaspora: z.coerce.boolean().default(false),
 

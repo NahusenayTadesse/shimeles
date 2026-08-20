@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod/v4';
+import { emailField, optionalEmailField } from '$lib/forms/fields';
 import { db } from '$lib/server/db';
 import { formDefinitions, formFields, pillars } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
@@ -181,6 +182,18 @@ function isRequired(stored: boolean, type: FieldType, isLowBarrier: boolean): bo
    Schema generation
    ========================================================================== */
 
+/**
+ * Ceilings for the fields a form builder does *not* let an admin size.
+ *
+ * A `maxLength` typed into the dashboard bounds a text or textarea field, but
+ * nothing in the builder describes how long a select value or a multi-select
+ * list may be — so those get a fixed cap here rather than none at all. Without
+ * one, any dynamic form is an open text box with a validator in front of it.
+ */
+const MAX_SHORT_TEXT = 500;
+const MAX_LONG_TEXT = 5000;
+const MAX_CHOICES = 100;
+
 /** Phone numbers as people actually write them in Ethiopia: 09…, +2519…, 9…. */
 const PHONE_PATTERN = /^\+?[0-9\s\-()]{7,20}$/;
 
@@ -222,18 +235,23 @@ function fieldSchema(field: RenderField): z.ZodTypeAny {
 		}
 
 		case 'email': {
-			const schema = z.email(`${field.label} must be a valid email address`);
+			const schema = emailField(`${field.label} must be a valid email address`);
 			return optionalText(schema);
 		}
 
 		case 'phone': {
-			const schema = z.string().regex(PHONE_PATTERN, `${field.label} must be a valid phone number`);
+			const schema = z
+				.string()
+				.max(20, `${field.label} must be a valid phone number`)
+				.regex(PHONE_PATTERN, `${field.label} must be a valid phone number`);
 			return optionalText(schema);
 		}
 
 		case 'select': {
 			const values = field.options.map((option) => option.value);
-			if (values.length === 0) return optionalText(z.string());
+			// A select whose options were never filled in degrades to free text,
+			// so it needs the same ceiling every other text field gets.
+			if (values.length === 0) return optionalText(z.string().max(MAX_SHORT_TEXT));
 			const schema = z.enum(values as [string, ...string[]], {
 				message: `Choose an option for ${field.label}`
 			});
@@ -251,11 +269,18 @@ function fieldSchema(field: RenderField): z.ZodTypeAny {
 			 * also carry a file) and from the dashboard alike.
 			 */
 			const normalise = z
-				.union([z.array(z.string()), z.string(), z.undefined()])
+				.union([
+					z.array(z.string().max(MAX_SHORT_TEXT)).max(MAX_CHOICES),
+					z.string().max(MAX_SHORT_TEXT * MAX_CHOICES),
+					z.undefined()
+				])
 				.transform((value) => {
 					if (value == null) return [] as string[];
 					const list = Array.isArray(value) ? value : value.split(',');
-					return list.map((item) => item.trim()).filter(Boolean);
+					return list
+						.map((item) => item.trim())
+						.filter(Boolean)
+						.slice(0, MAX_CHOICES);
 				})
 				.refine(
 					(list) => values.length === 0 || list.every((item) => allowed.has(item)),
@@ -292,10 +317,11 @@ function fieldSchema(field: RenderField): z.ZodTypeAny {
 					`${field.label} must be at least ${v.minLength} characters`
 				);
 			}
-			schema = schema.max(
-				v.maxLength ?? (field.type === 'textarea' ? 5000 : 500),
-				`${field.label} is too long`
-			);
+			// Clamped, not just defaulted: `maxLength` comes from the dashboard, and
+			// a coordinator who types 1000000 into it should not be able to turn a
+			// public field into an unbounded one.
+			const ceiling = field.type === 'textarea' ? MAX_LONG_TEXT : MAX_SHORT_TEXT;
+			schema = schema.max(Math.min(v.maxLength ?? ceiling, ceiling), `${field.label} is too long`);
 			if (v.pattern) {
 				try {
 					schema = schema.regex(
@@ -342,7 +368,7 @@ export function buildSchema(form: RenderForm) {
 		...shape,
 		submittedByName: z.string().trim().max(150).optional().or(z.literal('')),
 		submittedByPhone: z.string().trim().max(32).optional().or(z.literal('')),
-		submittedByEmail: z.union([z.email(), z.literal('')]).optional(),
+		submittedByEmail: optionalEmailField(),
 		/**
 		 * Honeypot. Bots fill every input they find; a human never sees this one,
 		 * so any value at all means the submission is discarded silently.

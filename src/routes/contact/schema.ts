@@ -1,4 +1,13 @@
 import { z } from 'zod/v4';
+import { optionalEmailField } from '$lib/forms/fields';
+
+/**
+ * Rendered by `/contact` as well as enforced here, which is why it is a
+ * constant: the counter under the textarea and the validator have to agree,
+ * and this schema imports nothing from `$lib/server`, so the page may import
+ * it — same arrangement as `/apply` (see `$lib/forms/fields`).
+ */
+export const MAX_CONTACT_MESSAGE = 250;
 
 /**
  * The contact form.
@@ -19,7 +28,7 @@ export const contactSchema = z
 		 * Neither is required on its own, but one of them must be there — see
 		 * the refinement below. A message we cannot answer is not a message.
 		 */
-		email: z.union([z.email('Enter a valid email address'), z.literal('')]).optional(),
+		email: optionalEmailField(),
 		phone: z.string().trim().max(32).optional().or(z.literal('')),
 
 		organization: z.string().trim().max(150).optional().or(z.literal('')),
@@ -31,7 +40,16 @@ export const contactSchema = z
 			.string()
 			.trim()
 			.min(10, 'Tell us a little more')
-			.max(3000, 'Keep this under 3000 characters'),
+			/**
+			 * Deliberately short. This is a routing form, not the place someone
+			 * tells their story — `/apply` is, and it allows 5000. A message that
+			 * needs more than a couple of sentences is a case, and staff answer it
+			 * by replying, not by reading it here.
+			 */
+			.max(
+				MAX_CONTACT_MESSAGE,
+				`Keep this under ${MAX_CONTACT_MESSAGE} characters — we will follow up by email`
+			),
 
 		preferredChannel: z.enum(['email', 'phone', 'either']).default('either'),
 

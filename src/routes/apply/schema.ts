@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { optionalNumberField } from '$lib/forms/fields';
+import { optionalEmailField, optionalNumberField } from '$lib/forms/fields';
 
 /**
  * The assistance application.
@@ -56,7 +56,11 @@ export const applySchema = z
 	.object({
 		/* --- What this is about --------------------------------------------- */
 		pillarId: z.coerce.number().int().positive().nullable().default(null),
-		needs: z.array(needClaimSchema).default([]),
+		/** Capped: the catalogue is a few dozen rows, so a longer list is a bot. */
+		needs: z
+			.array(needClaimSchema)
+			.max(30, 'That is more needs than we can take at once')
+			.default([]),
 		/**
 		 * The heart of the form. Required, but only 10 characters — enough to
 		 * refuse an empty box, not enough to demand an essay from someone who
@@ -76,7 +80,7 @@ export const applySchema = z
 
 		applicantName: z.string().trim().min(2, 'Please tell us your name').max(150),
 		applicantPhone: optional(32),
-		applicantEmail: z.union([z.email('Enter a valid email address'), z.literal('')]).optional(),
+		applicantEmail: optionalEmailField(),
 
 		/* --- Who needs help --------------------------------------------------- */
 		subjectName: optional(150),

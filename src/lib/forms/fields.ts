@@ -38,3 +38,21 @@ export const optionalNumberField = (
 		.optional()
 		.transform((value) => (typeof value === 'number' ? value : null));
 };
+
+/**
+ * The longest address SMTP will carry: 64 characters of local part, an `@`,
+ * and 255 of domain, capped by RFC 5321 at 254 for the whole thing.
+ *
+ * `z.email()` checks *shape* and nothing else — the pattern is happy with a
+ * local part a megabyte long, so an unbounded email field is an unbounded
+ * text field wearing a validator. Every address the app accepts goes through
+ * one of the two helpers below.
+ */
+export const MAX_EMAIL = 254;
+
+export const emailField = (message = 'Enter a valid email address') =>
+	z.email(message).max(MAX_EMAIL, 'That email address is too long');
+
+/** The same, for a field an untouched input posts as `''`. */
+export const optionalEmailField = (message?: string) =>
+	z.union([emailField(message), z.literal('')]).optional();
