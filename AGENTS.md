@@ -31,6 +31,80 @@ form, use the dynamic form engine. Before hand-writing an admin screen, use
    safeguarding is incomplete. The check lives in the transition function that
    every path goes through, precisely so a direct POST cannot skip it.
 
+**`/volunteer` is deliberately not a `form_definitions` row.** Volunteering is
+a core workflow with a safeguarding gate on the end, so the questions the gate
+depends on are code, not form-builder rows — a coordinator deleting the
+references section would be disabling a control, not editing copy. What stays
+editable is the _vocabulary_: `volunteer_skills`, `volunteer_skill_categories`,
+`volunteer_time_slots` and `volunteer_professions`, all managed from
+Configuration → Volunteer setup. Adding a skill is a row, never a deploy.
+
+**Three columns on `volunteer_applications` are derived and have exactly one
+writer each.** Set them anywhere else and the next recompute silently reverts
+you — while the approval gate reads them:
+
+| Column                                                                | Written only by           | Source of truth                      |
+| --------------------------------------------------------------------- | ------------------------- | ------------------------------------ |
+| `credentials_verified`, `is_professional`, `professional_credentials` | `recomputeCredentials()`  | `volunteer_credentials` rows         |
+| `references_checked`                                                  | `recomputeReferences()`   | `volunteer_references` rows          |
+| `safeguarding_checklist_complete`                                     | `recomputeSafeguarding()` | `volunteer_safeguarding_checks` rows |
+
+The manual flags in the sidebar of a volunteer's file exist only for
+applications taken through the old dynamic form, which have no rows to derive
+from; the action refuses to set them once rows exist.
+
+**`/contact` is a real route too, and messages are no longer
+`form_submissions`.** §3.7 allows either; the deciding factor was that an
+enquiry gets _routed_ and _answered_, and neither has anywhere to live on a
+submission row (a case's history is internal notes; a message's is a thread of
+replies that mostly were sent). Messages are `contact_messages`, the thread is
+`contact_message_replies`, and the topics in `contact_subjects` carry their own
+routing — notify list, default assignee, response target — so "press enquiries
+now go to the comms lead" is an edit on Configuration → Contact setup.
+
+Migration `0012` **copied** the old contact submissions into `contact_messages`
+rather than moving them; the `form_submissions` rows are still there untouched.
+Nothing reads them any more, and the dashboard's "new applications" badge now
+excludes pillar-less rows so a message is not counted in two badges.
+
+**`contact_message_replies.is_internal` is load-bearing.** An internal note and
+a sent reply are the same shape, and the only difference is whether the person
+who wrote in can see it. It is set explicitly from two separate submit buttons
+and never inferred. `first_responded_at` is stamped by the first non-internal
+reply and never moved afterwards.
+
+**`/apply` is a real route, but an application is still a `form_submissions`
+row.** Unlike volunteers and contact, the case table was _not_ replaced —
+pillar scope, case notes, documents, disbursements and the audited reads all
+hang off it, and a fourth parallel case table would fracture every one of them.
+What `/apply` adds is the structure around it:
+
+- `application_subjects` — 1:1 with the submission. **Who is being helped**,
+  which is frequently not who filled the form in.
+- `application_needs` — what they asked for, from the `assistance_needs`
+  catalogue. Each need can name the pillar it routes to, which is how an
+  application gets filed without the applicant knowing the Foundation's
+  structure.
+- `languages` — what the applicant's own words are written in. Not a UI
+  language; v1 is still English-only.
+
+**Accepting an application must key on the subject, not the applicant.**
+`acceptApplication()` in `$lib/server/apply.ts` reads `application_subjects`;
+the older `linkBeneficiary()` in `$lib/server/submissions.ts` reads
+`submitted_by_*` and is correct only when someone applied for themselves. The
+case screen picks between them on whether a subject row exists. Get this wrong
+and a daughter applying for her mother creates a beneficiary record in the
+daughter's name, and every disbursement afterwards is recorded against the
+wrong person.
+
+**`z.coerce.number()` turns `null` and `''` into `0`.** In a `z.union([...])`
+the first branch to succeed wins, so a number listed before the empty cases
+swallows them: a cost nobody knows becomes 0 birr, and a time slot with no
+fixed day becomes Sunday. Use `optionalNumberField()` from
+`$lib/forms/fields.ts` (re-exported by `$lib/server/crud.ts`) rather than
+hand-rolling the union. `optionalIdField` is safe only because `.positive()`
+rejects the 0.
+
 **Every read and write** touching `form_submissions`, `beneficiaries`,
 `volunteer_applications` and their notes and documents writes an `audit_log`
 row via `$lib/server/audit.ts`. Reads too, not just writes.

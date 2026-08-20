@@ -4,12 +4,13 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import DataTable from '$lib/components/Table/data-table.svelte';
 	import FilterBar from '$lib/dashboard/filter-bar.svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import OpenLinkCell from '$lib/dashboard/open-link-cell.svelte';
 	import ApplicationNameCell from './application-name-cell.svelte';
 	import { indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
-	import { Columns3, Table2 } from '@lucide/svelte';
+	import { Columns3, Inbox, Table2 } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
@@ -21,6 +22,13 @@
 	 */
 	let view = $state<'board' | 'table'>('board');
 	let search = $state(data.filters.search);
+
+	const needItems = $derived([
+		{ value: '', name: 'Any kind of help' },
+		...data.needOptions.map((need) => ({ value: String(need.id), name: need.name }))
+	]);
+
+	const untriagedCount = $derived(data.rows.filter((row) => !row.pillarId).length);
 
 	const boardColumns = $derived(
 		data.statuses.map((status) => ({
@@ -42,7 +50,12 @@
 
 	const hasFilters = $derived(
 		Boolean(
-			data.filters.search || data.filters.statusId || data.filters.pillarId || data.filters.mine
+			data.filters.search ||
+			data.filters.statusId ||
+			data.filters.pillarId ||
+			data.filters.needId ||
+			data.filters.mine ||
+			data.filters.untriaged
 		)
 	);
 
@@ -57,7 +70,10 @@
 			id: 'name',
 			header: 'Name',
 			cell: ({ row }: any) =>
-				renderComponent(ApplicationNameCell, { name: row.original.name, isRead: row.original.isRead })
+				renderComponent(ApplicationNameCell, {
+					name: row.original.name,
+					isRead: row.original.isRead
+				})
 		},
 		{
 			id: 'pillarName',
@@ -68,7 +84,10 @@
 			id: 'status',
 			header: 'Status',
 			cell: ({ row }: any) =>
-				renderComponent(StatusBadge, { label: row.original.statusLabel, color: row.original.statusColor })
+				renderComponent(StatusBadge, {
+					label: row.original.statusLabel,
+					color: row.original.statusColor
+				})
 		},
 		{
 			id: 'reviewerName',
@@ -142,6 +161,26 @@
 			>
 				Assigned to me
 			</Button>
+
+			<!-- Applications from someone who did not know which programme they
+			     needed. Somebody has to pick one up and route it. -->
+			<Button
+				variant={data.filters.untriaged ? 'default' : 'outline'}
+				size="sm"
+				onclick={() => applyFilter('untriaged', data.filters.untriaged ? null : '1')}
+			>
+				<Inbox class="size-4" /> No programme yet ({untriagedCount})
+			</Button>
+
+			<!-- The question the needs catalogue exists to answer. -->
+			<div class="w-52">
+				<SelectComp
+					name="need"
+					items={needItems}
+					value={data.filters.needId ?? ''}
+					onValueChange={(value: string) => applyFilter('need', value || null)}
+				/>
+			</div>
 		{/snippet}
 	</FilterBar>
 

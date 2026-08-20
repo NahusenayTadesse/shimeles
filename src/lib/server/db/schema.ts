@@ -289,7 +289,7 @@ export const statusOptions = sqliteTable(
 	'status_options',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		context: text('context', { enum: ['application', 'volunteer', 'donation'] })
+		context: text('context', { enum: ['application', 'volunteer', 'donation', 'contact'] })
 			.default('application')
 			.notNull(),
 		/** Fixed in code — see §7. Editing this from the dashboard is disallowed. */
@@ -805,6 +805,218 @@ export const formSubmissionNotes = sqliteTable(
 );
 
 /* ==========================================================================
+   3.3b ASSISTANCE APPLICATIONS — the structure around a case
+
+   `/apply` is a real route with fixed questions, the same call as `/volunteer`
+   and `/contact`. What is *not* duplicated is the case itself: an application
+   is still a `form_submissions` row, because that is where pillar scope, case
+   notes, documents, disbursements and the audited reads already live, and a
+   fourth parallel case table would fracture all of it.
+
+   What was missing is the shape of the answers, and it is added here:
+
+    - **Who is being helped.** Most applications are made on someone else's
+      behalf — by a daughter for her mother, by a neighbour. The applicant and
+      the person in need are two different people and the system has to hold
+      both, because the beneficiary record must be the person helped.
+    - **What they need.** A catalogue rather than a paragraph, so "how many
+      families need school fees this term" is a `where` clause.
+    - **What language they wrote in.** §1 is Addis-first but Ethiopia is not
+      monolingual, and an applicant told to write in whatever language they are
+      comfortable in must not then land with a caseworker who cannot read it.
+   ========================================================================== */
+
+/**
+ * The languages an applicant may write in.
+ *
+ * A row rather than an enum because the list is a programme decision: the
+ * Foundation expanding into a region where people write Sidamo should be an
+ * edit here (§0). Note this is *not* the site's UI language — v1 renders in
+ * English only. This is what the applicant's own words are written in, so the
+ * case reaches somebody who can read them.
+ */
+export const languages = sqliteTable(
+	'languages',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		/** English name, for staff screens. */
+		name: text('name').notNull(),
+		/** The language's own name, shown to the applicant choosing it. */
+		nativeName: text('native_name'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('languages_active_idx').on(table.isActive, table.sortOrder)]
+);
+
+/** Groups the needs list on the public form. Presentation only. */
+export const assistanceNeedCategories = sqliteTable(
+	'assistance_need_categories',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		icon: text('icon'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('assistance_need_categories_active_idx').on(table.isActive, table.sortOrder)]
+);
+
+/**
+ * The kinds of help someone can ask for.
+ *
+ * Tied to a pillar where the mapping is clean, so choosing "school fees"
+ * routes the case to Youth Education without the applicant having to know the
+ * Foundation's internal structure. A need with no pillar shows under every
+ * programme.
+ */
+export const assistanceNeeds = sqliteTable(
+	'assistance_needs',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		categoryId: integer('category_id').references(() => assistanceNeedCategories.id, {
+			onDelete: 'set null'
+		}),
+		/** Which programme this routes to. Null shows it under all of them. */
+		pillarId: integer('pillar_id').references(() => pillars.id, { onDelete: 'set null' }),
+		/** Shown on the form as a heads-up, never enforced — see the note on documents. */
+		evidenceHint: text('evidence_hint'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('assistance_needs_pillar_idx').on(table.pillarId, table.sortOrder),
+		index('assistance_needs_active_idx').on(table.isActive, table.sortOrder)
+	]
+);
+
+/**
+ * The person an application is about, and the circumstances around them.
+ *
+ * One row per submission. Split out rather than added as twenty columns on
+ * `form_submissions` because it is specific to assistance applications, while
+ * that table also carries the legacy contact messages and anything a staff
+ * member builds in the form builder next year.
+ *
+ * Almost every column is nullable on purpose. §3.3 makes Mental Wellness a
+ * low-barrier form where an applicant may withhold everything, and a schema
+ * that insists on a date of birth is a schema that turns someone away.
+ */
+export const applicationSubjects = sqliteTable(
+	'application_subjects',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		formSubmissionId: integer('form_submission_id')
+			.notNull()
+			.references(() => formSubmissions.id, { onDelete: 'cascade' }),
+
+		/**
+		 * `self` means the applicant *is* the person in need, and the subject
+		 * columns below repeat their details rather than being left empty — so
+		 * "who is being helped" is one place to look either way.
+		 */
+		applyingFor: text('applying_for', { enum: ['self', 'other'] })
+			.default('self')
+			.notNull(),
+		/** How the applicant knows them: daughter, neighbour, teacher, social worker. */
+		relationship: text('relationship'),
+
+		fullName: text('full_name'),
+		dateOfBirth: text('date_of_birth'),
+		/** Used when a birth date is unknown, which is common. */
+		approximateAge: integer('approximate_age'),
+		gender: text('gender', { enum: ['female', 'male', 'other', 'undisclosed'] })
+			.default('undisclosed')
+			.notNull(),
+		phone: text('phone'),
+		city: text('city'),
+		addressLine: text('address_line'),
+		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
+
+		/* --- Circumstances, for triage ------------------------------------- */
+
+		householdSize: integer('household_size'),
+		dependantsCount: integer('dependants_count'),
+		/** Minor units, like every other money column here. Santim for ETB. */
+		monthlyIncome: integer('monthly_income'),
+		incomeSource: text('income_source'),
+		isEmployed: integer('is_employed', { mode: 'boolean' }),
+		hasDisability: integer('has_disability', { mode: 'boolean' }),
+		/** Only meaningful when `hasDisability` or a health need is claimed. */
+		healthDetail: text('health_detail'),
+		/** Receiving help from elsewhere; asked so support is not duplicated. */
+		otherSupport: text('other_support'),
+
+		/* --- Reaching them safely -------------------------------------------
+		   `safeToContact` is not politeness. Someone applying about a mental
+		   health crisis or a family situation may not be safe to ring at home,
+		   and a caseworker needs to know before they dial. */
+
+		safeToContact: integer('safe_to_contact', { mode: 'boolean' }).default(true).notNull(),
+		contactNotes: text('contact_notes'),
+		bestTimeToContact: text('best_time_to_contact'),
+		alternateContactName: text('alternate_contact_name'),
+		alternateContactPhone: text('alternate_contact_phone'),
+
+		/** What the applicant's own words are written in — see `languages`. */
+		writtenLanguageId: integer('written_language_id').references(() => languages.id, {
+			onDelete: 'set null'
+		}),
+
+		/**
+		 * Stamped from the server clock when the applicant agreed, rather than
+		 * stored as a boolean: "when did they consent to us verifying this" is a
+		 * question a `true` cannot answer.
+		 */
+		consentToVerifyAt: timestampMs('consent_to_verify_at'),
+		consentToStoreAt: timestampMs('consent_to_store_at'),
+
+		...publicFields
+	},
+	(table) => [
+		// One subject per application. Both sides NOT NULL, so this constrains.
+		uniqueIndex('application_subject_unique').on(table.formSubmissionId),
+		index('application_subjects_name_idx').on(table.fullName),
+		index('application_subjects_phone_idx').on(table.phone)
+	]
+);
+
+/** What one application is asking for. The queryable half of "what do you need". */
+export const applicationNeeds = sqliteTable(
+	'application_needs',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		formSubmissionId: integer('form_submission_id')
+			.notNull()
+			.references(() => formSubmissions.id, { onDelete: 'cascade' }),
+		needId: integer('need_id')
+			.notNull()
+			.references(() => assistanceNeeds.id, { onDelete: 'cascade' }),
+		/** The applicant's own description of this particular need. */
+		detail: text('detail'),
+		/** Minor units. What they think it would cost; frequently blank. */
+		estimatedAmount: integer('estimated_amount'),
+		currency: text('currency').default('ETB').notNull(),
+		urgency: text('urgency', { enum: ['whenever', 'weeks', 'days', 'immediate'] })
+			.default('weeks')
+			.notNull(),
+		createdAt: timestampMs('created_at').default(nowMs).notNull()
+	},
+	(table) => [
+		uniqueIndex('application_need_unique').on(table.formSubmissionId, table.needId),
+		index('application_needs_need_idx').on(table.needId)
+	]
+);
+
+/* ==========================================================================
    3.4 BENEFICIARIES & DISBURSEMENTS
    ========================================================================== */
 
@@ -841,6 +1053,12 @@ export const beneficiaries = sqliteTable(
 		preferredLanguage: text('preferred_language', { enum: ['en', 'am'] })
 			.default('en')
 			.notNull(),
+		/**
+		 * Supersedes `preferredLanguage`, which cannot express Afaan Oromo. Set
+		 * when a beneficiary is created from an application, carrying over the
+		 * language that application was written in.
+		 */
+		languageId: integer('language_id').references(() => languages.id, { onDelete: 'set null' }),
 		/** Internal only. Read access is audited like everything else here. */
 		notes: text('notes'),
 		...secureFields
@@ -1194,15 +1412,82 @@ export const volunteerApplications = sqliteTable(
 		email: text('email'),
 		phone: text('phone'),
 		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
-		/** Array of pillar ids and/or free-text tags. */
+		/** Freeform, for the town or sub-city the volunteer can actually travel from. */
+		city: text('city'),
+
+		/* --- Who they are ------------------------------------------------- */
+
+		dateOfBirth: text('date_of_birth'),
+		gender: text('gender', { enum: ['female', 'male', 'other', 'prefer_not_to_say'] }),
+		occupation: text('occupation'),
+		/** The one contact we call if something happens on a placement. */
+		emergencyContactName: text('emergency_contact_name'),
+		emergencyContactPhone: text('emergency_contact_phone'),
+		emergencyContactRelationship: text('emergency_contact_relationship'),
+
+		/* --- What they are offering ---------------------------------------- */
+
+		/**
+		 * Superseded by `volunteer_interests`, which is the queryable truth.
+		 * Still written on both paths so the legacy dynamic-form route and any
+		 * saved report keep resolving. Read the join table in new code.
+		 */
 		areasOfInterest: text('areas_of_interest', { mode: 'json' }).$type<(number | string)[]>(),
+		/**
+		 * Only the skills the catalogue does not list. Everything a coordinator
+		 * can filter on lives in `volunteer_application_skills`; this is the
+		 * "something else?" box, kept so an unusual skill is not lost while
+		 * nobody has got round to adding it to the catalogue.
+		 */
 		skills: text('skills', { mode: 'json' }).$type<string[]>(),
+		/**
+		 * Superseded by `volunteer_availability`. Kept for the legacy form path
+		 * and for the free-text caveats a grid of time slots cannot express
+		 * ("not during exam weeks").
+		 */
 		availability: text('availability'),
-		/** For medical and mental-health volunteers. */
+		/** Hours a week the volunteer expects to give. */
+		hoursPerWeek: integer('hours_per_week'),
+		/** How long they expect to stay; null means open-ended. */
+		commitmentMonths: integer('commitment_months'),
+		/** ISO date. The earliest they can start. */
+		availableFrom: text('available_from'),
+		/** Why they want to do this — the answer a coordinator actually reads. */
+		motivation: text('motivation'),
+		/** Free text; the option list lives in `status_options`-style config. */
+		heardAbout: text('heard_about'),
+
+		/* --- Professional standing ----------------------------------------- */
+
+		/**
+		 * Derived from `volunteer_credentials`, not taken from the applicant's
+		 * word for it: true when they have claimed at least one credential.
+		 */
+		isProfessional: integer('is_professional', { mode: 'boolean' }).default(false).notNull(),
+		/**
+		 * A human-readable summary of `volunteer_credentials`, rebuilt by
+		 * `recomputeCredentials`. It exists because `recomputeSafeguarding` and
+		 * `canApproveVolunteer` gate on "does this volunteer claim credentials",
+		 * and a single text column keeps that check one read rather than a join.
+		 */
 		professionalCredentials: text('professional_credentials'),
 		/** Answers to any extra questions on the volunteer form definition. */
 		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>(),
+		/* --- Declarations, captured at submission --------------------------- */
+
+		/**
+		 * Consent to the background and reference checks. Stored as the moment
+		 * it was given rather than a boolean: a safeguarding auditor asks *when*
+		 * this volunteer agreed, and a `true` cannot answer that.
+		 */
+		backgroundCheckConsentAt: timestampMs('background_check_consent_at'),
+		codeOfConductAgreedAt: timestampMs('code_of_conduct_agreed_at'),
+		/** Self-declaration. A `true` is not a bar; an undisclosed one is. */
+		hasPriorConviction: integer('has_prior_conviction', { mode: 'boolean' }),
+		priorConvictionDetail: text('prior_conviction_detail'),
+
 		statusId: integer('status_id').references(() => statusOptions.id, { onDelete: 'set null' }),
+		/** Derived from `volunteer_references` by `recomputeReferences`. */
 		referencesChecked: integer('references_checked', { mode: 'boolean' }).default(false).notNull(),
 		/** Nullable — only meaningful for professional roles. */
 		credentialsVerified: integer('credentials_verified', { mode: 'boolean' }),
@@ -1294,8 +1579,503 @@ export const volunteerPlacements = sqliteTable(
 	]
 );
 
+/* --------------------------------------------------------------------------
+   3.6a Skills
+
+   "Which volunteers can drive, and are free on Saturday mornings?" is the
+   question a coordinator actually asks, and it has to be a `where` clause. A
+   JSON array of typed-in strings cannot answer it — one volunteer writes
+   "driving", the next writes "I have a car" — so the skills a volunteer can
+   claim are rows, chosen from a list, and the claim is a join row.
+
+   The catalogue is editable from the dashboard, which is what stops this from
+   needing a deploy every time the Foundation starts doing something new (§0).
+   -------------------------------------------------------------------------- */
+
+/** Groups the skill list on the public form. Purely for presentation. */
+export const volunteerSkillCategories = sqliteTable(
+	'volunteer_skill_categories',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		/** Lucide icon name, resolved by `dynamic-icon.svelte`. */
+		icon: text('icon'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('volunteer_skill_categories_active_idx').on(table.isActive, table.sortOrder)]
+);
+
+export const volunteerSkills = sqliteTable(
+	'volunteer_skills',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		categoryId: integer('category_id').references(() => volunteerSkillCategories.id, {
+			onDelete: 'set null'
+		}),
+		/**
+		 * Claiming this skill obliges the volunteer to enter a credential —
+		 * "clinical counselling" is not a thing you tick because you are a good
+		 * listener. The public form enforces it; so does the server.
+		 */
+		requiresCredential: integer('requires_credential', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		/** Shown on the public form so a volunteer knows what they are claiming. */
+		hint: text('hint'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('volunteer_skills_category_idx').on(table.categoryId, table.sortOrder),
+		index('volunteer_skills_active_idx').on(table.isActive, table.sortOrder)
+	]
+);
+
+/** One volunteer's claim on one catalogue skill. */
+export const volunteerApplicationSkills = sqliteTable(
+	'volunteer_application_skills',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		skillId: integer('skill_id')
+			.notNull()
+			.references(() => volunteerSkills.id, { onDelete: 'cascade' }),
+		/** Self-reported. `professional` means "this is my job", not "I am good at it". */
+		proficiency: text('proficiency', {
+			enum: ['basic', 'intermediate', 'advanced', 'professional']
+		})
+			.default('intermediate')
+			.notNull(),
+		yearsExperience: integer('years_experience'),
+		note: text('note'),
+		createdAt: timestampMs('created_at').default(nowMs).notNull()
+	},
+	(table) => [
+		// Both columns are NOT NULL, so this genuinely constrains — see the note
+		// on `impact_metrics_cache` for the case where it would not.
+		uniqueIndex('volunteer_application_skill_unique').on(
+			table.volunteerApplicationId,
+			table.skillId
+		),
+		index('volunteer_application_skills_skill_idx').on(table.skillId)
+	]
+);
+
+/* --------------------------------------------------------------------------
+   3.6b Availability
+
+   Slots are rows rather than an enum for the same reason regions are: the
+   Foundation runs a Saturday distribution now and may run a Wednesday evening
+   clinic next year, and that must be a dashboard row.
+
+   A slot is a named window — a day plus a time range — and a volunteer's
+   availability is a join row against it. `dayOfWeek` is nullable for slots
+   that are not tied to a weekday ("public holidays", "on call").
+   -------------------------------------------------------------------------- */
+
+export const volunteerTimeSlots = sqliteTable(
+	'volunteer_time_slots',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		label: text('label').notNull(),
+		labelAm: text('label_am'),
+		/** 0 = Sunday … 6 = Saturday. Null for a slot with no fixed day. */
+		dayOfWeek: integer('day_of_week'),
+		/** 24-hour `HH:MM`. Text rather than minutes-since-midnight so it reads in a query. */
+		startTime: text('start_time'),
+		endTime: text('end_time'),
+		description: text('description'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('volunteer_time_slots_active_idx').on(table.isActive, table.sortOrder),
+		index('volunteer_time_slots_day_idx').on(table.dayOfWeek, table.startTime)
+	]
+);
+
+export const volunteerAvailability = sqliteTable(
+	'volunteer_availability',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		timeSlotId: integer('time_slot_id')
+			.notNull()
+			.references(() => volunteerTimeSlots.id, { onDelete: 'cascade' }),
+		/** Seasonal availability — a student free only over the summer. */
+		effectiveFrom: text('effective_from'),
+		effectiveUntil: text('effective_until'),
+		note: text('note'),
+		createdAt: timestampMs('created_at').default(nowMs).notNull()
+	},
+	(table) => [
+		uniqueIndex('volunteer_availability_unique').on(table.volunteerApplicationId, table.timeSlotId),
+		index('volunteer_availability_slot_idx').on(table.timeSlotId)
+	]
+);
+
+/* --------------------------------------------------------------------------
+   3.6c Medical and mental-health professionals
+
+   §3.6 gates approval on credential verification, so a credential cannot be a
+   sentence in a textarea. Each claimed licence is its own row with its own
+   verification state, because a volunteer may be a verified nurse and an
+   unverified counsellor at the same time, and the placement rules differ.
+   -------------------------------------------------------------------------- */
+
+/** The catalogue of professions the Foundation recognises. Editable. */
+export const volunteerProfessions = sqliteTable(
+	'volunteer_professions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		category: text('category', {
+			enum: ['medical', 'mental_health', 'allied_health', 'public_health', 'other']
+		})
+			.default('medical')
+			.notNull(),
+		/**
+		 * Almost always true. False covers the roles that are genuinely
+		 * unlicensed in Ethiopia but still clinical-adjacent — a trained
+		 * community health worker, say.
+		 */
+		requiresLicense: integer('requires_license', { mode: 'boolean' }).default(true).notNull(),
+		/** The body we ring to check, pre-filled on the form and the staff screen. */
+		defaultLicensingBody: text('default_licensing_body'),
+		description: text('description'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('volunteer_professions_active_idx').on(table.isActive, table.sortOrder),
+		index('volunteer_professions_category_idx').on(table.category, table.sortOrder)
+	]
+);
+
+export const volunteerCredentials = sqliteTable(
+	'volunteer_credentials',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		professionId: integer('profession_id').references(() => volunteerProfessions.id, {
+			onDelete: 'set null'
+		}),
+		/** Set when the applicant picked "another profession"; a prompt to extend the catalogue. */
+		otherProfession: text('other_profession'),
+		licenseNumber: text('license_number'),
+		/** Falls back to the profession's `defaultLicensingBody` when blank. */
+		licensingBody: text('licensing_body'),
+		specialization: text('specialization'),
+		yearsExperience: integer('years_experience'),
+		/** ISO dates, as typed. */
+		issuedOn: text('issued_on'),
+		expiresOn: text('expires_on'),
+		/** The uploaded licence itself. Private — served through `/files`. */
+		documentFileId: integer('document_file_id').references(() => files.id, {
+			onDelete: 'set null'
+		}),
+		/**
+		 * `verified` is the only value that opens the approval gate, and only
+		 * staff with `volunteers.safeguarding` may set it. `expired` exists so a
+		 * licence that lapses can be marked without erasing that it was once
+		 * checked.
+		 */
+		verificationStatus: text('verification_status', {
+			enum: ['pending', 'verified', 'rejected', 'expired']
+		})
+			.default('pending')
+			.notNull(),
+		verifiedBy: text('verified_by').references(() => user.id, { onDelete: 'set null' }),
+		verifiedAt: timestampMs('verified_at'),
+		verificationNote: text('verification_note'),
+		...publicFields
+	},
+	(table) => [
+		index('volunteer_credentials_application_idx').on(table.volunteerApplicationId),
+		index('volunteer_credentials_status_idx').on(table.verificationStatus),
+		index('volunteer_credentials_expiry_idx').on(table.expiresOn)
+	]
+);
+
+/* --------------------------------------------------------------------------
+   3.6d References
+
+   `volunteer_applications.references_checked` was a boolean over a textarea
+   of two names. It is now derived from these rows, so "who called them, and
+   what did they say" has somewhere to live.
+   -------------------------------------------------------------------------- */
+
+export const volunteerReferences = sqliteTable(
+	'volunteer_references',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		fullName: text('full_name').notNull(),
+		relationship: text('relationship'),
+		organization: text('organization'),
+		email: text('email'),
+		phone: text('phone'),
+		status: text('status', {
+			enum: ['pending', 'contacted', 'satisfactory', 'unsatisfactory', 'unreachable']
+		})
+			.default('pending')
+			.notNull(),
+		responseNote: text('response_note'),
+		contactedBy: text('contacted_by').references(() => user.id, { onDelete: 'set null' }),
+		contactedAt: timestampMs('contacted_at'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...publicFields
+	},
+	(table) => [
+		index('volunteer_references_application_idx').on(table.volunteerApplicationId, table.sortOrder),
+		index('volunteer_references_status_idx').on(table.status)
+	]
+);
+
+/** Which programmes a volunteer wants to work on. The queryable form of `areas_of_interest`. */
+export const volunteerInterests = sqliteTable(
+	'volunteer_interests',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		pillarId: integer('pillar_id')
+			.notNull()
+			.references(() => pillars.id, { onDelete: 'cascade' }),
+		createdAt: timestampMs('created_at').default(nowMs).notNull()
+	},
+	(table) => [
+		uniqueIndex('volunteer_interest_unique').on(table.volunteerApplicationId, table.pillarId),
+		index('volunteer_interests_pillar_idx').on(table.pillarId)
+	]
+);
+
 /* ==========================================================================
-   3.7 NEWSLETTER
+   3.7 CONTACT
+
+   §3.7 allows the contact form either to ride on `form_submissions` or to have
+   its own table, and asks only for consistency. It used to ride on
+   `form_submissions`; it no longer does.
+
+   What changed the trade is routing and answering. A general enquiry is not a
+   case: it has no pillar, it is never assigned to a caseworker, and what staff
+   need from it is "who is answering this, and did anyone reply?" — a question
+   `form_submissions` has nowhere to put, because a case's history lives in
+   case notes that are deliberately internal and never sent to anybody.
+
+   So a message is its own row with its own reply thread, and the *topics* it
+   can be about are catalogue rows that carry their own routing: who gets
+   told, who it lands on, how quickly it should be answered.
+   ========================================================================== */
+
+/**
+ * The enquiry topics offered on `/contact`, each carrying its own routing.
+ *
+ * This is the row a staff member edits when press enquiries should start going
+ * to the communications lead instead of the general inbox — not a code change,
+ * and not a rule buried in a notification function (§0).
+ */
+export const contactSubjects = sqliteTable(
+	'contact_subjects',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		/** Shown under the option on the public form. */
+		description: text('description'),
+		/** Lucide icon name, resolved by `dynamic-icon.svelte`. */
+		icon: text('icon'),
+		/**
+		 * Who is emailed when a message on this topic arrives. Empty falls back
+		 * to `contact.email_primary`, so a new topic is never a black hole.
+		 */
+		notifyEmails: text('notify_emails', { mode: 'json' }).$type<string[]>(),
+		/** Pre-assigns the message, so it lands in someone's queue on arrival. */
+		defaultAssigneeId: text('default_assignee_id').references(() => user.id, {
+			onDelete: 'set null'
+		}),
+		/**
+		 * The promise the Foundation makes itself about this topic. Drives the
+		 * overdue flag on the message list; not shown publicly unless
+		 * `publicResponseNote` says so in words.
+		 */
+		targetResponseHours: integer('target_response_hours'),
+		publicResponseNote: text('public_response_note'),
+		/**
+		 * Routes an enquiry that is really a case toward the right place: shown
+		 * on the form as a pointer to the pillar's application, rather than
+		 * silently turning a message into an application behind the sender's
+		 * back.
+		 */
+		suggestedPillarId: integer('suggested_pillar_id').references(() => pillars.id, {
+			onDelete: 'set null'
+		}),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('contact_subjects_active_idx').on(table.isActive, table.sortOrder)]
+);
+
+/**
+ * One enquiry.
+ *
+ * `source` exists because not every message arrives through the form — someone
+ * rings, or walks in, and the record of that conversation belongs in the same
+ * queue as the rest rather than in a notebook.
+ */
+export const contactMessages = sqliteTable(
+	'contact_messages',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		referenceNumber: text('reference_number').notNull().unique(),
+		subjectId: integer('subject_id').references(() => contactSubjects.id, {
+			onDelete: 'set null'
+		}),
+		/** Free text when the sender picked nothing, or on a migrated message. */
+		subjectOther: text('subject_other'),
+
+		fullName: text('full_name').notNull(),
+		email: text('email'),
+		phone: text('phone'),
+		organization: text('organization'),
+		message: text('message').notNull(),
+		/** How they would rather be answered. Not a guarantee, but it is rude to ignore. */
+		preferredChannel: text('preferred_channel', { enum: ['email', 'phone', 'either'] })
+			.default('either')
+			.notNull(),
+		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
+
+		source: text('source', { enum: ['web_form', 'email', 'phone', 'walk_in', 'social', 'other'] })
+			.default('web_form')
+			.notNull(),
+		/** Answers to anything the form gained later; the same escape hatch cases have. */
+		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>(),
+
+		statusId: integer('status_id').references(() => statusOptions.id, { onDelete: 'set null' }),
+		priority: text('priority', { enum: ['low', 'normal', 'high', 'urgent'] })
+			.default('normal')
+			.notNull(),
+		assignedToId: text('assigned_to_id').references(() => user.id, { onDelete: 'set null' }),
+
+		/**
+		 * Stamped by the first non-internal reply, and never moved afterwards —
+		 * "how long did we take to answer" is measured against the first reply,
+		 * not the last.
+		 */
+		firstRespondedAt: timestampMs('first_responded_at'),
+		closedAt: timestampMs('closed_at'),
+
+		/** Unread badge in the dashboard; not part of the workflow. */
+		isRead: integer('is_read', { mode: 'boolean' }).default(false).notNull(),
+		/** Hidden from the default list rather than deleted, so it can be undone. */
+		isSpam: integer('is_spam', { mode: 'boolean' }).default(false).notNull(),
+		/** Opted in to hearing from the Foundation again, separately from a reply. */
+		joinNewsletter: integer('join_newsletter', { mode: 'boolean' }).default(false).notNull(),
+
+		language: text('language', { enum: ['en', 'am'] })
+			.default('en')
+			.notNull(),
+		...publicFields
+	},
+	(table) => [
+		// The list's default view: unanswered first, newest first.
+		index('contact_messages_status_idx').on(table.statusId, table.createdAt),
+		index('contact_messages_subject_idx').on(table.subjectId, table.createdAt),
+		index('contact_messages_assignee_idx').on(table.assignedToId),
+		index('contact_messages_unread_idx').on(table.isRead, table.createdAt),
+		// Duplicate detection: the same person writing twice in a week.
+		index('contact_messages_email_idx').on(table.email)
+	]
+);
+
+/**
+ * The conversation: replies sent to the enquirer and internal notes about
+ * them, in one ordered thread.
+ *
+ * `isInternal` is the whole safety of this table. An internal note and a sent
+ * reply look identical in a list, and the difference is whether the sender has
+ * read it — so the flag is explicit on every row and the compose form defaults
+ * to whichever the staff member chose, never to "send".
+ */
+export const contactMessageReplies = sqliteTable(
+	'contact_message_replies',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		contactMessageId: integer('contact_message_id')
+			.notNull()
+			.references(() => contactMessages.id, { onDelete: 'cascade' }),
+		/** Null for a note the system wrote (a status change). */
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		/** True = nobody outside the Foundation has seen this. */
+		isInternal: integer('is_internal', { mode: 'boolean' }).default(false).notNull(),
+		channel: text('channel', { enum: ['email', 'phone', 'sms', 'in_person', 'note'] })
+			.default('email')
+			.notNull(),
+		/** Set once the email actually went out; null means it was not sent. */
+		sentAt: timestampMs('sent_at'),
+		/** System-written rows (status changes), as `form_submission_notes` does it. */
+		isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+		...publicFields
+	},
+	(table) => [
+		index('contact_message_replies_message_idx').on(table.contactMessageId, table.createdAt)
+	]
+);
+
+/**
+ * Where the Foundation physically is.
+ *
+ * A row rather than the `contact.address` setting, because §1 expects
+ * expansion beyond Addis within a few years and "our offices" is then a list.
+ * The settings keys stay as the fallback for a site with no office rows.
+ */
+export const contactOffices = sqliteTable(
+	'contact_offices',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		addressLine: text('address_line'),
+		city: text('city'),
+		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
+		phone: text('phone'),
+		email: text('email'),
+		openingHours: text('opening_hours'),
+		/** A maps link staff paste in; rendered as a link, never as an embed. */
+		mapUrl: text('map_url'),
+		/** The one shown first, and the one a single-office site displays. */
+		isPrimary: integer('is_primary', { mode: 'boolean' }).default(false).notNull(),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('contact_offices_active_idx').on(table.isActive, table.sortOrder)]
+);
+
+/* ==========================================================================
+   3.7b NEWSLETTER
    ========================================================================== */
 
 export const newsletterSubscribers = sqliteTable(
@@ -1310,7 +2090,9 @@ export const newsletterSubscribers = sqliteTable(
 		subscribedAt: timestampMs('subscribed_at').default(nowMs).notNull(),
 		unsubscribedAt: timestampMs('unsubscribed_at'),
 		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
-		source: text('source', { enum: ['homepage', 'donation_flow', 'manual', 'footer'] })
+		source: text('source', {
+			enum: ['homepage', 'donation_flow', 'manual', 'footer', 'contact_form']
+		})
 			.default('homepage')
 			.notNull(),
 		/** Single-use token in the unsubscribe link, so nobody unsubscribes by id. */
@@ -1563,7 +2345,12 @@ export const volunteerApplicationsRelations = relations(volunteerApplications, (
 		references: [user.id]
 	}),
 	checks: many(volunteerSafeguardingChecks),
-	placements: many(volunteerPlacements)
+	placements: many(volunteerPlacements),
+	skills: many(volunteerApplicationSkills),
+	availability: many(volunteerAvailability),
+	credentials: many(volunteerCredentials),
+	references: many(volunteerReferences),
+	interests: many(volunteerInterests)
 }));
 
 export const volunteerSafeguardingChecksRelations = relations(
@@ -1579,6 +2366,167 @@ export const volunteerSafeguardingChecksRelations = relations(
 		})
 	})
 );
+
+export const volunteerSkillCategoriesRelations = relations(
+	volunteerSkillCategories,
+	({ many }) => ({ skills: many(volunteerSkills) })
+);
+
+export const volunteerSkillsRelations = relations(volunteerSkills, ({ one, many }) => ({
+	category: one(volunteerSkillCategories, {
+		fields: [volunteerSkills.categoryId],
+		references: [volunteerSkillCategories.id]
+	}),
+	claims: many(volunteerApplicationSkills)
+}));
+
+export const volunteerApplicationSkillsRelations = relations(
+	volunteerApplicationSkills,
+	({ one }) => ({
+		application: one(volunteerApplications, {
+			fields: [volunteerApplicationSkills.volunteerApplicationId],
+			references: [volunteerApplications.id]
+		}),
+		skill: one(volunteerSkills, {
+			fields: [volunteerApplicationSkills.skillId],
+			references: [volunteerSkills.id]
+		})
+	})
+);
+
+export const volunteerTimeSlotsRelations = relations(volunteerTimeSlots, ({ many }) => ({
+	availability: many(volunteerAvailability)
+}));
+
+export const volunteerAvailabilityRelations = relations(volunteerAvailability, ({ one }) => ({
+	application: one(volunteerApplications, {
+		fields: [volunteerAvailability.volunteerApplicationId],
+		references: [volunteerApplications.id]
+	}),
+	timeSlot: one(volunteerTimeSlots, {
+		fields: [volunteerAvailability.timeSlotId],
+		references: [volunteerTimeSlots.id]
+	})
+}));
+
+export const volunteerProfessionsRelations = relations(volunteerProfessions, ({ many }) => ({
+	credentials: many(volunteerCredentials)
+}));
+
+export const volunteerCredentialsRelations = relations(volunteerCredentials, ({ one }) => ({
+	application: one(volunteerApplications, {
+		fields: [volunteerCredentials.volunteerApplicationId],
+		references: [volunteerApplications.id]
+	}),
+	profession: one(volunteerProfessions, {
+		fields: [volunteerCredentials.professionId],
+		references: [volunteerProfessions.id]
+	}),
+	document: one(files, {
+		fields: [volunteerCredentials.documentFileId],
+		references: [files.id]
+	}),
+	verifier: one(user, { fields: [volunteerCredentials.verifiedBy], references: [user.id] })
+}));
+
+export const volunteerReferencesRelations = relations(volunteerReferences, ({ one }) => ({
+	application: one(volunteerApplications, {
+		fields: [volunteerReferences.volunteerApplicationId],
+		references: [volunteerApplications.id]
+	}),
+	contactedByUser: one(user, {
+		fields: [volunteerReferences.contactedBy],
+		references: [user.id]
+	})
+}));
+
+export const volunteerInterestsRelations = relations(volunteerInterests, ({ one }) => ({
+	application: one(volunteerApplications, {
+		fields: [volunteerInterests.volunteerApplicationId],
+		references: [volunteerApplications.id]
+	}),
+	pillar: one(pillars, { fields: [volunteerInterests.pillarId], references: [pillars.id] })
+}));
+
+export const languagesRelations = relations(languages, ({ many }) => ({
+	subjects: many(applicationSubjects),
+	beneficiaries: many(beneficiaries)
+}));
+
+export const assistanceNeedCategoriesRelations = relations(
+	assistanceNeedCategories,
+	({ many }) => ({ needs: many(assistanceNeeds) })
+);
+
+export const assistanceNeedsRelations = relations(assistanceNeeds, ({ one, many }) => ({
+	category: one(assistanceNeedCategories, {
+		fields: [assistanceNeeds.categoryId],
+		references: [assistanceNeedCategories.id]
+	}),
+	pillar: one(pillars, { fields: [assistanceNeeds.pillarId], references: [pillars.id] }),
+	claims: many(applicationNeeds)
+}));
+
+export const applicationSubjectsRelations = relations(applicationSubjects, ({ one }) => ({
+	submission: one(formSubmissions, {
+		fields: [applicationSubjects.formSubmissionId],
+		references: [formSubmissions.id]
+	}),
+	region: one(regions, { fields: [applicationSubjects.regionId], references: [regions.id] }),
+	writtenLanguage: one(languages, {
+		fields: [applicationSubjects.writtenLanguageId],
+		references: [languages.id]
+	})
+}));
+
+export const applicationNeedsRelations = relations(applicationNeeds, ({ one }) => ({
+	submission: one(formSubmissions, {
+		fields: [applicationNeeds.formSubmissionId],
+		references: [formSubmissions.id]
+	}),
+	need: one(assistanceNeeds, {
+		fields: [applicationNeeds.needId],
+		references: [assistanceNeeds.id]
+	})
+}));
+
+export const contactSubjectsRelations = relations(contactSubjects, ({ one, many }) => ({
+	defaultAssignee: one(user, {
+		fields: [contactSubjects.defaultAssigneeId],
+		references: [user.id]
+	}),
+	suggestedPillar: one(pillars, {
+		fields: [contactSubjects.suggestedPillarId],
+		references: [pillars.id]
+	}),
+	messages: many(contactMessages)
+}));
+
+export const contactMessagesRelations = relations(contactMessages, ({ one, many }) => ({
+	subject: one(contactSubjects, {
+		fields: [contactMessages.subjectId],
+		references: [contactSubjects.id]
+	}),
+	status: one(statusOptions, {
+		fields: [contactMessages.statusId],
+		references: [statusOptions.id]
+	}),
+	assignee: one(user, { fields: [contactMessages.assignedToId], references: [user.id] }),
+	region: one(regions, { fields: [contactMessages.regionId], references: [regions.id] }),
+	replies: many(contactMessageReplies)
+}));
+
+export const contactMessageRepliesRelations = relations(contactMessageReplies, ({ one }) => ({
+	message: one(contactMessages, {
+		fields: [contactMessageReplies.contactMessageId],
+		references: [contactMessages.id]
+	}),
+	author: one(user, { fields: [contactMessageReplies.authorId], references: [user.id] })
+}));
+
+export const contactOfficesRelations = relations(contactOffices, ({ one }) => ({
+	region: one(regions, { fields: [contactOffices.regionId], references: [regions.id] })
+}));
 
 export const volunteerPlacementsRelations = relations(volunteerPlacements, ({ one }) => ({
 	application: one(volunteerApplications, {

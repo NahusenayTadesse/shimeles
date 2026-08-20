@@ -2,7 +2,12 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { selectItem, type Item } from '$lib/global.svelte';
 
-	let { value = $bindable(), items, name } = $props();
+	/**
+	 * `onValueChange` is optional and additive: the common case still binds
+	 * `value` inside a form, but a filter bar needs to act on the change (push
+	 * a URL parameter) rather than wait for a submit.
+	 */
+	let { value = $bindable(), items, name, onValueChange = undefined } = $props();
 	// const triggerContent = $derived(
 	// 	items.find((f) => f.value === value)?.name ??
 	// 		'Select ' + name.replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -15,7 +20,7 @@
 	);
 </script>
 
-<Select.Root type="single" {name} bind:value>
+<Select.Root type="single" {name} bind:value {onValueChange}>
 	<Select.Trigger class="w-full capitalize">
 		{triggerContent}
 	</Select.Trigger>

@@ -1,6 +1,11 @@
-import { and, count, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { donations, formSubmissions, volunteerApplications } from '$lib/server/db/schema';
+import {
+	contactMessages,
+	donations,
+	formSubmissions,
+	volunteerApplications
+} from '$lib/server/db/schema';
 import { requireUser, pillarScope } from '$lib/server/permissions';
 import type { LayoutServerLoad } from './$types';
 
@@ -8,7 +13,7 @@ import type { LayoutServerLoad } from './$types';
  * The dashboard shell.
  *
  * Resolves the signed-in user's access once for the whole dashboard — the
- * sidebar uses it to decide what to draw — and counts the three things a staff
+ * sidebar uses it to decide what to draw — and counts the four things a staff
  * member wants to see a badge for.
  *
  * The counts respect pillar scope. A Mental Wellness caseworker's "new
@@ -20,7 +25,7 @@ export const load: LayoutServerLoad = async (event) => {
 
 	const scope = pillarScope(access, formSubmissions.pillarId);
 
-	const [applications, volunteers, pendingDonations] = await Promise.all([
+	const [applications, volunteers, messages, pendingDonations] = await Promise.all([
 		access.permissions.has('submissions.read')
 			? db
 					.select({ total: count() })
@@ -29,6 +34,10 @@ export const load: LayoutServerLoad = async (event) => {
 						and(
 							eq(formSubmissions.isRead, false),
 							isNull(formSubmissions.deletedAt),
+							// Pillar-less submissions are contact messages, which have
+							// their own table and their own badge now. Counting them
+							// here too would show the same message in two places.
+							isNotNull(formSubmissions.pillarId),
 							...(scope ? [scope] : [])
 						)
 					)
@@ -40,6 +49,21 @@ export const load: LayoutServerLoad = async (event) => {
 					.from(volunteerApplications)
 					.where(
 						and(eq(volunteerApplications.isRead, false), isNull(volunteerApplications.deletedAt))
+					)
+					.then((rows) => rows[0]?.total ?? 0)
+			: 0,
+		// Not pillar-scoped: a general enquiry is not case data, so every staff
+		// member who can read submissions sees the same message count.
+		access.permissions.has('submissions.read')
+			? db
+					.select({ total: count() })
+					.from(contactMessages)
+					.where(
+						and(
+							eq(contactMessages.isRead, false),
+							eq(contactMessages.isSpam, false),
+							isNull(contactMessages.deletedAt)
+						)
 					)
 					.then((rows) => rows[0]?.total ?? 0)
 			: 0,
@@ -64,6 +88,7 @@ export const load: LayoutServerLoad = async (event) => {
 		counts: {
 			newApplications: applications,
 			newVolunteers: volunteers,
+			newMessages: messages,
 			pendingDonations
 		}
 	};

@@ -20,12 +20,36 @@
 		MessageSquarePlus,
 		Phone,
 		ShieldCheck,
+		TriangleAlert,
 		UserRound
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
 	const s = $derived(data.submission);
+
+	const URGENCY_LABELS: Record<string, string> = {
+		whenever: 'Whenever',
+		weeks: 'Within weeks',
+		days: 'Within days',
+		immediate: 'Emergency'
+	};
+
+	/** A null here means "they did not say", which is not the same as "no". */
+	const yesNoUnknown = (value: boolean | null) =>
+		value === null ? 'Not stated' : value ? 'Yes' : 'No';
+
+	/**
+	 * Whether the case has reached a stage where "accept" is the natural word.
+	 * Deliberately only wording: linking is allowed at any point, because a
+	 * caseworker often identifies the person long before the decision is made.
+	 */
+	const acceptable = $derived(['approved', 'active'].includes(s.statusStage ?? ''));
+
+	/** Only the needs that carry an estimate; the rest contribute nothing. */
+	const totalRequested = $derived(
+		data.needs.reduce((sum, need) => sum + (need.estimatedAmount ?? 0), 0)
+	);
 
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
@@ -136,6 +160,202 @@
 
 	<div class="grid gap-4 lg:grid-cols-[2fr_1fr]">
 		<div class="flex flex-col gap-4">
+			<!-- Who is being helped. Present only for applications taken through
+			     `/apply`; a case from the form builder has no subject row, and the
+			     absence of this card is the honest signal that it arrived that way. -->
+			{#if data.subject}
+				{@const subject = data.subject}
+				<Card.Root class="p-6">
+					<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+						<h2 class="font-heading text-lg font-semibold">Who needs help</h2>
+						<Badge variant={subject.applyingFor === 'other' ? 'default' : 'secondary'}>
+							{subject.applyingFor === 'other'
+								? `Applied for by ${s.name ?? 'someone else'}${subject.relationship ? ` — ${subject.relationship}` : ''}`
+								: 'Applying for themselves'}
+						</Badge>
+					</div>
+
+					{#if !subject.safeToContact}
+						<Alert.Root variant="destructive" class="mb-4">
+							<TriangleAlert class="size-4" />
+							<Alert.Title>Take care contacting them</Alert.Title>
+							<Alert.Description>
+								{subject.contactNotes ??
+									'They asked us to be careful how we get in touch. Read the case before calling.'}
+							</Alert.Description>
+						</Alert.Root>
+					{/if}
+
+					<dl class="grid gap-4 sm:grid-cols-2">
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Name</dt>
+							<dd class="text-sm">{subject.fullName ?? '—'}</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Age</dt>
+							<dd class="text-sm">
+								{#if subject.dateOfBirth}
+									{subject.dateOfBirth}
+								{:else if subject.approximateAge}
+									about {subject.approximateAge}
+								{:else}
+									—
+								{/if}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Gender</dt>
+							<dd class="text-sm capitalize">{subject.gender}</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Their phone</dt>
+							<dd class="text-sm">
+								{#if subject.phone}
+									<a href={`tel:${subject.phone}`} class="hover:text-primary">{subject.phone}</a>
+								{:else}
+									—
+								{/if}
+							</dd>
+						</div>
+						<div class="sm:col-span-2">
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Where</dt>
+							<dd class="text-sm">
+								{[subject.addressLine, subject.city, subject.regionName]
+									.filter(Boolean)
+									.join(', ') || '—'}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Household</dt>
+							<dd class="text-sm">
+								{subject.householdSize ?? '—'} people{subject.dependantsCount !== null
+									? `, ${subject.dependantsCount} dependants`
+									: ''}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Monthly income</dt>
+							<dd class="text-sm">
+								{subject.monthlyIncome !== null ? formatMoney(subject.monthlyIncome, 'ETB') : '—'}
+								{#if subject.incomeSource}
+									<span class="text-muted-foreground">· {subject.incomeSource}</span>
+								{/if}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Anyone working</dt>
+							<dd class="text-sm">{yesNoUnknown(subject.isEmployed)}</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">
+								Disability or long-term illness
+							</dt>
+							<dd class="text-sm">{yesNoUnknown(subject.hasDisability)}</dd>
+						</div>
+						{#if subject.healthDetail}
+							<div class="sm:col-span-2">
+								<dt class="text-xs tracking-wide text-muted-foreground uppercase">Health detail</dt>
+								<dd class="text-sm whitespace-pre-wrap">{subject.healthDetail}</dd>
+							</div>
+						{/if}
+						{#if subject.otherSupport}
+							<div class="sm:col-span-2">
+								<dt class="text-xs tracking-wide text-muted-foreground uppercase">
+									Help from elsewhere
+								</dt>
+								<dd class="text-sm whitespace-pre-wrap">{subject.otherSupport}</dd>
+							</div>
+						{/if}
+					</dl>
+
+					<Separator class="my-5" />
+
+					<dl class="grid gap-4 sm:grid-cols-2">
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">
+								Best time to call
+							</dt>
+							<dd class="text-sm">{subject.bestTimeToContact ?? '—'}</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Someone else</dt>
+							<dd class="text-sm">
+								{subject.alternateContactName ?? '—'}
+								{#if subject.alternateContactPhone}
+									· <a href={`tel:${subject.alternateContactPhone}`} class="hover:text-primary">
+										{subject.alternateContactPhone}
+									</a>
+								{/if}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Wrote in</dt>
+							<dd class="text-sm">
+								{#if subject.languageName}
+									{subject.languageNativeName ?? subject.languageName}
+									<span class="text-muted-foreground">({subject.languageName})</span>
+								{:else}
+									—
+								{/if}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Consent</dt>
+							<dd class="text-sm">
+								{subject.consentToStoreAt ? 'To store' : 'Not given'}{subject.consentToVerifyAt
+									? ', to verify'
+									: ''}
+							</dd>
+						</div>
+					</dl>
+				</Card.Root>
+			{/if}
+
+			<!-- What they asked for, from the needs catalogue. -->
+			{#if data.needs.length}
+				<Card.Root class="p-6">
+					<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+						<h2 class="font-heading text-lg font-semibold">What they are asking for</h2>
+						{#if totalRequested > 0}
+							<Badge variant="outline">{formatMoney(totalRequested, 'ETB')} estimated</Badge>
+						{/if}
+					</div>
+
+					<div class="flex flex-col gap-2">
+						{#each data.needs as need (need.id)}
+							<div class="rounded-lg border p-3">
+								<div class="flex flex-wrap items-center justify-between gap-2">
+									<span class="text-sm font-medium">
+										{need.name}
+										{#if need.categoryName}
+											<span class="font-normal text-muted-foreground">· {need.categoryName}</span>
+										{/if}
+									</span>
+									<div class="flex items-center gap-2">
+										{#if need.estimatedAmount !== null}
+											<Badge variant="secondary">
+												{formatMoney(need.estimatedAmount, need.currency)}
+											</Badge>
+										{/if}
+										<Badge variant={need.urgency === 'immediate' ? 'destructive' : 'outline'}>
+											{URGENCY_LABELS[need.urgency]}
+										</Badge>
+									</div>
+								</div>
+								{#if need.detail}
+									<p class="mt-1 text-sm text-muted-foreground">{need.detail}</p>
+								{/if}
+								{#if need.evidenceHint}
+									<p class="mt-1 text-xs text-muted-foreground">
+										Usually evidenced by: {need.evidenceHint}
+									</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</Card.Root>
+			{/if}
+
 			<!-- The answers -->
 			<Card.Root class="p-6">
 				<h2 class="mb-4 font-heading text-lg font-semibold">What they told us</h2>
@@ -304,14 +524,28 @@
 					</p>
 				{:else}
 					<p class="mb-3 text-sm text-muted-foreground">
-						Not yet linked to a person. Linking matches on phone number and creates a record if this
-						is someone new.
+						{#if data.subject}
+							Creates or finds the record for
+							<strong>{data.subject.fullName ?? 'the person named above'}</strong> — the person being
+							helped, not whoever filled the form in. Matches on phone number, then on name and date of
+							birth.
+						{:else}
+							Not yet linked to a person. Linking matches on phone number and creates a record if
+							this is someone new.
+						{/if}
 					</p>
 					<form method="post" action="?/linkBeneficiary" use:enhance>
-						<Button type="submit" size="sm" variant="outline">
-							<Link2 class="size-4" /> Link to a beneficiary
+						<Button type="submit" size="sm" variant={acceptable ? 'default' : 'outline'}>
+							<Link2 class="size-4" />
+							{acceptable ? 'Accept and add as beneficiary' : 'Link to a beneficiary'}
 						</Button>
 					</form>
+					{#if !acceptable}
+						<p class="mt-2 text-xs text-muted-foreground">
+							You can link at any point; it is not gated on the status. The button changes wording
+							once the case reaches an approved stage.
+						</p>
+					{/if}
 				{/if}
 			</Card.Root>
 

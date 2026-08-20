@@ -1,0 +1,40 @@
+import { z } from 'zod/v4';
+
+/**
+ * Zod field helpers shared by server-only CRUD schemas and by schemas a public
+ * page also imports.
+ *
+ * Deliberately *not* in `$lib/server/crud.ts`: `/apply` renders its own
+ * schema's constants in the browser, and importing anything under
+ * `$lib/server` into a component is a build error — correctly, since that
+ * module reaches the database. `$lib/server/crud.ts` re-exports what is here,
+ * so the dashboard schemas keep their single import.
+ */
+
+/**
+ * A number that may be left blank, where blank must stay blank.
+ *
+ * The ordering of this union is the whole point. `z.coerce.number()` accepts
+ * `null` and `''` and turns both into **0**, and a union returns its first
+ * success — so putting the number first means "I don't know what this costs"
+ * is stored as "it costs nothing", and a time slot with no fixed day becomes
+ * Sunday. The empty cases are matched first, and only then is a real value
+ * coerced.
+ *
+ * `optionalIdField` escapes this by accident: `.positive()` rejects the 0 that
+ * `null` coerces to, so it falls through. Anything whose valid range includes
+ * 0 has no such luck, which is why this helper exists.
+ */
+export const optionalNumberField = (
+	options: { min?: number; max?: number; int?: boolean } = {}
+) => {
+	let number = z.coerce.number();
+	if (options.int) number = number.int();
+	if (options.min !== undefined) number = number.min(options.min);
+	if (options.max !== undefined) number = number.max(options.max);
+
+	return z
+		.union([z.literal(''), z.null(), z.undefined(), number])
+		.optional()
+		.transform((value) => (typeof value === 'number' ? value : null));
+};

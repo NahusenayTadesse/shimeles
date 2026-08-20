@@ -24,6 +24,17 @@ export type AuditEntity =
 	| 'disbursement'
 	| 'volunteer_application'
 	| 'volunteer_safeguarding_check'
+	| 'volunteer_credential'
+	| 'volunteer_reference'
+	/** The skills, time slots and professions the volunteer form is built from. */
+	| 'volunteer_catalog'
+	| 'contact_message'
+	| 'contact_message_reply'
+	/** The enquiry topics and office addresses behind the contact page. */
+	| 'contact_catalog'
+	/** The kinds of help, need groups and languages behind the apply page. */
+	| 'assistance_catalog'
+	| 'newsletter_subscriber'
 	| 'donation'
 	| 'donor'
 	| 'recurring_pledge'

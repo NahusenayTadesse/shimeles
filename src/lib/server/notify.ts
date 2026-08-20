@@ -57,6 +57,50 @@ export async function notifyNewSubmission(slug: string, result: SubmitResult): P
 	await Promise.all(recipients.map((to) => sendEmail(to, subject, escapeHtml(body))));
 }
 
+/**
+ * Tells the volunteer coordinator that an application has arrived.
+ *
+ * Recipients still come from the `volunteer-application` form definition when
+ * one exists, even though `/volunteer` no longer renders from it — that row is
+ * where a coordinator has always set "who gets told", and moving the setting
+ * somewhere else would silently redirect the notifications. Falls back to the
+ * Foundation's primary contact address.
+ */
+export async function notifyNewVolunteer(result: SubmitResult): Promise<void> {
+	const [definition] = await db
+		.select({ notifyEmails: formDefinitions.notifyEmails })
+		.from(formDefinitions)
+		.where(
+			and(eq(formDefinitions.slug, 'volunteer-application'), isNull(formDefinitions.deletedAt))
+		)
+		.limit(1);
+
+	const fallback = await setting('contact.email_primary');
+	const recipients = definition?.notifyEmails?.length
+		? definition.notifyEmails
+		: fallback
+			? [fallback]
+			: [];
+
+	if (recipients.length === 0) return;
+
+	const origin = await setting('site.url');
+	const subject = `New volunteer application — ${result.referenceNumber}`;
+	const body = [
+		'Someone has offered to volunteer.',
+		'',
+		`Reference: ${result.referenceNumber}`,
+		'',
+		// The link, not the content — the same rule as every other notification
+		// here. Reading the application is an audited act (§3.11).
+		origin ? `Open it here: ${origin}/dashboard/volunteers/${result.id}` : ''
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	await Promise.all(recipients.map((to) => sendEmail(to, subject, escapeHtml(body))));
+}
+
 /** Reminder for a standing pledge that has come due (§3.5). */
 export async function notifyPledgeReminder(
 	to: string,

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod/v4';
 import { db } from '$lib/server/db';
 import {
+	applicationSubjects,
 	beneficiaries,
 	disbursements,
 	files,
@@ -19,6 +20,7 @@ import {
 import { assertPillarAccess, requirePermission } from '$lib/server/permissions';
 import { listStatuses, setSubmissionStatus } from '$lib/server/workflow';
 import { linkBeneficiary } from '$lib/server/submissions';
+import { acceptApplication, getApplicationDetail } from '$lib/server/apply';
 import { audit } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -83,77 +85,91 @@ export const load: PageServerLoad = async (event) => {
 	if (!submission) throw error(404, 'That application does not exist.');
 	assertPillarAccess(event, access, submission.pillarId);
 
-	const [fields, notes, documents, statuses, reviewers, beneficiary, caseDisbursements] =
-		await Promise.all([
-			// The questions as they were defined, so an answer is shown with its
-			// label rather than as a raw JSON key.
-			db
-				.select({
-					fieldKey: formFields.fieldKey,
-					label: formFields.label,
-					fieldType: formFields.fieldType,
-					options: formFields.options,
-					sortOrder: formFields.sortOrder
-				})
-				.from(formFields)
-				.where(eq(formFields.formDefinitionId, submission.formId))
-				.orderBy(asc(formFields.sortOrder)),
+	const [
+		fields,
+		notes,
+		documents,
+		statuses,
+		reviewers,
+		beneficiary,
+		caseDisbursements,
+		applicationDetail
+	] = await Promise.all([
+		// The questions as they were defined, so an answer is shown with its
+		// label rather than as a raw JSON key.
+		db
+			.select({
+				fieldKey: formFields.fieldKey,
+				label: formFields.label,
+				fieldType: formFields.fieldType,
+				options: formFields.options,
+				sortOrder: formFields.sortOrder
+			})
+			.from(formFields)
+			.where(eq(formFields.formDefinitionId, submission.formId))
+			.orderBy(asc(formFields.sortOrder)),
 
-			db
-				.select({
-					id: formSubmissionNotes.id,
-					note: formSubmissionNotes.note,
-					isSystem: formSubmissionNotes.isSystem,
-					createdAt: formSubmissionNotes.createdAt,
-					authorName: user.name
-				})
-				.from(formSubmissionNotes)
-				.leftJoin(user, eq(user.id, formSubmissionNotes.authorId))
-				.where(
-					and(eq(formSubmissionNotes.formSubmissionId, id), isNull(formSubmissionNotes.deletedAt))
-				)
-				.orderBy(desc(formSubmissionNotes.createdAt)),
+		db
+			.select({
+				id: formSubmissionNotes.id,
+				note: formSubmissionNotes.note,
+				isSystem: formSubmissionNotes.isSystem,
+				createdAt: formSubmissionNotes.createdAt,
+				authorName: user.name
+			})
+			.from(formSubmissionNotes)
+			.leftJoin(user, eq(user.id, formSubmissionNotes.authorId))
+			.where(
+				and(eq(formSubmissionNotes.formSubmissionId, id), isNull(formSubmissionNotes.deletedAt))
+			)
+			.orderBy(desc(formSubmissionNotes.createdAt)),
 
-			db
-				.select({
-					id: formSubmissionDocuments.id,
-					label: formSubmissionDocuments.label,
-					fileId: files.id,
-					storagePath: files.storagePath,
-					originalFilename: files.originalFilename,
-					mimeType: files.mimeType,
-					sizeBytes: files.sizeBytes
-				})
-				.from(formSubmissionDocuments)
-				.innerJoin(files, eq(files.id, formSubmissionDocuments.fileId))
-				.where(and(eq(formSubmissionDocuments.formSubmissionId, id), isNull(files.deletedAt))),
+		db
+			.select({
+				id: formSubmissionDocuments.id,
+				label: formSubmissionDocuments.label,
+				fileId: files.id,
+				storagePath: files.storagePath,
+				originalFilename: files.originalFilename,
+				mimeType: files.mimeType,
+				sizeBytes: files.sizeBytes
+			})
+			.from(formSubmissionDocuments)
+			.innerJoin(files, eq(files.id, formSubmissionDocuments.fileId))
+			.where(and(eq(formSubmissionDocuments.formSubmissionId, id), isNull(files.deletedAt))),
 
-			listStatuses('application'),
+		listStatuses('application'),
 
-			db.select({ id: user.id, name: user.name }).from(user),
+		db.select({ id: user.id, name: user.name }).from(user),
 
-			submission.beneficiaryId
-				? db
-						.select()
-						.from(beneficiaries)
-						.where(eq(beneficiaries.id, submission.beneficiaryId))
-						.limit(1)
-						.then((rows) => rows[0] ?? null)
-				: Promise.resolve(null),
+		submission.beneficiaryId
+			? db
+					.select()
+					.from(beneficiaries)
+					.where(eq(beneficiaries.id, submission.beneficiaryId))
+					.limit(1)
+					.then((rows) => rows[0] ?? null)
+			: Promise.resolve(null),
 
-			db
-				.select({
-					id: disbursements.id,
-					amount: disbursements.amount,
-					currency: disbursements.currency,
-					paidTo: disbursements.paidTo,
-					date: disbursements.disbursementDate,
-					fundSource: disbursements.fundSource
-				})
-				.from(disbursements)
-				.where(and(eq(disbursements.formSubmissionId, id), isNull(disbursements.deletedAt)))
-				.orderBy(desc(disbursements.disbursementDate))
-		]);
+		db
+			.select({
+				id: disbursements.id,
+				amount: disbursements.amount,
+				currency: disbursements.currency,
+				paidTo: disbursements.paidTo,
+				date: disbursements.disbursementDate,
+				fundSource: disbursements.fundSource
+			})
+			.from(disbursements)
+			.where(and(eq(disbursements.formSubmissionId, id), isNull(disbursements.deletedAt)))
+			.orderBy(desc(disbursements.disbursementDate)),
+
+		// The structured half of an application taken through `/apply`: who is
+		// actually being helped, what they asked for, what they attached.
+		// Empty for cases taken through the form builder, which is exactly how
+		// it should read on screen.
+		getApplicationDetail(id)
+	]);
 
 	// Reading a case is the audited event, not just editing one.
 	audit({
@@ -178,7 +194,9 @@ export const load: PageServerLoad = async (event) => {
 		statuses,
 		reviewers,
 		beneficiary,
-		disbursements: caseDisbursements
+		disbursements: caseDisbursements,
+		subject: applicationDetail.subject,
+		needs: applicationDetail.needs
 	};
 };
 
@@ -286,10 +304,35 @@ export const actions: Actions = {
 	 * Links this case to a beneficiary record, creating one if this is a new
 	 * person. The continuity-of-care step from §3.4 — a caseworker presses this
 	 * once and the family is recognised the next time they apply.
+	 *
+	 * Two implementations, and which one runs depends on how the application
+	 * arrived. `acceptApplication` keys on `application_subjects`, so a case
+	 * where a daughter applied for her mother creates a record for the
+	 * *mother*. The older `linkBeneficiary` keys on `submitted_by_*`, which is
+	 * only correct when someone applied for themselves — it stays for cases
+	 * taken through the form builder, which have no subject row to read.
 	 */
 	linkBeneficiary: async (event) => {
 		const { access, id } = await guard(event as never, 'submissions.write');
+
+		const [subject] = await db
+			.select({ id: applicationSubjects.id })
+			.from(applicationSubjects)
+			.where(eq(applicationSubjects.formSubmissionId, id))
+			.limit(1);
+
+		if (subject) {
+			const { beneficiaryId, created } = await acceptApplication(event, id, access.userId);
+			return {
+				ok: true,
+				beneficiaryId,
+				message: created
+					? 'Beneficiary record created and linked.'
+					: 'Linked to the existing beneficiary record.'
+			};
+		}
+
 		const beneficiaryId = await linkBeneficiary(event, id, access.userId);
-		return { ok: true, beneficiaryId };
+		return { ok: true, beneficiaryId, message: 'Linked to a beneficiary record.' };
 	}
 };

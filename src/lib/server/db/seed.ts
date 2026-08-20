@@ -417,7 +417,16 @@ async function seedStatuses() {
 			color: 'olive'
 		},
 		{ context: 'volunteer', stage: 'approved', label: 'Approved to volunteer', color: 'clay' },
-		{ context: 'volunteer', stage: 'declined', label: 'Not proceeding', color: 'rose' }
+		{ context: 'volunteer', stage: 'declined', label: 'Not proceeding', color: 'rose' },
+
+		// Contact messages reuse the same vocabulary rather than a second
+		// hardcoded lifecycle, so a coordinator can relabel "Answered" without
+		// anything keying off the word.
+		{ context: 'contact', stage: 'submitted', label: 'New', color: 'sky', isDefault: true },
+		{ context: 'contact', stage: 'under_review', label: 'In progress', color: 'olive' },
+		{ context: 'contact', stage: 'active', label: 'Waiting on them', color: 'slate' },
+		{ context: 'contact', stage: 'closed', label: 'Answered', color: 'clay' },
+		{ context: 'contact', stage: 'declined', label: 'No reply needed', color: 'rose' }
 	] as const;
 
 	for (const [index, status] of statuses.entries()) {
@@ -1152,10 +1161,17 @@ async function seedPages() {
 			sortOrder: 2
 		},
 		{
+			slug: 'apply',
+			title: 'Apply for support',
+			metaDescription:
+				'Ask for help — for yourself, or for someone you are looking out for. Write in whatever language you are comfortable in.',
+			sortOrder: 3
+		},
+		{
 			slug: 'volunteer',
 			title: 'Volunteer',
 			metaDescription: 'Give your time, skills and presence.',
-			sortOrder: 3
+			sortOrder: 4
 		},
 		{
 			slug: 'contact',
@@ -1309,6 +1325,15 @@ async function seedPages() {
 		},
 		{ page: 'donate', blockType: 'donation_details', heading: 'Where to send it', content: {} },
 		{
+			page: 'apply',
+			blockType: 'rich_text',
+			content: {
+				body:
+					'<p>If you need help, or you are asking on behalf of someone who does, this is the form. It takes about ten minutes and most of it is optional — tell us what you know and we will ask the rest when we speak.</p>' +
+					'<p>Asking costs you nothing and is not a commitment. We read every application, and we will tell you either way.</p>'
+			}
+		},
+		{
 			page: 'volunteer',
 			blockType: 'rich_text',
 			content: {
@@ -1401,6 +1426,7 @@ async function seedPages() {
 		{ label: 'Testimonials', url: '/testimonials', placement: 'footer' },
 		{ label: 'Privacy Policy', pageSlug: 'privacy', placement: 'footer' },
 		{ label: 'Terms & Conditions', pageSlug: 'terms', placement: 'footer' },
+		{ label: 'Apply for support', pageSlug: 'apply', placement: 'both' },
 		{ label: 'Volunteer', pageSlug: 'volunteer', placement: 'both' },
 		{ label: 'Contact', pageSlug: 'contact', placement: 'both' },
 		{
@@ -1633,6 +1659,759 @@ async function seedSafeguarding() {
 	}
 
 	console.log('✓ safeguarding checklist');
+}
+
+/* ==========================================================================
+   Volunteer catalogues — skills, time slots, professions
+   ========================================================================== */
+
+/**
+ * The vocabulary the volunteer form offers.
+ *
+ * These are the rows that keep `/volunteer` from needing a deploy every time
+ * the Foundation starts doing something new: a skill, a shift or a profession
+ * added from Configuration appears on the public form on the next request.
+ * Seeded once, keyed on slug, and never updated afterwards — a coordinator who
+ * renames "Saturday distribution" must not have it renamed back.
+ */
+async function seedVolunteerCatalog() {
+	const categories = [
+		{
+			slug: 'care-and-companionship',
+			name: 'Care and companionship',
+			icon: 'HeartHandshake',
+			description: 'Being with people. Most of what we actually ask for.'
+		},
+		{
+			slug: 'health',
+			name: 'Health',
+			icon: 'Stethoscope',
+			description: 'Clinical and health-adjacent work. Some of this needs a licence.'
+		},
+		{
+			slug: 'education',
+			name: 'Education and mentoring',
+			icon: 'GraduationCap'
+		},
+		{
+			slug: 'practical',
+			name: 'Practical and logistics',
+			icon: 'Truck'
+		},
+		{
+			slug: 'professional-services',
+			name: 'Professional services',
+			icon: 'Briefcase',
+			description: 'Skills you would normally be paid for.'
+		},
+		{ slug: 'languages', name: 'Languages and communication', icon: 'Languages' }
+	];
+
+	for (const [index, category] of categories.entries()) {
+		await db
+			.insert(schema.volunteerSkillCategories)
+			.values({ ...category, sortOrder: index })
+			.onConflictDoNothing({ target: schema.volunteerSkillCategories.slug });
+	}
+
+	const categoryIds = new Map(
+		(
+			await db
+				.select({
+					id: schema.volunteerSkillCategories.id,
+					slug: schema.volunteerSkillCategories.slug
+				})
+				.from(schema.volunteerSkillCategories)
+		).map((row) => [row.slug, row.id])
+	);
+
+	const skills: {
+		slug: string;
+		name: string;
+		category: string;
+		hint?: string;
+		requiresCredential?: boolean;
+	}[] = [
+		// Care and companionship
+		{ slug: 'elder-visiting', name: 'Visiting elders', category: 'care-and-companionship' },
+		{
+			slug: 'hospital-companionship',
+			name: 'Sitting with patients',
+			category: 'care-and-companionship',
+			hint: 'Company during long hospital stays, including overnight.'
+		},
+		{
+			slug: 'bereavement-support',
+			name: 'Bereavement support',
+			category: 'care-and-companionship'
+		},
+		{
+			slug: 'home-visits',
+			name: 'Home visits and welfare checks',
+			category: 'care-and-companionship'
+		},
+		{
+			slug: 'child-befriending',
+			name: 'Working with children',
+			category: 'care-and-companionship'
+		},
+
+		// Health
+		{
+			slug: 'nursing-care',
+			name: 'Nursing care',
+			category: 'health',
+			requiresCredential: true,
+			hint: 'Wound care, medication, observations.'
+		},
+		{
+			slug: 'clinical-consultation',
+			name: 'Medical consultation',
+			category: 'health',
+			requiresCredential: true
+		},
+		{
+			slug: 'counselling',
+			name: 'Counselling and talk therapy',
+			category: 'health',
+			requiresCredential: true,
+			hint: 'Structured therapeutic work, not a friendly ear.'
+		},
+		{
+			slug: 'psychiatric-support',
+			name: 'Psychiatric assessment',
+			category: 'health',
+			requiresCredential: true
+		},
+		{
+			slug: 'physiotherapy',
+			name: 'Physiotherapy',
+			category: 'health',
+			requiresCredential: true
+		},
+		{
+			slug: 'first-aid',
+			name: 'First aid',
+			category: 'health',
+			hint: 'Certificate, not a licence.'
+		},
+		{ slug: 'health-education', name: 'Health awareness sessions', category: 'health' },
+
+		// Education
+		{ slug: 'tutoring-primary', name: 'Tutoring — primary', category: 'education' },
+		{ slug: 'tutoring-secondary', name: 'Tutoring — secondary', category: 'education' },
+		{ slug: 'exam-preparation', name: 'Exam preparation', category: 'education' },
+		{ slug: 'mentoring', name: 'Mentoring a young person', category: 'education' },
+		{ slug: 'literacy', name: 'Adult literacy', category: 'education' },
+		{ slug: 'computer-skills', name: 'Teaching computer skills', category: 'education' },
+
+		// Practical
+		{
+			slug: 'driving',
+			name: 'Driving',
+			category: 'practical',
+			hint: 'You will be asked for a licence.'
+		},
+		{ slug: 'distribution', name: 'Distribution days', category: 'practical' },
+		{ slug: 'packing', name: 'Packing and sorting', category: 'practical' },
+		{ slug: 'cooking', name: 'Cooking for events', category: 'practical' },
+		{ slug: 'event-setup', name: 'Event setup', category: 'practical' },
+		{ slug: 'home-repairs', name: 'Repairs and maintenance', category: 'practical' },
+
+		// Professional services
+		{ slug: 'accounting', name: 'Accounting and bookkeeping', category: 'professional-services' },
+		{
+			slug: 'legal-advice',
+			name: 'Legal advice',
+			category: 'professional-services',
+			requiresCredential: true
+		},
+		{ slug: 'photography', name: 'Photography and video', category: 'professional-services' },
+		{ slug: 'graphic-design', name: 'Design', category: 'professional-services' },
+		{ slug: 'web-development', name: 'Web and software', category: 'professional-services' },
+		{ slug: 'social-media', name: 'Social media', category: 'professional-services' },
+		{ slug: 'fundraising', name: 'Fundraising', category: 'professional-services' },
+		{ slug: 'grant-writing', name: 'Grant writing', category: 'professional-services' },
+		{ slug: 'admin-support', name: 'Office and admin support', category: 'professional-services' },
+
+		// Languages
+		{ slug: 'amharic', name: 'Amharic', category: 'languages' },
+		{ slug: 'afaan-oromo', name: 'Afaan Oromo', category: 'languages' },
+		{ slug: 'tigrinya', name: 'Tigrinya', category: 'languages' },
+		{ slug: 'somali', name: 'Somali', category: 'languages' },
+		{ slug: 'english', name: 'English', category: 'languages' },
+		{ slug: 'arabic', name: 'Arabic', category: 'languages' },
+		{ slug: 'sign-language', name: 'Ethiopian sign language', category: 'languages' },
+		{ slug: 'translation', name: 'Translation and interpreting', category: 'languages' }
+	];
+
+	for (const [index, skill] of skills.entries()) {
+		await db
+			.insert(schema.volunteerSkills)
+			.values({
+				slug: skill.slug,
+				name: skill.name,
+				hint: skill.hint ?? null,
+				requiresCredential: skill.requiresCredential ?? false,
+				categoryId: categoryIds.get(skill.category) ?? null,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.volunteerSkills.slug });
+	}
+
+	// A weekday-morning / afternoon / evening grid plus the weekend, which is
+	// when most of the work actually happens. `dayOfWeek` is 0 = Sunday.
+	const DAYS = [
+		{ index: 1, name: 'Monday' },
+		{ index: 2, name: 'Tuesday' },
+		{ index: 3, name: 'Wednesday' },
+		{ index: 4, name: 'Thursday' },
+		{ index: 5, name: 'Friday' },
+		{ index: 6, name: 'Saturday' },
+		{ index: 0, name: 'Sunday' }
+	];
+
+	const PARTS = [
+		{ key: 'morning', label: 'Morning', start: '08:00', end: '12:00' },
+		{ key: 'afternoon', label: 'Afternoon', start: '12:00', end: '17:00' },
+		{ key: 'evening', label: 'Evening', start: '17:00', end: '20:00' }
+	];
+
+	const slots = DAYS.flatMap((day) =>
+		PARTS.map((part) => ({
+			slug: `${day.name.toLowerCase()}-${part.key}`,
+			label: part.label,
+			dayOfWeek: day.index,
+			startTime: part.start,
+			endTime: part.end,
+			description: null as string | null
+		}))
+	);
+
+	// Two dayless slots, for the volunteers whose usefulness is not a weekday.
+	slots.push(
+		{
+			slug: 'on-call',
+			label: 'On call',
+			dayOfWeek: null as never,
+			startTime: null as never,
+			endTime: null as never,
+			description: 'Ring me when something comes up and I will come if I can.'
+		},
+		{
+			slug: 'flexible',
+			label: 'Flexible',
+			dayOfWeek: null as never,
+			startTime: null as never,
+			endTime: null as never,
+			description: 'My hours move around; ask me.'
+		}
+	);
+
+	for (const [index, slot] of slots.entries()) {
+		await db
+			.insert(schema.volunteerTimeSlots)
+			.values({ ...slot, sortOrder: index })
+			.onConflictDoNothing({ target: schema.volunteerTimeSlots.slug });
+	}
+
+	const HEALTH_AUTHORITY = 'Ethiopian Food and Drug Authority';
+	const professions = [
+		{ slug: 'general-practitioner', name: 'General practitioner', category: 'medical' as const },
+		{ slug: 'specialist-physician', name: 'Specialist physician', category: 'medical' as const },
+		{ slug: 'surgeon', name: 'Surgeon', category: 'medical' as const },
+		{ slug: 'paediatrician', name: 'Paediatrician', category: 'medical' as const },
+		{ slug: 'nurse', name: 'Nurse', category: 'medical' as const },
+		{ slug: 'midwife', name: 'Midwife', category: 'medical' as const },
+		{ slug: 'pharmacist', name: 'Pharmacist', category: 'medical' as const },
+		{ slug: 'dentist', name: 'Dentist', category: 'medical' as const },
+		{ slug: 'optometrist', name: 'Optometrist', category: 'medical' as const },
+		{ slug: 'psychiatrist', name: 'Psychiatrist', category: 'mental_health' as const },
+		{
+			slug: 'clinical-psychologist',
+			name: 'Clinical psychologist',
+			category: 'mental_health' as const
+		},
+		{ slug: 'counsellor', name: 'Counsellor', category: 'mental_health' as const },
+		{ slug: 'psychiatric-nurse', name: 'Psychiatric nurse', category: 'mental_health' as const },
+		{ slug: 'social-worker', name: 'Social worker', category: 'mental_health' as const },
+		{ slug: 'physiotherapist', name: 'Physiotherapist', category: 'allied_health' as const },
+		{
+			slug: 'occupational-therapist',
+			name: 'Occupational therapist',
+			category: 'allied_health' as const
+		},
+		{ slug: 'nutritionist', name: 'Nutritionist or dietitian', category: 'allied_health' as const },
+		{
+			slug: 'laboratory-technologist',
+			name: 'Laboratory technologist',
+			category: 'allied_health' as const
+		},
+		{ slug: 'radiographer', name: 'Radiographer', category: 'allied_health' as const },
+		{
+			slug: 'health-officer',
+			name: 'Health officer',
+			category: 'public_health' as const
+		},
+		{
+			slug: 'community-health-worker',
+			name: 'Community health worker',
+			category: 'public_health' as const,
+			// Trained, but not licensed — the one row where the licence fields
+			// are genuinely optional.
+			requiresLicense: false
+		},
+		{
+			slug: 'lawyer',
+			name: 'Lawyer',
+			category: 'other' as const,
+			licensingBody: 'Federal Ministry of Justice'
+		}
+	];
+
+	for (const [index, profession] of professions.entries()) {
+		await db
+			.insert(schema.volunteerProfessions)
+			.values({
+				slug: profession.slug,
+				name: profession.name,
+				category: profession.category,
+				requiresLicense: 'requiresLicense' in profession ? profession.requiresLicense! : true,
+				defaultLicensingBody:
+					'licensingBody' in profession ? profession.licensingBody! : HEALTH_AUTHORITY,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.volunteerProfessions.slug });
+	}
+
+	console.log(
+		`✓ volunteer catalogue — ${skills.length} skills, ${slots.length} time slots, ${professions.length} professions`
+	);
+}
+
+/* ==========================================================================
+   Apply — languages and the kinds of help people ask for
+   ========================================================================== */
+
+/**
+ * The vocabulary behind `/apply`.
+ *
+ * `languages` is what an applicant's own words are written in, not a UI
+ * language — v1 renders in English only. It exists so someone told to write in
+ * whatever language they are comfortable in does not then land with a
+ * caseworker who cannot read it.
+ *
+ * The needs list is what makes "how many families are asking for school fees
+ * this term" a query. Each need can name the pillar it routes to, so an
+ * applicant never has to work out which of four programmes owns their problem.
+ */
+async function seedApply() {
+	const languageRows = [
+		{ slug: 'amharic', name: 'Amharic', nativeName: 'አማርኛ' },
+		{ slug: 'afaan-oromo', name: 'Afaan Oromo', nativeName: 'Afaan Oromoo' },
+		{ slug: 'tigrinya', name: 'Tigrinya', nativeName: 'ትግርኛ' },
+		{ slug: 'somali', name: 'Somali', nativeName: 'Soomaali' },
+		{ slug: 'afar', name: 'Afar', nativeName: 'Qafar af' },
+		{ slug: 'sidamo', name: 'Sidamo', nativeName: 'Sidaamu afoo' },
+		{ slug: 'wolaytta', name: 'Wolaytta', nativeName: 'Wolaittattuwa' },
+		{ slug: 'english', name: 'English', nativeName: 'English' },
+		{ slug: 'arabic', name: 'Arabic', nativeName: 'العربية' }
+	];
+
+	for (const [index, language] of languageRows.entries()) {
+		await db
+			.insert(schema.languages)
+			.values({ ...language, sortOrder: index })
+			.onConflictDoNothing({ target: schema.languages.slug });
+	}
+
+	const categories = [
+		{
+			slug: 'health',
+			name: 'Health and medical',
+			icon: 'Stethoscope',
+			description: 'Treatment, medicine, and getting to it.'
+		},
+		{ slug: 'daily-living', name: 'Daily living', icon: 'Home' },
+		{ slug: 'education', name: 'School and learning', icon: 'GraduationCap' },
+		{ slug: 'wellbeing', name: 'Mental health and wellbeing', icon: 'HeartPulse' },
+		{ slug: 'elder', name: 'Care for an older person', icon: 'HandHeart' }
+	];
+
+	for (const [index, category] of categories.entries()) {
+		await db
+			.insert(schema.assistanceNeedCategories)
+			.values({ ...category, sortOrder: index })
+			.onConflictDoNothing({ target: schema.assistanceNeedCategories.slug });
+	}
+
+	const categoryIds = new Map(
+		(
+			await db
+				.select({
+					id: schema.assistanceNeedCategories.id,
+					slug: schema.assistanceNeedCategories.slug
+				})
+				.from(schema.assistanceNeedCategories)
+		).map((row) => [row.slug, row.id])
+	);
+
+	const pillarIds = new Map(
+		(
+			await db.select({ id: schema.pillars.id, slug: schema.pillars.slug }).from(schema.pillars)
+		).map((row) => [row.slug, row.id])
+	);
+
+	const needs: {
+		slug: string;
+		name: string;
+		category: string;
+		pillar?: string;
+		description?: string;
+		evidenceHint?: string;
+	}[] = [
+		// Health
+		{
+			slug: 'medicine',
+			name: 'Medicine or prescriptions',
+			category: 'health',
+			pillar: 'medical-hardship',
+			evidenceHint: 'A prescription or a photograph of one'
+		},
+		{
+			slug: 'hospital-bill',
+			name: 'A hospital bill',
+			category: 'health',
+			pillar: 'medical-hardship',
+			evidenceHint: 'The bill or estimate from the hospital'
+		},
+		{
+			slug: 'surgery',
+			name: 'Surgery or a procedure',
+			category: 'health',
+			pillar: 'medical-hardship',
+			evidenceHint: 'A letter from the doctor saying what is needed'
+		},
+		{
+			slug: 'diagnostics',
+			name: 'Tests or scans',
+			category: 'health',
+			pillar: 'medical-hardship'
+		},
+		{
+			slug: 'chronic-care',
+			name: 'Ongoing treatment for a long-term illness',
+			category: 'health',
+			pillar: 'medical-hardship'
+		},
+		{
+			slug: 'medical-equipment',
+			name: 'Equipment — a wheelchair, crutches, glasses',
+			category: 'health',
+			pillar: 'medical-hardship'
+		},
+		{
+			slug: 'transport-to-treatment',
+			name: 'Getting to treatment',
+			category: 'health',
+			pillar: 'medical-hardship',
+			description: 'Transport to a hospital or clinic, including from outside Addis.'
+		},
+
+		// Daily living
+		{ slug: 'food', name: 'Food', category: 'daily-living' },
+		{ slug: 'rent', name: 'Rent or somewhere to stay', category: 'daily-living' },
+		{ slug: 'utilities', name: 'Water or electricity', category: 'daily-living' },
+		{ slug: 'clothing', name: 'Clothes or bedding', category: 'daily-living' },
+		{
+			slug: 'funeral',
+			name: 'Funeral costs',
+			category: 'daily-living'
+		},
+
+		// Education
+		{
+			slug: 'school-fees',
+			name: 'School fees',
+			category: 'education',
+			pillar: 'youth-education',
+			evidenceHint: 'A fee statement or letter from the school'
+		},
+		{
+			slug: 'school-materials',
+			name: 'Books, uniform or materials',
+			category: 'education',
+			pillar: 'youth-education'
+		},
+		{
+			slug: 'exam-fees',
+			name: 'Exam or registration fees',
+			category: 'education',
+			pillar: 'youth-education'
+		},
+		{
+			slug: 'tutoring',
+			name: 'Tutoring or extra help with study',
+			category: 'education',
+			pillar: 'youth-education'
+		},
+		{
+			slug: 'university-support',
+			name: 'University or college costs',
+			category: 'education',
+			pillar: 'youth-education'
+		},
+
+		// Wellbeing
+		{
+			slug: 'counselling',
+			name: 'Someone to talk to',
+			category: 'wellbeing',
+			pillar: 'mental-wellness',
+			description: 'Counselling or ongoing support. You do not have to explain why here.'
+		},
+		{
+			slug: 'psychiatric-care',
+			name: 'Psychiatric care or medication',
+			category: 'wellbeing',
+			pillar: 'mental-wellness'
+		},
+		{
+			slug: 'bereavement',
+			name: 'Support after losing someone',
+			category: 'wellbeing',
+			pillar: 'mental-wellness'
+		},
+
+		// Elder
+		{
+			slug: 'elder-visits',
+			name: 'Someone to visit regularly',
+			category: 'elder',
+			pillar: 'elder-care'
+		},
+		{
+			slug: 'elder-home-help',
+			name: 'Help around the house',
+			category: 'elder',
+			pillar: 'elder-care'
+		},
+		{
+			slug: 'elder-essentials',
+			name: 'Food or essentials for an older person',
+			category: 'elder',
+			pillar: 'elder-care'
+		}
+	];
+
+	for (const [index, need] of needs.entries()) {
+		await db
+			.insert(schema.assistanceNeeds)
+			.values({
+				slug: need.slug,
+				name: need.name,
+				description: need.description ?? null,
+				evidenceHint: need.evidenceHint ?? null,
+				categoryId: categoryIds.get(need.category) ?? null,
+				pillarId: need.pillar ? (pillarIds.get(need.pillar) ?? null) : null,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.assistanceNeeds.slug });
+	}
+
+	// The form definition an application with no pillar lands against. It is a
+	// real `form_definitions` row because `form_submissions.form_definition_id`
+	// is NOT NULL and the case screens join through it — but it carries no
+	// fields, because `/apply` asks the questions itself.
+	await db
+		.insert(schema.formDefinitions)
+		.values({
+			slug: 'assistance-application',
+			name: 'Assistance application',
+			pillarId: null,
+			title: 'Apply for support',
+			introText: 'For yourself, or for someone you are looking out for.',
+			successMessage:
+				'We have your application. Someone will read it and be in touch — keep your reference number.',
+			requiresDocuments: false,
+			isLowBarrier: true,
+			referencePrefix: 'APP',
+			statusContext: 'application',
+			sortOrder: 0
+		})
+		.onConflictDoNothing({ target: schema.formDefinitions.slug });
+
+	console.log(`✓ apply — ${languageRows.length} languages, ${needs.length} kinds of help`);
+}
+
+/* ==========================================================================
+   Contact — enquiry topics and offices
+   ========================================================================== */
+
+/**
+ * The topics `/contact` offers and the address beside the form.
+ *
+ * Each topic carries its own routing, so redirecting press enquiries to the
+ * communications lead is an edit on the Enquiry topics screen rather than a
+ * code change. Seeded once, keyed on slug; a staff member's edits survive a
+ * re-run like every other catalogue here.
+ */
+async function seedContact() {
+	const bySlug = new Map(
+		(
+			await db.select({ id: schema.pillars.id, slug: schema.pillars.slug }).from(schema.pillars)
+		).map((row) => [row.slug, row.id])
+	);
+
+	const subjects: {
+		slug: string;
+		name: string;
+		description?: string;
+		icon?: string;
+		targetResponseHours?: number;
+		publicResponseNote?: string;
+		suggestedPillarSlug?: string;
+	}[] = [
+		{
+			slug: 'general',
+			name: 'General question',
+			icon: 'MessageSquare',
+			targetResponseHours: 72,
+			publicResponseNote: 'We usually reply within three working days.'
+		},
+		{
+			slug: 'support',
+			name: 'I need help',
+			description:
+				'If you are asking for assistance for yourself or someone you know, the application form reaches the team that can act on it.',
+			icon: 'HandHeart',
+			targetResponseHours: 24,
+			publicResponseNote:
+				'We treat these as urgent and will come back to you within a working day.',
+			// The Foundation's front door for hardship. Deliberately pointed at
+			// rather than silently converted into an application.
+			suggestedPillarSlug: 'medical-hardship'
+		},
+		{
+			slug: 'donating',
+			name: 'Donating or fundraising',
+			icon: 'HeartHandshake',
+			targetResponseHours: 48
+		},
+		{
+			slug: 'volunteering',
+			name: 'Volunteering',
+			description: 'Questions about volunteering. To apply, use the volunteer form.',
+			icon: 'Users',
+			targetResponseHours: 72
+		},
+		{
+			slug: 'partnership',
+			name: 'Partnership',
+			icon: 'Handshake',
+			targetResponseHours: 72
+		},
+		{ slug: 'press', name: 'Press and media', icon: 'Newspaper', targetResponseHours: 24 },
+		{
+			slug: 'safeguarding',
+			name: 'A safeguarding concern',
+			description:
+				'Anything about the conduct of someone connected to the Foundation. Read by a senior staff member, not the general inbox.',
+			icon: 'ShieldAlert',
+			targetResponseHours: 24,
+			publicResponseNote: 'This goes straight to a senior staff member and is treated as urgent.'
+		},
+		{ slug: 'other', name: 'Something else', icon: 'CircleEllipsis' }
+	];
+
+	for (const [index, subject] of subjects.entries()) {
+		await db
+			.insert(schema.contactSubjects)
+			.values({
+				slug: subject.slug,
+				name: subject.name,
+				description: subject.description ?? null,
+				icon: subject.icon ?? null,
+				targetResponseHours: subject.targetResponseHours ?? null,
+				publicResponseNote: subject.publicResponseNote ?? null,
+				suggestedPillarId: subject.suggestedPillarSlug
+					? (bySlug.get(subject.suggestedPillarSlug) ?? null)
+					: null,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.contactSubjects.slug });
+	}
+
+	// One office, built from the `contact.*` settings so a fresh install shows
+	// the same address on the page whichever of the two it reads.
+	const [defaultRegion] = await db
+		.select({ id: schema.regions.id })
+		.from(schema.regions)
+		.where(eq(schema.regions.isDefault, true))
+		.limit(1);
+
+	await db
+		.insert(schema.contactOffices)
+		.values({
+			slug: 'head-office',
+			name: 'Head office',
+			addressLine: 'Bole',
+			city: 'Addis Ababa',
+			regionId: defaultRegion?.id ?? null,
+			phone: '+251 91 234 5678',
+			email: 'hello@saf.org',
+			openingHours: 'Monday to Friday, 9am to 5pm',
+			isPrimary: true,
+			sortOrder: 0
+		})
+		.onConflictDoNothing({ target: schema.contactOffices.slug });
+
+	// Messages carried over from `form_submissions` by migration 0012 arrive
+	// with no status, because the status they had belonged to the application
+	// vocabulary. Give them the default contact status now that one exists.
+	const [defaultContactStatus] = await db
+		.select({ id: schema.statusOptions.id })
+		.from(schema.statusOptions)
+		.where(
+			sql`${schema.statusOptions.context} = 'contact' and ${schema.statusOptions.isDefault} = 1`
+		)
+		.limit(1);
+
+	if (defaultContactStatus) {
+		await db
+			.update(schema.contactMessages)
+			.set({ statusId: defaultContactStatus.id })
+			.where(sql`${schema.contactMessages.statusId} is null`);
+	}
+
+	// Best-effort topic matching for those same migrated rows: the old form
+	// stored a slug like "partner" in `subject_other`, and most of them line up
+	// with a topic here. Anything that does not match keeps its free text.
+	const legacy: Record<string, string> = {
+		general: 'general',
+		donate: 'donating',
+		partner: 'partnership',
+		press: 'press',
+		other: 'other'
+	};
+
+	for (const [oldValue, newSlug] of Object.entries(legacy)) {
+		const [subject] = await db
+			.select({ id: schema.contactSubjects.id })
+			.from(schema.contactSubjects)
+			.where(eq(schema.contactSubjects.slug, newSlug))
+			.limit(1);
+		if (!subject) continue;
+
+		await db
+			.update(schema.contactMessages)
+			.set({ subjectId: subject.id, subjectOther: null })
+			.where(
+				sql`${schema.contactMessages.subjectId} is null and ${schema.contactMessages.subjectOther} = ${oldValue}`
+			);
+	}
+
+	console.log(`✓ contact — ${subjects.length} enquiry topics, 1 office`);
 }
 
 /* ==========================================================================
@@ -2381,6 +3160,9 @@ async function main() {
 	await seedPayments();
 	await seedDonationCampaigns();
 	await seedSafeguarding();
+	await seedVolunteerCatalog();
+	await seedApply();
+	await seedContact();
 	await seedTranslations();
 	await seedMedia();
 	await seedAboutPage();

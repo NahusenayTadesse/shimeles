@@ -8,7 +8,8 @@
 	import SafeguardingCell from './safeguarding-cell.svelte';
 	import { column, indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
-	import { ShieldAlert } from '@lucide/svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
+	import { ShieldAlert, Stethoscope } from '@lucide/svelte';
 
 	let { data } = $props();
 
@@ -26,8 +27,30 @@
 	const blockedCount = $derived(data.rows.filter((row) => !row.safeguardingComplete).length);
 
 	const hasFilters = $derived(
-		Boolean(data.filters.search || data.filters.statusId || data.filters.blocked)
+		Boolean(
+			data.filters.search ||
+			data.filters.statusId ||
+			data.filters.blocked ||
+			data.filters.skillId ||
+			data.filters.slotId ||
+			data.filters.professional
+		)
 	);
+
+	const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+	const skillItems = $derived([
+		{ value: '', name: 'Any skill' },
+		...data.skillOptions.map((skill) => ({ value: String(skill.id), name: skill.name }))
+	]);
+
+	const slotItems = $derived([
+		{ value: '', name: 'Any time' },
+		...data.slotOptions.map((slot) => ({
+			value: String(slot.id),
+			name: slot.dayOfWeek === null ? slot.label : `${DAY_NAMES[slot.dayOfWeek]} ${slot.label}`
+		}))
+	]);
 
 	const columns = [
 		indexColumn,
@@ -37,7 +60,10 @@
 			id: 'status',
 			header: 'Status',
 			cell: ({ row }: any) =>
-				renderComponent(StatusBadge, { label: row.original.statusLabel, color: row.original.statusColor })
+				renderComponent(StatusBadge, {
+					label: row.original.statusLabel,
+					color: row.original.statusColor
+				})
 		},
 		{
 			id: 'safeguarding',
@@ -106,6 +132,34 @@
 			>
 				<ShieldAlert class="size-4" /> Safeguarding incomplete ({blockedCount})
 			</Button>
+
+			<Button
+				variant={data.filters.professional ? 'default' : 'outline'}
+				size="sm"
+				onclick={() => applyFilter('professional', data.filters.professional ? null : '1')}
+			>
+				<Stethoscope class="size-4" /> Licensed professionals
+			</Button>
+
+			<!-- The pair of questions the catalogue tables were built to answer:
+			     who can do this, and who is free then. -->
+			<div class="w-48">
+				<SelectComp
+					name="skill"
+					items={skillItems}
+					value={data.filters.skillId ?? ''}
+					onValueChange={(value: string) => applyFilter('skill', value || null)}
+				/>
+			</div>
+
+			<div class="w-44">
+				<SelectComp
+					name="slot"
+					items={slotItems}
+					value={data.filters.slotId ?? ''}
+					onValueChange={(value: string) => applyFilter('slot', value || null)}
+				/>
+			</div>
 		{/snippet}
 	</FilterBar>
 

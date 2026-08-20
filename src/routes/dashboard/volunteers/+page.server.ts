@@ -1,6 +1,15 @@
-import { and, desc, eq, isNull, like, or, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, or, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { regions, statusOptions, user, volunteerApplications } from '$lib/server/db/schema';
+import {
+	regions,
+	statusOptions,
+	user,
+	volunteerApplications,
+	volunteerApplicationSkills,
+	volunteerAvailability,
+	volunteerSkills,
+	volunteerTimeSlots
+} from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { auditList } from '$lib/server/audit';
@@ -19,6 +28,9 @@ export const load: PageServerLoad = async (event) => {
 	const search = event.url.searchParams.get('q')?.trim() ?? '';
 	const statusId = event.url.searchParams.get('status');
 	const blocked = event.url.searchParams.get('blocked') === '1';
+	const skillId = event.url.searchParams.get('skill');
+	const slotId = event.url.searchParams.get('slot');
+	const professional = event.url.searchParams.get('professional') === '1';
 
 	const clauses: (SQL | undefined)[] = [isNull(volunteerApplications.deletedAt)];
 
@@ -26,6 +38,34 @@ export const load: PageServerLoad = async (event) => {
 	// "Blocked" is the coordinator's real working queue: everyone who cannot be
 	// approved yet because their safeguarding checklist is incomplete.
 	if (blocked) clauses.push(eq(volunteerApplications.safeguardingChecklistComplete, false));
+	if (professional) clauses.push(eq(volunteerApplications.isProfessional, true));
+
+	// The question the catalogue tables exist to answer: who can do this, and
+	// who is free then. Both are subqueries against the join tables rather than
+	// a `LIKE` over free text (§3.6).
+	if (skillId) {
+		clauses.push(
+			inArray(
+				volunteerApplications.id,
+				db
+					.select({ id: volunteerApplicationSkills.volunteerApplicationId })
+					.from(volunteerApplicationSkills)
+					.where(eq(volunteerApplicationSkills.skillId, Number(skillId)))
+			)
+		);
+	}
+
+	if (slotId) {
+		clauses.push(
+			inArray(
+				volunteerApplications.id,
+				db
+					.select({ id: volunteerAvailability.volunteerApplicationId })
+					.from(volunteerAvailability)
+					.where(eq(volunteerAvailability.timeSlotId, Number(slotId)))
+			)
+		);
+	}
 	if (search) {
 		const needle = `%${search}%`;
 		clauses.push(
@@ -38,7 +78,7 @@ export const load: PageServerLoad = async (event) => {
 		);
 	}
 
-	const [rows, statuses] = await Promise.all([
+	const [rows, statuses, skillOptions, slotOptions] = await Promise.all([
 		db
 			.select({
 				id: volunteerApplications.id,
@@ -67,10 +107,40 @@ export const load: PageServerLoad = async (event) => {
 			.orderBy(desc(volunteerApplications.createdAt))
 			.limit(500),
 
-		listStatuses('volunteer')
+		listStatuses('volunteer'),
+
+		db
+			.select({ id: volunteerSkills.id, name: volunteerSkills.name })
+			.from(volunteerSkills)
+			.where(and(eq(volunteerSkills.isActive, true), isNull(volunteerSkills.deletedAt)))
+			.orderBy(asc(volunteerSkills.sortOrder), asc(volunteerSkills.id)),
+
+		db
+			.select({
+				id: volunteerTimeSlots.id,
+				label: volunteerTimeSlots.label,
+				dayOfWeek: volunteerTimeSlots.dayOfWeek
+			})
+			.from(volunteerTimeSlots)
+			.where(and(eq(volunteerTimeSlots.isActive, true), isNull(volunteerTimeSlots.deletedAt)))
+			.orderBy(asc(volunteerTimeSlots.sortOrder), asc(volunteerTimeSlots.id))
 	]);
 
-	auditList(event, 'volunteer_application', { search, statusId, blocked, results: rows.length });
+	auditList(event, 'volunteer_application', {
+		search,
+		statusId,
+		blocked,
+		skillId,
+		slotId,
+		professional,
+		results: rows.length
+	});
 
-	return { rows, statuses, filters: { search, statusId, blocked } };
+	return {
+		rows,
+		statuses,
+		skillOptions,
+		slotOptions,
+		filters: { search, statusId, blocked, skillId, slotId, professional }
+	};
 };

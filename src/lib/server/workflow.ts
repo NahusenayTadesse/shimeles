@@ -47,7 +47,7 @@ export const CLOSED_STAGES: ApplicationStage[] = ['declined', 'closed'];
 
 export interface StatusRow {
 	id: number;
-	context: 'application' | 'volunteer' | 'donation';
+	context: 'application' | 'volunteer' | 'donation' | 'contact';
 	stage: string;
 	label: string;
 	color: string;
@@ -55,7 +55,7 @@ export interface StatusRow {
 	sortOrder: number;
 }
 
-export const listStatuses = (context: 'application' | 'volunteer' | 'donation') =>
+export const listStatuses = (context: 'application' | 'volunteer' | 'donation' | 'contact') =>
 	cached(`statuses:${context}`, () =>
 		db
 			.select({
@@ -82,14 +82,14 @@ export const invalidateStatuses = () => invalidate('statuses');
 
 /** The status a new record lands on. Falls back to the first by sort order. */
 export async function defaultStatus(
-	context: 'application' | 'volunteer' | 'donation'
+	context: 'application' | 'volunteer' | 'donation' | 'contact'
 ): Promise<StatusRow | null> {
 	const rows = await listStatuses(context);
 	return rows.find((row) => row.isDefault) ?? rows[0] ?? null;
 }
 
 async function statusById(id: number): Promise<StatusRow | null> {
-	for (const context of ['application', 'volunteer', 'donation'] as const) {
+	for (const context of ['application', 'volunteer', 'donation', 'contact'] as const) {
 		const found = (await listStatuses(context)).find((row) => row.id === id);
 		if (found) return found;
 	}

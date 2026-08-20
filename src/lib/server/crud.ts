@@ -295,6 +295,9 @@ export const optionalIdField = z
 /** A required foreign key from a Select. */
 export const idField = z.coerce.number().int().positive('Required');
 
+/** Re-exported so a schema needs only one import. See `$lib/forms/fields`. */
+export { optionalNumberField } from '$lib/forms/fields';
+
 /** Money entered in birr, stored in santim. See `$lib/money`. */
 export const moneyField = z.coerce
 	.number()

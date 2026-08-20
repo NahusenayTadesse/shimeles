@@ -1,6 +1,11 @@
 import { sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { donations, formSubmissions, volunteerApplications } from '$lib/server/db/schema';
+import {
+	contactMessages,
+	donations,
+	formSubmissions,
+	volunteerApplications
+} from '$lib/server/db/schema';
 
 /**
  * Human-readable reference numbers — `SAF-MED-2026-0142`.
@@ -63,6 +68,18 @@ export function nextVolunteerReference(): string {
 }
 
 /**
+ * Contact messages moved out of `form_submissions` into their own table, and
+ * their `MSG` series moved with them. The series is continuous across that
+ * move because the migration copied the old references over, so the next
+ * number follows the last one a sender was actually given.
+ */
+export function nextContactReference(): string {
+	const year = YEAR();
+	const pattern = `SAF-MSG-${year}-`;
+	return format('MSG', year, nextSequence(pattern, 'reference_number', 'contact_messages'));
+}
+
+/**
  * The code a bank-transfer donor writes on their transfer so finance can match
  * it. Uses `DON` and the same year-scoped series; it is the single string that
  * ties a statement line to a pledge.
@@ -86,4 +103,4 @@ export const REFERENCE_PATTERN = /^SAF-[A-Z0-9]{1,6}-\d{4}-\d{4}$/;
 
 /** Type-only re-exports so callers get autocompletion on the tables involved. */
 export type ReferencedTable =
-	typeof formSubmissions | typeof volunteerApplications | typeof donations;
+	typeof formSubmissions | typeof volunteerApplications | typeof donations | typeof contactMessages;

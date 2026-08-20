@@ -1,6 +1,9 @@
-import { and, desc, eq, isNotNull, isNull, like, or, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, notInArray, or, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
+	applicationNeeds,
+	applicationSubjects,
+	assistanceNeeds,
 	formDefinitions,
 	formSubmissions,
 	pillars,
@@ -32,18 +35,49 @@ export const load: PageServerLoad = async (event) => {
 	const statusId = url.searchParams.get('status');
 	const pillarId = url.searchParams.get('pillar');
 	const mine = url.searchParams.get('mine') === '1';
+	const needId = url.searchParams.get('need');
+	const unassignedPillar = url.searchParams.get('untriaged') === '1';
 
 	const clauses: (SQL | undefined)[] = [
 		isNull(formSubmissions.deletedAt),
 		pillarScope(access, formSubmissions.pillarId),
-		// Contact-form messages carry no pillar and belong on /dashboard/messages.
-		// The board is for assistance applications, which always have one.
-		isNotNull(formSubmissions.pillarId)
+		// Was `pillar_id is not null`, to keep contact-form messages off the
+		// board. Messages have their own table now, and that filter had become
+		// actively harmful: an application from someone who answered "I am not
+		// sure which programme" also carries no pillar, and would have been
+		// invisible here — the one case most in need of a human triaging it.
+		// Keeps the legacy contact-form submissions off the board. They were
+		// copied into `contact_messages` by migration 0012 and the originals left
+		// in place, so they are still rows here — excluded by which form they
+		// came from, which is the actual question, rather than by whether they
+		// have a pillar.
+		notInArray(
+			formSubmissions.formDefinitionId,
+			db
+				.select({ id: formDefinitions.id })
+				.from(formDefinitions)
+				.where(eq(formDefinitions.slug, 'contact-form'))
+		)
 	];
 
 	if (statusId) clauses.push(eq(formSubmissions.statusId, Number(statusId)));
 	if (pillarId) clauses.push(eq(formSubmissions.pillarId, Number(pillarId)));
+	if (unassignedPillar) clauses.push(isNull(formSubmissions.pillarId));
 	if (mine) clauses.push(eq(formSubmissions.assignedReviewerId, access.userId));
+
+	// The question the needs catalogue exists to answer: who is asking for
+	// school fees this term.
+	if (needId) {
+		clauses.push(
+			inArray(
+				formSubmissions.id,
+				db
+					.select({ id: applicationNeeds.formSubmissionId })
+					.from(applicationNeeds)
+					.where(eq(applicationNeeds.needId, Number(needId)))
+			)
+		);
+	}
 	if (search) {
 		const needle = `%${search}%`;
 		clauses.push(
@@ -58,7 +92,7 @@ export const load: PageServerLoad = async (event) => {
 
 	const where = and(...(clauses.filter(Boolean) as SQL[]));
 
-	const [rows, statuses, pillarOptions, regionOptions, reviewers] = await Promise.all([
+	const [rows, statuses, pillarOptions, regionOptions, reviewers, needOptions] = await Promise.all([
 		db
 			.select({
 				id: formSubmissions.id,
@@ -79,7 +113,11 @@ export const load: PageServerLoad = async (event) => {
 				pillarColor: pillars.color,
 				formName: formDefinitions.name,
 				regionName: regions.name,
-				reviewerName: user.name
+				reviewerName: user.name,
+				// Present only for applications taken through `/apply`.
+				subjectName: applicationSubjects.fullName,
+				applyingFor: applicationSubjects.applyingFor,
+				safeToContact: applicationSubjects.safeToContact
 			})
 			.from(formSubmissions)
 			.leftJoin(statusOptions, eq(statusOptions.id, formSubmissions.statusId))
@@ -87,6 +125,7 @@ export const load: PageServerLoad = async (event) => {
 			.leftJoin(formDefinitions, eq(formDefinitions.id, formSubmissions.formDefinitionId))
 			.leftJoin(regions, eq(regions.id, formSubmissions.regionId))
 			.leftJoin(user, eq(user.id, formSubmissions.assignedReviewerId))
+			.leftJoin(applicationSubjects, eq(applicationSubjects.formSubmissionId, formSubmissions.id))
 			.where(where)
 			// Urgent first within a column, then newest.
 			.orderBy(desc(formSubmissions.createdAt))
@@ -106,12 +145,26 @@ export const load: PageServerLoad = async (event) => {
 			.from(regions)
 			.where(isNull(regions.deletedAt)),
 
-		db.select({ id: user.id, name: user.name }).from(user)
+		db.select({ id: user.id, name: user.name }).from(user),
+
+		db
+			.select({ id: assistanceNeeds.id, name: assistanceNeeds.name })
+			.from(assistanceNeeds)
+			.where(and(eq(assistanceNeeds.isActive, true), isNull(assistanceNeeds.deletedAt)))
+			.orderBy(asc(assistanceNeeds.sortOrder), asc(assistanceNeeds.id))
 	]);
 
 	// One audit row per screen load with the filters used, rather than one per
 	// case shown — §3.11 wants to know who looked, not to drown in rows.
-	auditList(event, 'form_submission', { search, statusId, pillarId, mine, results: rows.length });
+	auditList(event, 'form_submission', {
+		search,
+		statusId,
+		pillarId,
+		needId,
+		mine,
+		untriaged: unassignedPillar,
+		results: rows.length
+	});
 
 	return {
 		rows,
@@ -121,6 +174,7 @@ export const load: PageServerLoad = async (event) => {
 			: pillarOptions,
 		regionOptions,
 		reviewers,
-		filters: { search, statusId, pillarId, mine }
+		needOptions,
+		filters: { search, statusId, pillarId, needId, mine, untriaged: unassignedPillar }
 	};
 };

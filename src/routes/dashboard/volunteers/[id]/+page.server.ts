@@ -7,9 +7,18 @@ import {
 	statusOptions,
 	user,
 	volunteerApplications,
+	volunteerApplicationSkills,
+	volunteerAvailability,
+	volunteerCredentials,
+	volunteerInterests,
 	volunteerPlacements,
+	volunteerProfessions,
+	volunteerReferences,
 	volunteerSafeguardingChecklistItems,
-	volunteerSafeguardingChecks
+	volunteerSafeguardingChecks,
+	volunteerSkillCategories,
+	volunteerSkills,
+	volunteerTimeSlots
 } from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
 import {
@@ -18,6 +27,7 @@ import {
 	recomputeSafeguarding,
 	setVolunteerStatus
 } from '$lib/server/workflow';
+import { recomputeCredentials, recomputeReferences } from '$lib/server/volunteers';
 import { audit } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -41,9 +51,25 @@ export const load: PageServerLoad = async (event) => {
 			fullName: volunteerApplications.fullName,
 			email: volunteerApplications.email,
 			phone: volunteerApplications.phone,
+			city: volunteerApplications.city,
+			dateOfBirth: volunteerApplications.dateOfBirth,
+			gender: volunteerApplications.gender,
+			occupation: volunteerApplications.occupation,
+			emergencyContactName: volunteerApplications.emergencyContactName,
+			emergencyContactPhone: volunteerApplications.emergencyContactPhone,
+			emergencyContactRelationship: volunteerApplications.emergencyContactRelationship,
 			areasOfInterest: volunteerApplications.areasOfInterest,
 			skills: volunteerApplications.skills,
 			availability: volunteerApplications.availability,
+			hoursPerWeek: volunteerApplications.hoursPerWeek,
+			commitmentMonths: volunteerApplications.commitmentMonths,
+			availableFrom: volunteerApplications.availableFrom,
+			motivation: volunteerApplications.motivation,
+			heardAbout: volunteerApplications.heardAbout,
+			hasPriorConviction: volunteerApplications.hasPriorConviction,
+			priorConvictionDetail: volunteerApplications.priorConvictionDetail,
+			backgroundCheckConsentAt: volunteerApplications.backgroundCheckConsentAt,
+			codeOfConductAgreedAt: volunteerApplications.codeOfConductAgreedAt,
 			professionalCredentials: volunteerApplications.professionalCredentials,
 			credentialsVerified: volunteerApplications.credentialsVerified,
 			referencesChecked: volunteerApplications.referencesChecked,
@@ -70,7 +96,19 @@ export const load: PageServerLoad = async (event) => {
 
 	const isProfessional = Boolean(application.professionalCredentials?.trim());
 
-	const [items, completed, statuses, reviewers, pillarRows, placements] = await Promise.all([
+	const [
+		items,
+		completed,
+		statuses,
+		reviewers,
+		pillarRows,
+		placements,
+		claimedSkills,
+		availability,
+		credentials,
+		references,
+		interests
+	] = await Promise.all([
 		db
 			.select()
 			.from(volunteerSafeguardingChecklistItems)
@@ -115,7 +153,105 @@ export const load: PageServerLoad = async (event) => {
 					eq(volunteerPlacements.volunteerApplicationId, id),
 					isNull(volunteerPlacements.deletedAt)
 				)
+			),
+
+		// The catalogue joins. These are what make a volunteer searchable —
+		// see the note at the top of `$lib/server/volunteers`.
+		db
+			.select({
+				id: volunteerApplicationSkills.id,
+				proficiency: volunteerApplicationSkills.proficiency,
+				yearsExperience: volunteerApplicationSkills.yearsExperience,
+				note: volunteerApplicationSkills.note,
+				name: volunteerSkills.name,
+				requiresCredential: volunteerSkills.requiresCredential,
+				categoryName: volunteerSkillCategories.name
+			})
+			.from(volunteerApplicationSkills)
+			.innerJoin(volunteerSkills, eq(volunteerSkills.id, volunteerApplicationSkills.skillId))
+			.leftJoin(
+				volunteerSkillCategories,
+				eq(volunteerSkillCategories.id, volunteerSkills.categoryId)
 			)
+			.where(eq(volunteerApplicationSkills.volunteerApplicationId, id))
+			.orderBy(asc(volunteerSkillCategories.sortOrder), asc(volunteerSkills.sortOrder)),
+
+		db
+			.select({
+				id: volunteerAvailability.id,
+				label: volunteerTimeSlots.label,
+				dayOfWeek: volunteerTimeSlots.dayOfWeek,
+				startTime: volunteerTimeSlots.startTime,
+				endTime: volunteerTimeSlots.endTime,
+				effectiveFrom: volunteerAvailability.effectiveFrom,
+				effectiveUntil: volunteerAvailability.effectiveUntil
+			})
+			.from(volunteerAvailability)
+			.innerJoin(volunteerTimeSlots, eq(volunteerTimeSlots.id, volunteerAvailability.timeSlotId))
+			.where(eq(volunteerAvailability.volunteerApplicationId, id))
+			.orderBy(asc(volunteerTimeSlots.sortOrder)),
+
+		db
+			.select({
+				id: volunteerCredentials.id,
+				professionName: volunteerProfessions.name,
+				professionCategory: volunteerProfessions.category,
+				requiresLicense: volunteerProfessions.requiresLicense,
+				otherProfession: volunteerCredentials.otherProfession,
+				licenseNumber: volunteerCredentials.licenseNumber,
+				licensingBody: volunteerCredentials.licensingBody,
+				specialization: volunteerCredentials.specialization,
+				yearsExperience: volunteerCredentials.yearsExperience,
+				issuedOn: volunteerCredentials.issuedOn,
+				expiresOn: volunteerCredentials.expiresOn,
+				verificationStatus: volunteerCredentials.verificationStatus,
+				verificationNote: volunteerCredentials.verificationNote,
+				verifiedAt: volunteerCredentials.verifiedAt,
+				verifiedByName: user.name
+			})
+			.from(volunteerCredentials)
+			.leftJoin(
+				volunteerProfessions,
+				eq(volunteerProfessions.id, volunteerCredentials.professionId)
+			)
+			.leftJoin(user, eq(user.id, volunteerCredentials.verifiedBy))
+			.where(
+				and(
+					eq(volunteerCredentials.volunteerApplicationId, id),
+					isNull(volunteerCredentials.deletedAt)
+				)
+			)
+			.orderBy(asc(volunteerCredentials.id)),
+
+		db
+			.select({
+				id: volunteerReferences.id,
+				fullName: volunteerReferences.fullName,
+				relationship: volunteerReferences.relationship,
+				organization: volunteerReferences.organization,
+				email: volunteerReferences.email,
+				phone: volunteerReferences.phone,
+				status: volunteerReferences.status,
+				responseNote: volunteerReferences.responseNote,
+				contactedAt: volunteerReferences.contactedAt,
+				contactedByName: user.name
+			})
+			.from(volunteerReferences)
+			.leftJoin(user, eq(user.id, volunteerReferences.contactedBy))
+			.where(
+				and(
+					eq(volunteerReferences.volunteerApplicationId, id),
+					isNull(volunteerReferences.deletedAt)
+				)
+			)
+			.orderBy(asc(volunteerReferences.sortOrder), asc(volunteerReferences.id)),
+
+		db
+			.select({ id: pillars.id, name: pillars.name })
+			.from(volunteerInterests)
+			.innerJoin(pillars, eq(pillars.id, volunteerInterests.pillarId))
+			.where(eq(volunteerInterests.volunteerApplicationId, id))
+			.orderBy(asc(pillars.sortOrder))
 	]);
 
 	audit({
@@ -151,6 +287,17 @@ export const load: PageServerLoad = async (event) => {
 		reviewers,
 		pillarOptions: pillarRows,
 		placements,
+		claimedSkills,
+		availability,
+		credentials,
+		references,
+		// Falls back to the legacy JSON column for applications taken through the
+		// old dynamic form, which have no `volunteer_interests` rows.
+		interests: interests.length
+			? interests
+			: (application.areasOfInterest ?? [])
+					.map((value) => pillarRows.find((pillar) => pillar.id === value))
+					.filter((pillar): pillar is { id: number; name: string } => Boolean(pillar)),
 		isProfessional,
 		canApprove: canApproveVolunteer(application)
 	};
@@ -213,37 +360,187 @@ export const actions: Actions = {
 		return { ok: true };
 	},
 
-	/** Records that a professional volunteer's licence has been verified. */
-	verifyCredentials: async (event) => {
-		await requirePermission(event, 'volunteers.safeguarding');
+	/**
+	 * Records the outcome of checking one licence with its issuing body.
+	 *
+	 * Per credential, not per volunteer: someone may be a verified nurse and an
+	 * unverified counsellor, and the approval gate has to see the difference.
+	 * `recomputeCredentials` folds these rows back into
+	 * `volunteer_applications.credentials_verified`, which is the column
+	 * `setVolunteerStatus` reads — so this is the only way that flag moves for
+	 * an application that has credential rows.
+	 */
+	verifyCredential: async (event) => {
+		const access = await requirePermission(event, 'volunteers.safeguarding');
 		const id = Number(event.params.id);
 		const formData = await event.request.formData();
-		const verified = String(formData.get('verified')) === 'true';
+		const credentialId = Number(formData.get('credentialId'));
+		const status = String(formData.get('status') ?? '');
+		const note = String(formData.get('note') ?? '').trim();
+
+		if (!Number.isFinite(credentialId)) return fail(400, { error: 'Unknown credential.' });
+		if (!['pending', 'verified', 'rejected', 'expired'].includes(status)) {
+			return fail(400, { error: 'That is not a verification outcome.' });
+		}
+
+		// Scoped to this application, so a posted id from another volunteer's
+		// file cannot be verified through this route.
+		const [credential] = await db
+			.select({ id: volunteerCredentials.id })
+			.from(volunteerCredentials)
+			.where(
+				and(
+					eq(volunteerCredentials.id, credentialId),
+					eq(volunteerCredentials.volunteerApplicationId, id)
+				)
+			)
+			.limit(1);
+
+		if (!credential) return fail(404, { error: 'That credential is not on this application.' });
 
 		await db
-			.update(volunteerApplications)
-			.set({ credentialsVerified: verified, updatedAt: new Date() })
-			.where(eq(volunteerApplications.id, id));
+			.update(volunteerCredentials)
+			.set({
+				verificationStatus: status as 'pending' | 'verified' | 'rejected' | 'expired',
+				verificationNote: note || null,
+				// Cleared when the outcome is walked back to pending: "checked by
+				// whom, when" must not survive the check being undone.
+				verifiedBy: status === 'pending' ? null : access.userId,
+				verifiedAt: status === 'pending' ? null : new Date(),
+				updatedAt: new Date()
+			})
+			.where(eq(volunteerCredentials.id, credentialId));
+
+		await recomputeCredentials(id);
 
 		audit({
 			event,
 			action: 'updated',
-			entityType: 'volunteer_application',
-			entityId: id,
-			metadata: { credentialsVerified: verified }
+			entityType: 'volunteer_credential',
+			entityId: credentialId,
+			metadata: { applicationId: id, status }
 		});
 
 		return { ok: true };
 	},
 
-	setReferencesChecked: async (event) => {
-		const { id } = await guard(event as never);
+	/**
+	 * Records what a referee said. `references_checked` on the application is
+	 * derived from these rows by `recomputeReferences` — it goes true only when
+	 * every reference has come back satisfactory.
+	 */
+	updateReference: async (event) => {
+		const { access, id } = await guard(event as never);
 		const formData = await event.request.formData();
+		const referenceId = Number(formData.get('referenceId'));
+		const status = String(formData.get('status') ?? '');
+		const note = String(formData.get('responseNote') ?? '').trim();
+
+		if (!Number.isFinite(referenceId)) return fail(400, { error: 'Unknown reference.' });
+		if (
+			!['pending', 'contacted', 'satisfactory', 'unsatisfactory', 'unreachable'].includes(status)
+		) {
+			return fail(400, { error: 'That is not a reference outcome.' });
+		}
+
+		const [reference] = await db
+			.select({ id: volunteerReferences.id })
+			.from(volunteerReferences)
+			.where(
+				and(
+					eq(volunteerReferences.id, referenceId),
+					eq(volunteerReferences.volunteerApplicationId, id)
+				)
+			)
+			.limit(1);
+
+		if (!reference) return fail(404, { error: 'That reference is not on this application.' });
+
+		await db
+			.update(volunteerReferences)
+			.set({
+				status: status as
+					'pending' | 'contacted' | 'satisfactory' | 'unsatisfactory' | 'unreachable',
+				responseNote: note || null,
+				contactedBy: status === 'pending' ? null : access.userId,
+				contactedAt: status === 'pending' ? null : new Date(),
+				updatedAt: new Date()
+			})
+			.where(eq(volunteerReferences.id, referenceId));
+
+		await recomputeReferences(id);
+
+		audit({
+			event,
+			action: 'updated',
+			entityType: 'volunteer_reference',
+			entityId: referenceId,
+			metadata: { applicationId: id, status }
+		});
+
+		return { ok: true };
+	},
+
+	/**
+	 * The manual flags, for applications taken through the old dynamic form —
+	 * they have a credentials paragraph and a references paragraph rather than
+	 * rows, and there is nothing per-licence to verify.
+	 *
+	 * Refused outright once structured rows exist: a hand-set flag that the next
+	 * `recompute` silently overwrites is worse than no control at all, and this
+	 * one gates approval.
+	 */
+	setLegacyChecks: async (event) => {
+		const { id } = await guard(event as never);
+		await requirePermission(event, 'volunteers.safeguarding');
+		const formData = await event.request.formData();
+		const field = String(formData.get('field') ?? '');
 		const checked = String(formData.get('checked')) === 'true';
+
+		const [rows] = await Promise.all([
+			field === 'credentials'
+				? db
+						.select({ id: volunteerCredentials.id })
+						.from(volunteerCredentials)
+						.where(
+							and(
+								eq(volunteerCredentials.volunteerApplicationId, id),
+								isNull(volunteerCredentials.deletedAt)
+							)
+						)
+						.limit(1)
+				: db
+						.select({ id: volunteerReferences.id })
+						.from(volunteerReferences)
+						.where(
+							and(
+								eq(volunteerReferences.volunteerApplicationId, id),
+								isNull(volunteerReferences.deletedAt)
+							)
+						)
+						.limit(1)
+		]);
+
+		if (rows.length) {
+			return fail(422, {
+				error:
+					field === 'credentials'
+						? 'Verify each licence individually — this flag is derived from them.'
+						: 'Record each reference individually — this flag is derived from them.'
+			});
+		}
+
+		if (field !== 'credentials' && field !== 'references') {
+			return fail(400, { error: 'Unknown check.' });
+		}
 
 		await db
 			.update(volunteerApplications)
-			.set({ referencesChecked: checked, updatedAt: new Date() })
+			.set(
+				field === 'credentials'
+					? { credentialsVerified: checked, updatedAt: new Date() }
+					: { referencesChecked: checked, updatedAt: new Date() }
+			)
 			.where(eq(volunteerApplications.id, id));
 
 		audit({
@@ -251,7 +548,7 @@ export const actions: Actions = {
 			action: 'updated',
 			entityType: 'volunteer_application',
 			entityId: id,
-			metadata: { referencesChecked: checked }
+			metadata: { [field === 'credentials' ? 'credentialsVerified' : 'referencesChecked']: checked }
 		});
 
 		return { ok: true };
