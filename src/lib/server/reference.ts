@@ -4,6 +4,7 @@ import {
 	contactMessages,
 	donations,
 	formSubmissions,
+	inKindDonations,
 	volunteerApplications
 } from '$lib/server/db/schema';
 
@@ -91,6 +92,19 @@ export function nextDonationReference(): string {
 }
 
 /**
+ * The same series for a gift of goods. In-kind offers get their own `GIK`
+ * prefix rather than sharing `DON`: the two are handled by different people
+ * through different queues, and a coordinator ringing about a collection
+ * should be able to tell from the reference alone that there is no bank
+ * transfer to look for.
+ */
+export function nextInKindReference(): string {
+	const year = YEAR();
+	const pattern = `SAF-GIK-${year}-`;
+	return format('GIK', year, nextSequence(pattern, 'reference_code', 'in_kind_donations'));
+}
+
+/**
  * Runs `work` in a transaction, so the reference it allocates and the row it
  * writes commit together. Without this, an insert failing after the sequence
  * was read would leave a gap — harmless — but two concurrent inserts could
@@ -103,4 +117,8 @@ export const REFERENCE_PATTERN = /^SAF-[A-Z0-9]{1,6}-\d{4}-\d{4}$/;
 
 /** Type-only re-exports so callers get autocompletion on the tables involved. */
 export type ReferencedTable =
-	typeof formSubmissions | typeof volunteerApplications | typeof donations | typeof contactMessages;
+	| typeof formSubmissions
+	| typeof volunteerApplications
+	| typeof donations
+	| typeof contactMessages
+	| typeof inKindDonations;

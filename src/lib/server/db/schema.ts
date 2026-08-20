@@ -1393,6 +1393,386 @@ export const donationReconciliationLog = sqliteTable(
 );
 
 /* ==========================================================================
+   3.5b IN-KIND GIVING — the gifts that are not money
+   ==========================================================================
+
+   A donation of 400 birr and a donation of four boxes of children's coats are
+   the same act of giving and almost nothing else in common, which is why they
+   are separate tables rather than a nullable `amount` on `donations`.
+
+   Goods have to be described, judged, collected, weighed, stored and handed
+   on. None of that fits a row whose whole job is "this much money, this
+   currency, has it landed yet". Splitting them keeps two things honest:
+
+    - **The money figure stays a money figure.** The public "funds raised"
+      counter sums completed `donations`. A pledge of used furniture with an
+      optimistic price on it can never quietly inflate it, because it is not in
+      that table. `estimatedValue` here is what the donor guessed, kept for
+      reporting and for the tax paperwork, and it is nobody's income.
+    - **The workflow is the real one.** An in-kind offer is accepted or
+      declined *before* it arrives — we cannot take a truckload of clothes with
+      nowhere to put it — so its statuses are about a conversation and a
+      collection, not about a bank statement.
+   ========================================================================== */
+
+/**
+ * The editable catalogue of what the Foundation will take.
+ *
+ * Config, not code (§0): the day we stop accepting used mattresses, or start
+ * accepting laptops, is a row edit. The `requires*` flags drive which extra
+ * questions the donate form asks about an item — food asks for a use-by date,
+ * clothing asks for sizes — so a new category comes with its own questions
+ * without touching the component.
+ */
+export const inKindCategories = sqliteTable(
+	'in_kind_categories',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		slug: text('slug').notNull().unique(),
+		name: text('name').notNull(),
+		nameAm: text('name_am'),
+		description: text('description'),
+		icon: text('icon'),
+		/** Which programme normally receives these. Null shows it to everyone. */
+		pillarId: integer('pillar_id').references(() => pillars.id, { onDelete: 'set null' }),
+		/** The unit the form suggests first: "boxes", "kg", "pairs", "items". */
+		defaultUnit: text('default_unit').default('items').notNull(),
+		/** Food and medicine: ask for a use-by date and flag cold storage. */
+		requiresExpiry: integer('requires_expiry', { mode: 'boolean' }).default(false).notNull(),
+		/** Clothing and shoes: ask for sizes and who they would fit. */
+		requiresSizing: integer('requires_sizing', { mode: 'boolean' }).default(false).notNull(),
+		/** Furniture and appliances: warn that collection needs a vehicle. */
+		requiresTransport: integer('requires_transport', { mode: 'boolean' }).default(false).notNull(),
+		/**
+		 * Shown on the form before anything is offered. Medicine has rules,
+		 * cots have safety standards, and it is kinder to say so up front than
+		 * to decline a carload after somebody has driven across Addis Ababa.
+		 */
+		acceptanceNote: text('acceptance_note'),
+		/**
+		 * Listed but not accepted right now — the category still renders, greyed,
+		 * with its `acceptanceNote` explaining why. Deleting it instead would
+		 * orphan the items already recorded against it.
+		 */
+		isAcceptingNow: integer('is_accepting_now', { mode: 'boolean' }).default(true).notNull(),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [
+		index('in_kind_categories_active_idx').on(table.isActive, table.sortOrder),
+		index('in_kind_categories_pillar_idx').on(table.pillarId)
+	]
+);
+
+/**
+ * One offer of goods, from the moment somebody says "I have things to give"
+ * to the moment they reach a family.
+ *
+ * The row is created at `offered`: nothing has been promised on our side yet.
+ * Staff move it through review, collection and intake, and only `received`
+ * means the goods are actually in the Foundation's hands.
+ */
+export const inKindDonations = sqliteTable(
+	'in_kind_donations',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** `SAF-GIK-2026-0042`. Quoted on the collection call and on the label. */
+		referenceCode: text('reference_code').notNull().unique(),
+		/** Same donor record as a cash gift, so one person is one donor row. */
+		donorId: integer('donor_id').references(() => donors.id, { onDelete: 'set null' }),
+
+		/* --- Who is giving -------------------------------------------------- */
+
+		/** Kept as typed, alongside `donorId`: the donor row is deduplicated and
+		    updated over time, and this is what this particular offer said. */
+		donorName: text('donor_name').notNull(),
+		donorEmail: text('donor_email'),
+		donorPhone: text('donor_phone'),
+		/** A school clearing a store room needs different handling to a family. */
+		donorType: text('donor_type', {
+			enum: [
+				'individual',
+				'family',
+				'business',
+				'school',
+				'faith_group',
+				'association',
+				'ngo',
+				'government',
+				'other'
+			]
+		})
+			.default('individual')
+			.notNull(),
+		organisationName: text('organisation_name'),
+		isDiaspora: integer('is_diaspora', { mode: 'boolean' }).default(false).notNull(),
+		preferredContactChannel: text('preferred_contact_channel', {
+			enum: ['phone', 'sms', 'email', 'telegram', 'whatsapp']
+		})
+			.default('phone')
+			.notNull(),
+		/** "Afternoons", "after 6pm" — a collection call at the wrong hour fails. */
+		bestTimeToContact: text('best_time_to_contact'),
+
+		/* --- What it is ------------------------------------------------------ */
+
+		/**
+		 * A one-line description for the queue — "4 boxes of children's coats".
+		 * Composed from the items when the donor does not write one, so every
+		 * list screen has something to show without joining the item rows.
+		 */
+		summary: text('summary').notNull(),
+		/** Denormalised from `in_kind_donation_items`, for the same reason. */
+		itemCount: integer('item_count').default(0).notNull(),
+		totalQuantity: integer('total_quantity').default(0).notNull(),
+		/**
+		 * The donor's own guess, in minor units. **Not money received** — see the
+		 * note at the head of this section. Kept for the annual report and for
+		 * the receipt, never summed into the public funds figure.
+		 */
+		estimatedValue: integer('estimated_value'),
+		currency: text('currency').default('ETB').notNull(),
+		valuationBasis: text('valuation_basis', {
+			enum: ['unknown', 'donor_estimate', 'purchase_receipt', 'professional_appraisal']
+		})
+			.default('donor_estimate')
+			.notNull(),
+		/** Any of the items perishes; drives the "collect this week" flag. */
+		isPerishable: integer('is_perishable', { mode: 'boolean' }).default(false).notNull(),
+		needsColdStorage: integer('needs_cold_storage', { mode: 'boolean' }).default(false).notNull(),
+		/**
+		 * Medicines, powered equipment, anything with a rule attached. Set by the
+		 * donor so review can start with the question that might stop it.
+		 */
+		hasRestrictedItems: integer('has_restricted_items', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		restrictedItemsNote: text('restricted_items_note'),
+
+		/* --- Where it should go ---------------------------------------------- */
+
+		designationType: text('designation_type', {
+			enum: ['general_fund', 'pillar', 'future_initiative']
+		})
+			.default('general_fund')
+			.notNull(),
+		designationPillarId: integer('designation_pillar_id').references(() => pillars.id, {
+			onDelete: 'set null'
+		}),
+		designationInitiativeId: integer('designation_initiative_id').references(
+			() => futureInitiatives.id,
+			{ onDelete: 'set null' }
+		),
+		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
+
+		/* --- Getting hold of it ----------------------------------------------- */
+
+		handoverMethod: text('handover_method', {
+			enum: ['dropoff', 'pickup', 'courier', 'already_shipped']
+		})
+			.default('dropoff')
+			.notNull(),
+		/** Whoever will actually be there, which is often not the donor. */
+		pickupContactName: text('pickup_contact_name'),
+		pickupContactPhone: text('pickup_contact_phone'),
+		pickupAddressLine: text('pickup_address_line'),
+		pickupCity: text('pickup_city'),
+		/** Addis Ababa runs on landmarks, not street numbers. */
+		pickupLandmark: text('pickup_landmark'),
+		/** Third floor, no lift, gate locked after five — what the driver needs. */
+		accessNotes: text('access_notes'),
+		/** How big the load is, in terms a coordinator can book a vehicle against. */
+		loadSize: text('load_size', {
+			enum: ['handheld', 'car_boot', 'pickup_truck', 'small_truck', 'container']
+		})
+			.default('car_boot')
+			.notNull(),
+		estimatedWeightKg: integer('estimated_weight_kg'),
+		requiresVehicle: integer('requires_vehicle', { mode: 'boolean' }).default(false).notNull(),
+		/** Heavy or awkward: the collection needs more than one pair of hands. */
+		requiresHelpLoading: integer('requires_help_loading', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		/** ISO dates. The window in which the goods can be handed over. */
+		availableFrom: text('available_from'),
+		availableUntil: text('available_until'),
+
+		/* --- Paperwork and recognition ---------------------------------------- */
+
+		receiptRequested: integer('receipt_requested', { mode: 'boolean' }).default(false).notNull(),
+		/** A company writing this off needs more than a thank-you note. */
+		taxReceiptRequired: integer('tax_receipt_required', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		taxIdNumber: text('tax_id_number'),
+		isAnonymous: integer('is_anonymous', { mode: 'boolean' }).default(false).notNull(),
+		/** How they wish to be named publicly, when that is not their own name. */
+		recognitionName: text('recognition_name'),
+		donorMessage: text('donor_message'),
+		heardAbout: text('heard_about'),
+		/**
+		 * The moment consent was given, not a boolean: an offer carries a home
+		 * address and a phone number, and "when did they agree to us holding
+		 * this" is a question a `true` cannot answer.
+		 */
+		consentToContactAt: timestampMs('consent_to_contact_at'),
+
+		/* --- What happened next ------------------------------------------------ */
+
+		/**
+		 * Fixed, unlike the configurable `status_options` used by cases: each
+		 * value here changes what the code does — `accepted` schedules a
+		 * collection, `received` releases the items to distribution — so these
+		 * are not a label a dashboard may rename.
+		 */
+		status: text('status', {
+			enum: [
+				'offered',
+				'under_review',
+				'accepted',
+				'declined',
+				'scheduled',
+				'received',
+				'distributed',
+				'cancelled'
+			]
+		})
+			.default('offered')
+			.notNull(),
+		reviewedById: text('reviewed_by_id').references(() => user.id, { onDelete: 'set null' }),
+		reviewedAt: timestampMs('reviewed_at'),
+		reviewNotes: text('review_notes'),
+		/** Said to the donor, so a decline can be explained rather than just sent. */
+		declineReason: text('decline_reason'),
+		assignedToId: text('assigned_to_id').references(() => user.id, { onDelete: 'set null' }),
+		/** ISO date plus a human window — "Tuesday", "between 9 and 12". */
+		scheduledFor: text('scheduled_for'),
+		scheduledWindow: text('scheduled_window'),
+		receivedAt: timestampMs('received_at'),
+		receivedById: text('received_by_id').references(() => user.id, { onDelete: 'set null' }),
+		/** What actually turned up, when it differs from what was offered. */
+		intakeNotes: text('intake_notes'),
+		/** Where the goods went; the closing note on the offer. */
+		distributionNotes: text('distribution_notes'),
+		acknowledgementSentAt: timestampMs('acknowledgement_sent_at'),
+
+		language: text('language', { enum: ['en', 'am'] })
+			.default('en')
+			.notNull(),
+		isRead: integer('is_read', { mode: 'boolean' }).default(false).notNull(),
+		...publicFields
+	},
+	(table) => [
+		// The coordinator's queue: what is waiting, oldest first.
+		index('in_kind_donations_status_idx').on(table.status, table.createdAt),
+		index('in_kind_donations_donor_idx').on(table.donorId, table.createdAt),
+		index('in_kind_donations_designation_idx').on(table.designationType, table.designationPillarId),
+		// The collection run: everything booked for a given day.
+		index('in_kind_donations_scheduled_idx').on(table.scheduledFor, table.status),
+		index('in_kind_donations_region_idx').on(table.regionId)
+	]
+);
+
+/**
+ * The lines of an offer — one row per kind of thing.
+ *
+ * Rows rather than a JSON blob because these are the questions the warehouse
+ * asks: how many coats, what sizes, what condition, when does the milk expire.
+ * A blob cannot answer "how many blankets were donated this quarter", and that
+ * is the report somebody wants every quarter.
+ */
+export const inKindDonationItems = sqliteTable(
+	'in_kind_donation_items',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		inKindDonationId: integer('in_kind_donation_id')
+			.notNull()
+			.references(() => inKindDonations.id, { onDelete: 'cascade' }),
+		categoryId: integer('category_id').references(() => inKindCategories.id, {
+			onDelete: 'set null'
+		}),
+		description: text('description').notNull(),
+		quantity: integer('quantity').default(1).notNull(),
+		/** Free text, seeded from the category's `defaultUnit`. */
+		unit: text('unit').default('items').notNull(),
+		condition: text('condition', {
+			enum: ['new', 'like_new', 'good', 'used', 'needs_repair']
+		})
+			.default('good')
+			.notNull(),
+
+		/* --- Clothing and anything else that has to fit somebody -------------- */
+
+		ageGroup: text('age_group', { enum: ['any', 'infant', 'child', 'teen', 'adult', 'elderly'] })
+			.default('any')
+			.notNull(),
+		gender: text('gender', { enum: ['unisex', 'female', 'male'] })
+			.default('unisex')
+			.notNull(),
+		/** "4–6 years", "EU 38–42", "L and XL" — a range, as the donor has it. */
+		sizeRange: text('size_range'),
+		/** Matters for equipment and appliances, and for spare parts later. */
+		brandOrModel: text('brand_or_model'),
+
+		/* --- Food, medicine, anything with a clock on it ---------------------- */
+
+		isPerishable: integer('is_perishable', { mode: 'boolean' }).default(false).notNull(),
+		/** ISO date. Nothing is distributed past it. */
+		expiresOn: text('expires_on'),
+		needsRefrigeration: integer('needs_refrigeration', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+
+		/** Minor units, per the line. The donor's estimate, like the parent row. */
+		estimatedValue: integer('estimated_value'),
+		currency: text('currency').default('ETB').notNull(),
+		notes: text('notes'),
+
+		/* --- Filled in at intake, when the goods are counted ------------------ */
+
+		/** What was actually taken in, which may be less than what was offered. */
+		acceptedQuantity: integer('accepted_quantity'),
+		intakeNote: text('intake_note'),
+
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...publicFields
+	},
+	(table) => [
+		index('in_kind_items_donation_idx').on(table.inKindDonationId, table.sortOrder),
+		// "How many blankets this quarter" — the report this table exists for.
+		index('in_kind_items_category_idx').on(table.categoryId),
+		// The expiry sweep: perishable stock, soonest first.
+		index('in_kind_items_expiry_idx').on(table.expiresOn)
+	]
+);
+
+/**
+ * Photos of the goods, which are the difference between accepting a donation
+ * and guessing about it. Private files: they are taken inside somebody's home.
+ */
+export const inKindDonationPhotos = sqliteTable(
+	'in_kind_donation_photos',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		inKindDonationId: integer('in_kind_donation_id')
+			.notNull()
+			.references(() => inKindDonations.id, { onDelete: 'cascade' }),
+		fileId: integer('file_id')
+			.notNull()
+			.references(() => files.id, { onDelete: 'cascade' }),
+		/** Set when the photo is of one line rather than the whole offer. */
+		itemId: integer('item_id').references(() => inKindDonationItems.id, { onDelete: 'set null' }),
+		caption: text('caption'),
+		/** Whether the photo came with the offer or was taken at intake. */
+		source: text('source', { enum: ['donor', 'intake'] })
+			.default('donor')
+			.notNull(),
+		...publicFields
+	},
+	(table) => [index('in_kind_photos_donation_idx').on(table.inKindDonationId)]
+);
+
+/* ==========================================================================
    3.6 VOLUNTEERS
    ========================================================================== */
 
@@ -2279,7 +2659,8 @@ export const disbursementsRelations = relations(disbursements, ({ one }) => ({
 
 export const donorsRelations = relations(donors, ({ many }) => ({
 	donations: many(donations),
-	pledges: many(recurringPledges)
+	pledges: many(recurringPledges),
+	inKindDonations: many(inKindDonations)
 }));
 
 export const donationsRelations = relations(donations, ({ one, many }) => ({
@@ -2307,6 +2688,49 @@ export const donationsRelations = relations(donations, ({ one, many }) => ({
 export const recurringPledgesRelations = relations(recurringPledges, ({ one, many }) => ({
 	donor: one(donors, { fields: [recurringPledges.donorId], references: [donors.id] }),
 	donations: many(donations)
+}));
+
+export const inKindCategoriesRelations = relations(inKindCategories, ({ one, many }) => ({
+	pillar: one(pillars, { fields: [inKindCategories.pillarId], references: [pillars.id] }),
+	items: many(inKindDonationItems)
+}));
+
+export const inKindDonationsRelations = relations(inKindDonations, ({ one, many }) => ({
+	donor: one(donors, { fields: [inKindDonations.donorId], references: [donors.id] }),
+	pillar: one(pillars, { fields: [inKindDonations.designationPillarId], references: [pillars.id] }),
+	initiative: one(futureInitiatives, {
+		fields: [inKindDonations.designationInitiativeId],
+		references: [futureInitiatives.id]
+	}),
+	region: one(regions, { fields: [inKindDonations.regionId], references: [regions.id] }),
+	reviewer: one(user, { fields: [inKindDonations.reviewedById], references: [user.id] }),
+	assignee: one(user, { fields: [inKindDonations.assignedToId], references: [user.id] }),
+	receivedBy: one(user, { fields: [inKindDonations.receivedById], references: [user.id] }),
+	items: many(inKindDonationItems),
+	photos: many(inKindDonationPhotos)
+}));
+
+export const inKindDonationItemsRelations = relations(inKindDonationItems, ({ one }) => ({
+	donation: one(inKindDonations, {
+		fields: [inKindDonationItems.inKindDonationId],
+		references: [inKindDonations.id]
+	}),
+	category: one(inKindCategories, {
+		fields: [inKindDonationItems.categoryId],
+		references: [inKindCategories.id]
+	})
+}));
+
+export const inKindDonationPhotosRelations = relations(inKindDonationPhotos, ({ one }) => ({
+	donation: one(inKindDonations, {
+		fields: [inKindDonationPhotos.inKindDonationId],
+		references: [inKindDonations.id]
+	}),
+	file: one(files, { fields: [inKindDonationPhotos.fileId], references: [files.id] }),
+	item: one(inKindDonationItems, {
+		fields: [inKindDonationPhotos.itemId],
+		references: [inKindDonationItems.id]
+	})
 }));
 
 export const donationReconciliationLogRelations = relations(

@@ -1,11 +1,10 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { randomUUID } from 'node:crypto';
 import { db } from '$lib/server/db';
 import {
 	donations,
-	donors,
 	futureInitiatives,
 	newsletterSubscribers,
 	paymentAccounts,
@@ -19,13 +18,18 @@ import {
 	getInitiatives,
 	getPage,
 	getPaymentOptions,
-	getPillars
+	getPillars,
+	getRegions
 } from '$lib/server/content';
 import { hydrateBlocks } from '$lib/server/pageData';
 import { getImpactMetrics } from '$lib/server/impact';
+import { createInKindOffer, getInKindCategories } from '$lib/server/inKind';
+import { upsertDonor } from '$lib/server/donors';
+import { notifyNewInKindOffer } from '$lib/server/notify';
 import { nextDonationReference } from '$lib/server/reference';
-import { sendEmail, donationPledgeTemplate } from '$lib/server/email';
+import { sendEmail, donationPledgeTemplate, inKindOfferTemplate } from '$lib/server/email';
 import { formatMoney } from '$lib/money';
+import { blankInKindItem, inKindSchema } from '$lib/inKind';
 import { audit } from '$lib/server/audit';
 import { donateSchema } from './schema';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,20 +53,27 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url }) => {
 	const requestedPillar = url.searchParams.get('pillar');
 
-	const [page, pillarRows, initiatives, payments, campaigns, metrics] = await Promise.all([
-		getPage('donate'),
-		getPillars(),
-		getInitiatives(),
-		getPaymentOptions(),
-		getDonationCampaigns(),
-		getImpactMetrics()
-	]);
+	const [page, pillarRows, initiatives, payments, campaigns, metrics, goodsCategories, regionRows] =
+		await Promise.all([
+			getPage('donate'),
+			getPillars(),
+			getInitiatives(),
+			getPaymentOptions(),
+			getDonationCampaigns(),
+			getImpactMetrics(),
+			getInKindCategories(),
+			getRegions()
+		]);
 
 	const blockData = page ? await hydrateBlocks(page.blocks) : null;
 
 	const preselected = requestedPillar
 		? (pillarRows.find((pillar) => pillar.slug === requestedPillar) ?? null)
 		: null;
+
+	// A paused category is not a default: the donor would land on a disabled
+	// option and have to work out why the form was arguing with them.
+	const firstOpen = goodsCategories.find((category) => category.isAcceptingNow);
 
 	const form = await superValidate(zod4(donateSchema), {
 		defaults: {
@@ -83,9 +94,59 @@ export const load: PageServerLoad = async ({ url }) => {
 		}
 	});
 
+	// The second form on this page. Its own `id` because superforms keys a
+	// page's forms by id, and two forms sharing one would post over each other.
+	const inKindForm = await superValidate(zod4(inKindSchema), {
+		id: 'in-kind',
+		defaults: {
+			items: [blankInKindItem(firstOpen?.id ?? null, firstOpen?.defaultUnit ?? 'items')],
+			valuationBasis: 'donor_estimate',
+			hasRestrictedItems: false,
+			restrictedItemsNote: '',
+			designationType: preselected ? 'pillar' : 'general_fund',
+			designationPillarId: preselected?.id ?? null,
+			designationInitiativeId: null,
+			regionId: regionRows.find((region) => region.isDefault)?.id ?? null,
+			handoverMethod: 'dropoff',
+			pickupContactName: '',
+			pickupContactPhone: '',
+			pickupAddressLine: '',
+			pickupCity: '',
+			pickupLandmark: '',
+			accessNotes: '',
+			loadSize: 'car_boot',
+			estimatedWeightKg: null,
+			requiresVehicle: false,
+			requiresHelpLoading: false,
+			availableFrom: '',
+			availableUntil: '',
+			donorName: '',
+			donorEmail: '',
+			donorPhone: '',
+			donorType: 'individual',
+			organisationName: '',
+			isDiaspora: false,
+			preferredContactChannel: 'phone',
+			bestTimeToContact: '',
+			receiptRequested: false,
+			taxReceiptRequired: false,
+			taxIdNumber: '',
+			isAnonymous: false,
+			recognitionName: '',
+			donorMessage: '',
+			heardAbout: '',
+			joinNewsletter: false,
+			consentToContact: false,
+			website: ''
+		}
+	});
+
 	return {
 		page,
 		pillars: pillarRows,
+		goodsCategories,
+		regions: regionRows,
+		inKindForm,
 		initiatives,
 		payments,
 		campaigns,
@@ -306,62 +367,150 @@ export const actions: Actions = {
 				{ status: 500 }
 			);
 		}
-	}
-};
+	},
 
-/**
- * Finds the donor behind this gift, or creates them.
- *
- * Matching is on email first, then phone — a donor who gives three times a
- * year should be one row with a lifetime total, not three rows. `lifetimeTotal`
- * itself is only moved when a donation is reconciled, so it reflects money
- * received rather than money promised.
- */
-async function upsertDonor(input: {
-	fullName: string;
-	email: string | null;
-	phone: string | null;
-	isDiaspora: boolean;
-	userId: string | null;
-}): Promise<number> {
-	const match = input.email
-		? eq(donors.email, input.email)
-		: input.phone
-			? eq(donors.phone, input.phone)
-			: null;
+	/**
+	 * An offer of goods rather than money.
+	 *
+	 * Nothing here is accepted on the spot: the row lands at `offered` and a
+	 * coordinator rings back. That is the honest answer — we cannot take four
+	 * hundred coats we have nowhere to store, and telling somebody "thank you,
+	 * this is confirmed" before anyone has looked would be a promise the
+	 * Foundation cannot always keep.
+	 */
+	giftInKind: async (event) => {
+		// Read once: the photos come off the same body as the fields, and
+		// `event.request` can only be consumed one time.
+		const body = await event.request.formData();
+		const form = await superValidate(body, zod4(inKindSchema), { id: 'in-kind' });
 
-	if (match) {
-		const [existing] = await db
-			.select({ id: donors.id })
-			.from(donors)
-			.where(and(match, isNull(donors.deletedAt)))
-			.orderBy(desc(donors.id))
-			.limit(1);
+		if (!form.valid) {
+			return message(
+				form,
+				{ type: 'error', text: 'Please check the highlighted fields' },
+				{ status: 400 }
+			);
+		}
 
-		if (existing) {
-			await db
-				.update(donors)
-				.set({
-					fullName: input.fullName,
-					phone: input.phone ?? undefined,
-					isDiaspora: input.isDiaspora,
-					updatedAt: new Date()
-				})
-				.where(eq(donors.id, existing.id));
-			return existing.id;
+		if (form.data.website) {
+			// Honeypot — accepted silently, stored nowhere.
+			return message(form, { type: 'success', text: 'Thank you.' });
+		}
+
+		const data = form.data;
+		const trim = (value: string | null | undefined) => value?.trim() || null;
+
+		// Superforms does not carry a repeated file input through the schema, so
+		// the photos are read straight off the body.
+		const photos = body
+			.getAll('photos')
+			.filter((entry): entry is File => entry instanceof File && entry.size > 0)
+			.slice(0, 8);
+
+		try {
+			const email = trim(data.donorEmail)?.toLowerCase() ?? null;
+
+			const result = await createInKindOffer(event, {
+				donorName: data.donorName,
+				donorEmail: email,
+				donorPhone: trim(data.donorPhone),
+				donorType: data.donorType,
+				organisationName: trim(data.organisationName),
+				isDiaspora: data.isDiaspora,
+				preferredContactChannel: data.preferredContactChannel,
+				bestTimeToContact: trim(data.bestTimeToContact),
+
+				designationType: data.designationType,
+				designationPillarId: data.designationPillarId ?? null,
+				designationInitiativeId: data.designationInitiativeId ?? null,
+				regionId: data.regionId,
+
+				handoverMethod: data.handoverMethod,
+				pickupContactName: trim(data.pickupContactName),
+				pickupContactPhone: trim(data.pickupContactPhone),
+				pickupAddressLine: trim(data.pickupAddressLine),
+				pickupCity: trim(data.pickupCity),
+				pickupLandmark: trim(data.pickupLandmark),
+				accessNotes: trim(data.accessNotes),
+				loadSize: data.loadSize,
+				estimatedWeightKg: data.estimatedWeightKg,
+				requiresVehicle: data.requiresVehicle,
+				requiresHelpLoading: data.requiresHelpLoading,
+				availableFrom: trim(data.availableFrom),
+				availableUntil: trim(data.availableUntil),
+
+				hasRestrictedItems: data.hasRestrictedItems,
+				restrictedItemsNote: trim(data.restrictedItemsNote),
+				valuationBasis: data.valuationBasis,
+
+				receiptRequested: data.receiptRequested,
+				taxReceiptRequired: data.taxReceiptRequired,
+				taxIdNumber: trim(data.taxIdNumber),
+				isAnonymous: data.isAnonymous,
+				recognitionName: trim(data.recognitionName),
+				donorMessage: trim(data.donorMessage),
+				heardAbout: trim(data.heardAbout),
+				consentToContact: data.consentToContact,
+
+				items: data.items.map((item) => ({
+					categoryId: item.categoryId,
+					description: item.description,
+					quantity: item.quantity,
+					unit: item.unit,
+					condition: item.condition,
+					ageGroup: item.ageGroup,
+					gender: item.gender,
+					sizeRange: trim(item.sizeRange),
+					brandOrModel: trim(item.brandOrModel),
+					isPerishable: item.isPerishable,
+					expiresOn: trim(item.expiresOn),
+					needsRefrigeration: item.needsRefrigeration,
+					estimatedValue: item.estimatedValue,
+					notes: trim(item.notes)
+				})),
+				photos,
+				userId: event.locals.user?.id ?? null
+			});
+
+			if (data.joinNewsletter && email) {
+				await db
+					.insert(newsletterSubscribers)
+					.values({
+						email,
+						name: data.donorName,
+						source: 'donation_flow',
+						subscribedAt: new Date(),
+						unsubscribeToken: randomUUID(),
+						createdAt: new Date()
+					})
+					.onConflictDoNothing();
+			}
+
+			// Both sends are non-blocking: the offer is already recorded, and a
+			// slow mail server must not turn it into an error page.
+			if (email) {
+				const mail = inKindOfferTemplate(data.donorName, result.referenceCode, result.summary);
+				void sendEmail(email, mail.subject, mail.html).catch((err) =>
+					console.error('in-kind email failed', err)
+				);
+			}
+			void notifyNewInKindOffer(result).catch((err) =>
+				console.error('in-kind notification failed', err)
+			);
+
+			return message(form, {
+				type: 'success',
+				text: 'Thank you. We have your offer and will call to arrange the handover.',
+				reference: result.referenceCode,
+				amount: result.summary
+			});
+		} catch (err) {
+			console.error('In-kind offer failed:', err);
+			return message(
+				form,
+				{ type: 'error', text: 'We could not record your offer. Please try again.' },
+				{ status: 500 }
+			);
 		}
 	}
-
-	const [created] = await db
-		.insert(donors)
-		.values({
-			fullName: input.fullName,
-			email: input.email,
-			phone: input.phone,
-			isDiaspora: input.isDiaspora,
-			userId: input.userId
-		})
-		.returning({ id: donors.id });
-
-	return created.id;
-}
+};

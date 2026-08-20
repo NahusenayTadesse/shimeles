@@ -38,6 +38,10 @@ export type AuditEntity =
 	| 'donation'
 	| 'donor'
 	| 'recurring_pledge'
+	/** An offer of goods rather than money, and its line items. */
+	| 'in_kind_donation'
+	/** The catalogue of goods the Foundation will accept. */
+	| 'in_kind_catalog'
 	| 'content_block'
 	| 'page'
 	| 'site_setting'

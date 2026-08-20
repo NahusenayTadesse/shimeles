@@ -16,6 +16,7 @@ import {
 	MapPin,
 	MessageSquareQuote,
 	Newspaper,
+	Package,
 	ScrollText,
 	Settings,
 	Sparkles,
@@ -110,6 +111,13 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 						{ title: 'Donors', url: '/dashboard/donors' },
 						{ title: 'Recurring pledges', url: '/dashboard/pledges' }
 					]
+				},
+				{
+					title: 'Gifts in kind',
+					url: '/dashboard/in-kind',
+					icon: Package,
+					counter: counts.newInKind,
+					permission: 'inkind.read'
 				},
 				{
 					title: 'Disbursements',
@@ -255,6 +263,14 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 						{ title: 'Enquiry topics', url: '/dashboard/contact-subjects' },
 						{ title: 'Offices', url: '/dashboard/contact-offices' }
 					]
+				},
+				{
+					// The categories the public goods form is built from, and the
+					// questions each one brings with it.
+					title: 'Gift categories',
+					url: '/dashboard/gift-categories',
+					icon: Package,
+					permission: 'settings.manage'
 				},
 				{ title: 'Regions', url: '/dashboard/regions', icon: MapPin, permission: 'settings.manage' }
 			]

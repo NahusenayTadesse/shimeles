@@ -13,10 +13,11 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
 	import DonationCampaigns from '$lib/content/DonationCampaigns.svelte';
+	import InKindForm from '$lib/donate/InKindForm.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
-	import { CircleCheck, Copy, HeartHandshake } from '@lucide/svelte';
+	import { CircleCheck, Copy, HeartHandshake, Package } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
@@ -27,6 +28,14 @@
 		resetForm: false,
 		taintedMessage: null
 	});
+
+	/**
+	 * Money or goods. Two forms, two tables, two workflows — a transfer is
+	 * reconciled against a bank statement, a carload of coats is collected — so
+	 * they are separate forms behind one switch rather than one form with half
+	 * its fields hidden.
+	 */
+	let giftKind = $state<'money' | 'goods'>('money');
 
 	/** Set once the gift is recorded; the page then shows the transfer reference. */
 	let confirmation = $state<{ reference: string; amount: string } | null>(null);
@@ -114,7 +123,31 @@
 			</Card.Root>
 		{/if}
 
-		{#if confirmation}
+		<Tabs.Root bind:value={giftKind} class="w-full">
+			<Tabs.List class="grid w-full grid-cols-2">
+				<Tabs.Trigger value="money">
+					<HeartHandshake class="size-4" />
+					{s('donate.kind_money', 'Give money')}
+				</Tabs.Trigger>
+				<Tabs.Trigger value="goods">
+					<Package class="size-4" />
+					{s('donate.kind_goods', 'Give goods')}
+				</Tabs.Trigger>
+			</Tabs.List>
+		</Tabs.Root>
+
+		{#if giftKind === 'goods'}
+			<Card.Root class="p-6">
+				<InKindForm
+					form={data.inKindForm}
+					categories={data.goodsCategories}
+					pillars={data.pillars}
+					initiatives={data.initiatives.filter((initiative) => initiative.goalAmount)}
+					regions={data.regions}
+					{s}
+				/>
+			</Card.Root>
+		{:else if confirmation}
 			<Card.Root class="flex flex-col items-center gap-4 p-8 text-center">
 				<div class="rounded-full bg-accent p-4 text-accent-foreground">
 					<CircleCheck class="size-8" />

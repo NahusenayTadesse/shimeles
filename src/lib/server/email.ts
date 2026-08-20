@@ -105,6 +105,95 @@ export const donationReceiptTemplate = (
 	)
 });
 
+/**
+ * Acknowledges an offer of goods.
+ *
+ * Careful not to say "accepted": an in-kind offer is reviewed before it is
+ * taken, because storage and distribution are real constraints. The email
+ * promises a phone call, which is a promise the Foundation can keep.
+ */
+export const inKindOfferTemplate = (name: string, referenceCode: string, summary: string) => ({
+	subject: `Thank you for your offer — ${referenceCode}`,
+	html: shell(
+		'Thank you for your offer',
+		`<p>Dear ${name},</p>
+		 <p>We have your offer of <strong>${summary}</strong>. Its reference is
+		 <strong>${referenceCode}</strong> — please quote it when you contact us.</p>
+		 <p>Someone from the team will call to confirm what we are able to take and to
+		 arrange the handover. Please hold on to the items until then.</p>`
+	)
+});
+
+/**
+ * What the Foundation decided about an offer of goods.
+ *
+ * One template rather than four, because the four are the same letter with a
+ * different middle: what was offered, what we decided, what happens next. A
+ * decline says why — the reason a coordinator typed is the whole point of
+ * sending it, and "we cannot take this" without one reads as rudeness.
+ */
+export const inKindDecisionTemplate = (input: {
+	name: string;
+	referenceCode: string;
+	summary: string;
+	outcome: 'accepted' | 'declined' | 'scheduled' | 'received';
+	note: string | null;
+	/** ISO date, for the scheduled handover. */
+	when: string | null;
+}) => {
+	const date = input.when
+		? new Intl.DateTimeFormat('en-GB', {
+				weekday: 'long',
+				day: 'numeric',
+				month: 'long'
+			}).format(new Date(input.when))
+		: null;
+
+	const bodies: Record<typeof input.outcome, { heading: string; subject: string; body: string }> = {
+		accepted: {
+			heading: 'We would be glad to take it',
+			subject: `We can take your gift — ${input.referenceCode}`,
+			body: `<p>Thank you for offering <strong>${input.summary}</strong>. We would be glad to
+			 take it, and will be in touch to arrange when.</p>`
+		},
+		declined: {
+			heading: 'About your offer',
+			subject: `About your offer — ${input.referenceCode}`,
+			body: `<p>Thank you for offering <strong>${input.summary}</strong>, and for thinking of
+			 us. We are not able to take this one.</p>`
+		},
+		scheduled: {
+			heading: 'Your handover is booked',
+			subject: `Your handover is booked${date ? ` for ${date}` : ''} — ${input.referenceCode}`,
+			body: `<p>Thank you for offering <strong>${input.summary}</strong>. We have booked the
+			 handover for <strong>${date ?? 'the agreed day'}</strong>.</p>`
+		},
+		received: {
+			heading: 'Your gift has arrived',
+			subject: `Your gift has been received — ${input.referenceCode}`,
+			body: `<p>We have taken in <strong>${input.summary}</strong>. Thank you — it is now with
+			 the team who will pass it on.</p>`
+		}
+	};
+
+	const chosen = bodies[input.outcome];
+
+	return {
+		subject: chosen.subject,
+		html: shell(
+			chosen.heading,
+			`<p>Dear ${input.name},</p>
+			 ${chosen.body}
+			 ${
+					input.note
+						? `<div style="background: #faf7f2; border-radius: 8px; padding: 16px; margin: 16px 0;">${input.note}</div>`
+						: ''
+				}
+			 <p>Your reference is <strong>${input.referenceCode}</strong>.</p>`
+		)
+	};
+};
+
 /** Tells a volunteer applicant their form arrived and what happens next. */
 export const volunteerAcknowledgementTemplate = (name: string, reference: string) => ({
 	subject: `Thank you for offering to volunteer — ${reference}`,

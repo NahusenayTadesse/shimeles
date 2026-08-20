@@ -101,6 +101,40 @@ export async function notifyNewVolunteer(result: SubmitResult): Promise<void> {
 	await Promise.all(recipients.map((to) => sendEmail(to, subject, escapeHtml(body))));
 }
 
+/**
+ * Tells staff that somebody has offered goods.
+ *
+ * Unlike a cash gift, this one needs a human before anything else happens —
+ * a coordinator has to decide whether the Foundation can take it and book a
+ * collection — so the notification goes out on submission rather than waiting
+ * for a queue to be checked. Recipients are the Foundation's primary contact
+ * address; there is no form definition behind this page to configure.
+ */
+export async function notifyNewInKindOffer(offer: {
+	id: number;
+	referenceCode: string;
+	summary: string;
+}): Promise<void> {
+	const to = await setting('contact.email_primary');
+	if (!to) return;
+
+	const origin = await setting('site.url');
+	const body = [
+		'Somebody has offered goods through the donate page.',
+		'',
+		`Reference: ${offer.referenceCode}`,
+		`Offered: ${offer.summary}`,
+		'',
+		// The link, not the detail: the offer carries a home address, and it is
+		// read in the dashboard where the read is audited (§3.11).
+		origin ? `Open it here: ${origin}/dashboard/in-kind/${offer.id}` : ''
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	await sendEmail(to, `New offer of goods — ${offer.referenceCode}`, escapeHtml(body));
+}
+
 /** Reminder for a standing pledge that has come due (§3.5). */
 export async function notifyPledgeReminder(
 	to: string,

@@ -4,6 +4,7 @@ import {
 	contactMessages,
 	donations,
 	formSubmissions,
+	inKindDonations,
 	volunteerApplications
 } from '$lib/server/db/schema';
 import { requireUser, pillarScope } from '$lib/server/permissions';
@@ -25,7 +26,7 @@ export const load: LayoutServerLoad = async (event) => {
 
 	const scope = pillarScope(access, formSubmissions.pillarId);
 
-	const [applications, volunteers, messages, pendingDonations] = await Promise.all([
+	const [applications, volunteers, messages, pendingDonations, newInKind] = await Promise.all([
 		access.permissions.has('submissions.read')
 			? db
 					.select({ total: count() })
@@ -73,6 +74,15 @@ export const load: LayoutServerLoad = async (event) => {
 					.from(donations)
 					.where(and(eq(donations.status, 'pending_reconciliation'), isNull(donations.deletedAt)))
 					.then((rows) => rows[0]?.total ?? 0)
+			: 0,
+		// Offers nobody has looked at yet. Unlike a transfer, an offer of goods
+		// goes stale — the donor is holding on to four boxes waiting for a call.
+		access.permissions.has('inkind.read')
+			? db
+					.select({ total: count() })
+					.from(inKindDonations)
+					.where(and(eq(inKindDonations.status, 'offered'), isNull(inKindDonations.deletedAt)))
+					.then((rows) => rows[0]?.total ?? 0)
 			: 0
 	]);
 
@@ -89,7 +99,8 @@ export const load: LayoutServerLoad = async (event) => {
 			newApplications: applications,
 			newVolunteers: volunteers,
 			newMessages: messages,
-			pendingDonations
+			pendingDonations,
+			newInKind
 		}
 	};
 };

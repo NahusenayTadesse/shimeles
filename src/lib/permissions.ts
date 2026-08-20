@@ -54,6 +54,11 @@ export const PERMISSIONS = {
 	'donations.read': { group: 'Finance', description: 'View donors, donations and pledges' },
 	'donations.write': { group: 'Finance', description: 'Edit donations and pledges' },
 	'donations.reconcile': { group: 'Finance', description: 'Match bank transfers to donations' },
+	'inkind.read': { group: 'Finance', description: 'View offers of goods and services' },
+	'inkind.write': {
+		group: 'Finance',
+		description: 'Accept, decline, schedule and receive offers of goods'
+	},
 	'disbursements.read': { group: 'Finance', description: 'View disbursements' },
 	'disbursements.write': { group: 'Finance', description: 'Record disbursements' },
 
@@ -82,12 +87,18 @@ export const ROLE_PERMISSIONS: Record<Exclude<RoleSlug, 'super_admin'>, Permissi
 		'beneficiaries.read',
 		'beneficiaries.write',
 		'disbursements.read',
-		'disbursements.write'
+		'disbursements.write',
+		// Goods are distributed by the people who know the families, not by
+		// finance, so case workers can work the in-kind queue too.
+		'inkind.read',
+		'inkind.write'
 	],
 	finance: [
 		'donations.read',
 		'donations.write',
 		'donations.reconcile',
+		'inkind.read',
+		'inkind.write',
 		'disbursements.read',
 		'data.export'
 	],

@@ -2250,6 +2250,277 @@ async function seedApply() {
 }
 
 /* ==========================================================================
+   In-kind giving — the catalogue of goods the Foundation will take
+   ========================================================================== */
+
+/**
+ * What somebody may offer on the donate page, and the extra questions each
+ * kind of thing brings with it.
+ *
+ * The `requires*` flags are the point: food asks for a use-by date, clothing
+ * asks for sizes, furniture warns that a collection needs a vehicle. Adding a
+ * category tomorrow adds its questions with it, with no change to the form.
+ * Seeded once, keyed on slug, so a staff member's edits survive a re-run.
+ */
+async function seedInKindCategories() {
+	const pillarIds = new Map(
+		(
+			await db.select({ id: schema.pillars.id, slug: schema.pillars.slug }).from(schema.pillars)
+		).map((row) => [row.slug, row.id])
+	);
+
+	const categories: {
+		slug: string;
+		name: string;
+		icon: string;
+		description?: string;
+		pillar?: string;
+		defaultUnit?: string;
+		requiresExpiry?: boolean;
+		requiresSizing?: boolean;
+		requiresTransport?: boolean;
+		acceptanceNote?: string;
+	}[] = [
+		{
+			slug: 'clothing',
+			name: 'Clothing',
+			icon: 'Shirt',
+			description: 'Coats, jumpers, trousers, dresses, school-age and adult.',
+			defaultUnit: 'bags',
+			requiresSizing: true,
+			acceptanceNote: 'Clean and wearable, please — anything torn or stained we cannot pass on.'
+		},
+		{
+			slug: 'shoes',
+			name: 'Shoes and sandals',
+			icon: 'Footprints',
+			defaultUnit: 'pairs',
+			requiresSizing: true,
+			acceptanceNote: 'Pairs with sound soles. Odd shoes cannot be given to anybody.'
+		},
+		{
+			slug: 'bedding',
+			name: 'Blankets and bedding',
+			icon: 'BedDouble',
+			description: 'Blankets, sheets, mosquito nets, mattresses.',
+			defaultUnit: 'items',
+			requiresTransport: true
+		},
+		{
+			slug: 'baby-supplies',
+			name: 'Baby and infant supplies',
+			icon: 'Baby',
+			description: 'Nappies, formula, baby clothes, carriers.',
+			defaultUnit: 'packs',
+			requiresExpiry: true,
+			requiresSizing: true,
+			acceptanceNote:
+				'Formula must be sealed and in date. Second-hand cots and car seats we cannot accept.'
+		},
+		{
+			slug: 'dry-food',
+			name: 'Food — dry and packaged',
+			icon: 'Wheat',
+			description: 'Teff, rice, oil, pulses, tinned and packaged food.',
+			defaultUnit: 'sacks',
+			requiresExpiry: true,
+			acceptanceNote: 'Sealed, with at least three months before the use-by date.'
+		},
+		{
+			slug: 'fresh-food',
+			name: 'Food — fresh and prepared',
+			icon: 'Apple',
+			description: 'Vegetables, fruit, dairy, cooked meals for an event.',
+			defaultUnit: 'kg',
+			requiresExpiry: true,
+			acceptanceNote:
+				'Collected the same day and distributed immediately — tell us when it is ready.'
+		},
+		{
+			slug: 'hygiene',
+			name: 'Hygiene and sanitary supplies',
+			icon: 'Droplets',
+			description: 'Soap, detergent, sanitary pads, toothpaste, nappies.',
+			defaultUnit: 'boxes',
+			requiresExpiry: true
+		},
+		{
+			slug: 'school-supplies',
+			name: 'School supplies',
+			icon: 'GraduationCap',
+			description: 'Exercise books, pens, bags, uniforms, calculators.',
+			pillar: 'youth-education',
+			defaultUnit: 'boxes',
+			requiresSizing: true
+		},
+		{
+			slug: 'books',
+			name: 'Books and learning materials',
+			icon: 'BookOpen',
+			pillar: 'youth-education',
+			defaultUnit: 'boxes'
+		},
+		{
+			slug: 'electronics',
+			name: 'Computers and electronics',
+			icon: 'Laptop',
+			description: 'Laptops, tablets, printers, projectors.',
+			pillar: 'youth-education',
+			defaultUnit: 'items',
+			acceptanceNote: 'Working, with a charger. Please wipe personal data before handing it over.'
+		},
+		{
+			slug: 'phones',
+			name: 'Phones and accessories',
+			icon: 'Smartphone',
+			defaultUnit: 'items',
+			acceptanceNote: 'Unlocked and factory reset, please.'
+		},
+		{
+			slug: 'furniture',
+			name: 'Furniture',
+			icon: 'Armchair',
+			description: 'Chairs, tables, desks, shelving, wardrobes.',
+			defaultUnit: 'items',
+			requiresTransport: true,
+			acceptanceNote: 'We collect furniture ourselves — tell us about stairs and access.'
+		},
+		{
+			slug: 'appliances',
+			name: 'Appliances',
+			icon: 'Refrigerator',
+			description: 'Fridges, stoves, fans, water heaters.',
+			defaultUnit: 'items',
+			requiresTransport: true,
+			acceptanceNote: 'In working order. We cannot take anything that needs a repair first.'
+		},
+		{
+			slug: 'kitchenware',
+			name: 'Kitchen and household goods',
+			icon: 'CookingPot',
+			description: 'Pots, plates, jerrycans, cleaning equipment.',
+			defaultUnit: 'boxes'
+		},
+		{
+			slug: 'medical-supplies',
+			name: 'Medical supplies',
+			icon: 'Stethoscope',
+			description: 'Dressings, gloves, thermometers, diagnostic equipment.',
+			pillar: 'medical-hardship',
+			defaultUnit: 'boxes',
+			requiresExpiry: true,
+			acceptanceNote:
+				'Sealed and in date. Prescription medicine can only be accepted from a licensed supplier.'
+		},
+		{
+			slug: 'mobility-aids',
+			name: 'Mobility and assistive devices',
+			icon: 'Accessibility',
+			description: 'Wheelchairs, crutches, walking frames, hearing aids, glasses.',
+			pillar: 'elder-care',
+			defaultUnit: 'items',
+			requiresTransport: true
+		},
+		{
+			slug: 'elder-comfort',
+			name: 'Comfort items for elders',
+			icon: 'HandHeart',
+			description: 'Warm clothing, shawls, heaters, easy-chairs.',
+			pillar: 'elder-care',
+			defaultUnit: 'items'
+		},
+		{
+			slug: 'toys-play',
+			name: 'Toys, games and sports equipment',
+			icon: 'ToyBrick',
+			defaultUnit: 'boxes',
+			acceptanceNote:
+				'Complete sets, please — a puzzle with pieces missing disappoints a child twice.'
+		},
+		{
+			slug: 'building-materials',
+			name: 'Building and repair materials',
+			icon: 'Hammer',
+			description: 'Corrugated sheets, cement, timber, paint, tools.',
+			defaultUnit: 'items',
+			requiresTransport: true
+		},
+		{
+			slug: 'agricultural',
+			name: 'Seeds, tools and livestock feed',
+			icon: 'Sprout',
+			defaultUnit: 'sacks',
+			requiresExpiry: true
+		},
+		{
+			slug: 'fuel-transport',
+			name: 'Fuel, transport and vehicle use',
+			icon: 'Truck',
+			description: 'A vehicle for a collection day, fuel vouchers, a driver.',
+			defaultUnit: 'days'
+		},
+		{
+			slug: 'venue-space',
+			name: 'Space and venue',
+			icon: 'Warehouse',
+			description: 'Storage, a hall for a session, an office desk.',
+			defaultUnit: 'days'
+		},
+		{
+			slug: 'professional-services',
+			name: 'Professional services, given free',
+			icon: 'BriefcaseBusiness',
+			description: 'Legal, medical, counselling, accounting, translation, training.',
+			defaultUnit: 'hours',
+			acceptanceNote:
+				'Clinical and counselling work goes through the same safeguarding checks as volunteering.'
+		},
+		{
+			slug: 'printing-media',
+			name: 'Printing, design and media',
+			icon: 'Printer',
+			description: 'Printing a run of leaflets, photography, a website, translation.',
+			defaultUnit: 'jobs'
+		},
+		{
+			slug: 'event-support',
+			name: 'Event support',
+			icon: 'PartyPopper',
+			description: 'Catering, tents and chairs, sound equipment for a community day.',
+			defaultUnit: 'events'
+		},
+		{
+			slug: 'other-goods',
+			name: 'Something else',
+			icon: 'Package',
+			description: 'Not on this list? Describe it and we will tell you if we can use it.',
+			defaultUnit: 'items'
+		}
+	];
+
+	for (const [index, category] of categories.entries()) {
+		await db
+			.insert(schema.inKindCategories)
+			.values({
+				slug: category.slug,
+				name: category.name,
+				description: category.description ?? null,
+				icon: category.icon,
+				pillarId: category.pillar ? (pillarIds.get(category.pillar) ?? null) : null,
+				defaultUnit: category.defaultUnit ?? 'items',
+				requiresExpiry: category.requiresExpiry ?? false,
+				requiresSizing: category.requiresSizing ?? false,
+				requiresTransport: category.requiresTransport ?? false,
+				acceptanceNote: category.acceptanceNote ?? null,
+				sortOrder: index
+			})
+			.onConflictDoNothing({ target: schema.inKindCategories.slug });
+	}
+
+	console.log(`✓ in-kind — ${categories.length} kinds of gift`);
+}
+
+/* ==========================================================================
    Contact — enquiry topics and offices
    ========================================================================== */
 
@@ -3167,6 +3438,7 @@ async function main() {
 	await seedSafeguarding();
 	await seedVolunteerCatalog();
 	await seedApply();
+	await seedInKindCategories();
 	await seedContact();
 	await seedTranslations();
 	await seedMedia();
