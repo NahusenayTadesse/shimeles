@@ -18,6 +18,9 @@ export async function upsertDonor(input: {
 	fullName: string;
 	email: string | null;
 	phone: string | null;
+	/** Null for a person giving in their own name, which is most donors. */
+	organisationName?: string | null;
+	country?: string | null;
 	isDiaspora: boolean;
 	userId: string | null;
 }): Promise<number> {
@@ -41,6 +44,11 @@ export async function upsertDonor(input: {
 				.set({
 					fullName: input.fullName,
 					phone: input.phone ?? undefined,
+					// `?? undefined` throughout, never `?? null`: a gift that did not
+					// ask for the organisation or the country must not erase what an
+					// earlier one recorded.
+					organisationName: input.organisationName ?? undefined,
+					country: input.country ?? undefined,
 					isDiaspora: input.isDiaspora,
 					updatedAt: new Date()
 				})
@@ -55,6 +63,8 @@ export async function upsertDonor(input: {
 			fullName: input.fullName,
 			email: input.email,
 			phone: input.phone,
+			organisationName: input.organisationName ?? null,
+			country: input.country ?? null,
 			isDiaspora: input.isDiaspora,
 			userId: input.userId
 		})

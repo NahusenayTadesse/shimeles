@@ -79,6 +79,7 @@
 		{forms}
 		{testimonials}
 		{labels}
+		initiativeNotice={settings['initiatives.disclaimer'] ?? ''}
 	/>
 	{@render children?.()}
 </div>

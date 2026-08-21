@@ -213,6 +213,8 @@ export type ApplySubmission = {
 
 	consentToVerify: boolean;
 	consentToStore: boolean;
+	declareAccurate: boolean;
+	acknowledgeNoGuarantee: boolean;
 
 	documents: File[];
 };
@@ -403,6 +405,8 @@ export async function createApplication(
 				// Stamped from the server clock, never from anything posted.
 				consentToVerifyAt: input.consentToVerify ? now : null,
 				consentToStoreAt: input.consentToStore ? now : null,
+				declaredAccurateAt: input.declareAccurate ? now : null,
+				acknowledgedNoGuaranteeAt: input.acknowledgeNoGuarantee ? now : null,
 				createdAt: now,
 				updatedAt: now
 			})
@@ -612,6 +616,8 @@ export async function getApplicationDetail(submissionId: number) {
 				alternateContactPhone: applicationSubjects.alternateContactPhone,
 				consentToVerifyAt: applicationSubjects.consentToVerifyAt,
 				consentToStoreAt: applicationSubjects.consentToStoreAt,
+				declaredAccurateAt: applicationSubjects.declaredAccurateAt,
+				acknowledgedNoGuaranteeAt: applicationSubjects.acknowledgedNoGuaranteeAt,
 				languageName: languages.name,
 				languageNativeName: languages.nativeName,
 				regionName: regions.name

@@ -195,6 +195,7 @@
 					pillars={data.blocks?.pillars ?? []}
 					initiatives={data.blocks?.initiatives ?? []}
 					payments={data.blocks?.payments ?? []}
+					initiativeNotice={data.settings?.['initiatives.disclaimer'] ?? ''}
 				/>
 			</div>
 		{/if}
@@ -817,6 +818,38 @@
 							by visiting. Optional; it usually makes the assessment faster.
 						</span>
 					</label>
+
+					<label class="flex items-start gap-3">
+						<Checkbox
+							checked={$form.declareAccurate}
+							onCheckedChange={(checked) => ($form.declareAccurate = checked === true)}
+							class="mt-0.5"
+						/>
+						<span class="text-sm">
+							I confirm that what I have written here is accurate and complete, as far as I know.
+						</span>
+					</label>
+					{#if $errors.declareAccurate}
+						<p class="text-sm text-destructive">{$errors.declareAccurate}</p>
+					{/if}
+
+					<!-- Said plainly and on the form itself, because the waiting list
+					     is the ordinary outcome rather than the exception. -->
+					<label class="flex items-start gap-3">
+						<Checkbox
+							checked={$form.acknowledgeNoGuarantee}
+							onCheckedChange={(checked) => ($form.acknowledgeNoGuarantee = checked === true)}
+							class="mt-0.5"
+						/>
+						<span class="text-sm">
+							I understand that sending this application does not guarantee help, and does not
+							guarantee it straight away. Applications go onto a waiting list and are assessed at
+							each intake round; we get in touch when there is a programme you match.
+						</span>
+					</label>
+					{#if $errors.acknowledgeNoGuarantee}
+						<p class="text-sm text-destructive">{$errors.acknowledgeNoGuarantee}</p>
+					{/if}
 				</div>
 
 				<Separator class="my-6" />

@@ -20,6 +20,7 @@
 		{ value: 'references_checked', name: 'References checked (volunteers)' },
 		{ value: 'credentials_verified', name: 'Credentials verified (volunteers)' },
 		{ value: 'approved', name: 'Approved' },
+		{ value: 'waitlisted', name: 'Waitlisted (assessed again next round)' },
 		{ value: 'active', name: 'Active / receiving support' },
 		{ value: 'closed', name: 'Closed' },
 		{ value: 'declined', name: 'Declined' }

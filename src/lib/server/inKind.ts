@@ -15,7 +15,7 @@ import { nextInKindReference } from '$lib/server/reference';
 import { saveUploadedFile } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
 import { cached, invalidate } from '$lib/server/cache';
-import { IN_KIND_STATUS_LABELS, type InKindCategoryOption } from '$lib/inKind';
+import { IN_KIND_STATUS_LABELS, type InKindCategoryOption, type ItemCondition } from '$lib/inKind';
 
 /**
  * Giving goods instead of money.
@@ -84,7 +84,8 @@ export type InKindItemInput = {
 	description: string;
 	quantity: number;
 	unit: string;
-	condition: 'new' | 'like_new' | 'good' | 'used' | 'needs_repair';
+	/** Derived from `ITEM_CONDITIONS`, so adding one there is the only edit. */
+	condition: ItemCondition;
 	ageGroup: 'any' | 'infant' | 'child' | 'teen' | 'adult' | 'elderly';
 	gender: 'unisex' | 'female' | 'male';
 	sizeRange: string | null;
@@ -256,6 +257,9 @@ export async function createInKindOffer(
 		fullName: input.donorName,
 		email: input.donorEmail,
 		phone: input.donorPhone,
+		// The offer already asks who the goods are from; carrying it onto the
+		// donor row is what makes "this company gave twice" one supporter.
+		organisationName: input.organisationName,
 		isDiaspora: input.isDiaspora,
 		userId: input.userId
 	});

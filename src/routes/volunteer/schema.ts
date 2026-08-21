@@ -73,9 +73,16 @@ export const volunteerSchema = z
 		phone: z.string().trim().min(7, 'Enter a phone number we can reach you on').max(32),
 		city: optional(120),
 		regionId: z.coerce.number().int().positive().nullable().default(null),
+		/**
+		 * `city` and `regionId` are Ethiopian geography and cannot say "applying
+		 * from Toronto", which is the diaspora and every visiting professional.
+		 */
+		country: optional(100),
 		dateOfBirth: isoDate,
 		gender: z.enum(['female', 'male', 'other', 'prefer_not_to_say']).nullable().default(null),
 		occupation: optional(150),
+		/** An employer, university or association volunteering on their behalf. */
+		organisationName: optional(200),
 
 		/* --- Emergency contact --------------------------------------------
 		   Required, and deliberately so: a volunteer sitting with someone
@@ -135,6 +142,22 @@ export const volunteerSchema = z
 		agreeCodeOfConduct: z.coerce
 			.boolean()
 			.refine((value) => value === true, 'Please read and accept the code of conduct'),
+		/**
+		 * Required. Everything downstream — references, licence checks,
+		 * safeguarding — is an act of trust in what was typed here, so the
+		 * declaration that it is true is not an optional extra.
+		 */
+		declareAccurate: z.coerce
+			.boolean()
+			.refine((value) => value === true, 'Please confirm that what you have told us is accurate'),
+		/**
+		 * Required too, and for the applicant's sake rather than ours: approval
+		 * depends on safeguarding checks and on there being a placement to offer,
+		 * and nobody should learn that only after waiting.
+		 */
+		acknowledgeNoGuarantee: z.coerce
+			.boolean()
+			.refine((value) => value === true, 'Please confirm you understand this'),
 
 		/**
 		 * Honeypot — see the note in `$lib/server/forms`.

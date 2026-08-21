@@ -266,6 +266,7 @@
 					pillars={data.blocks?.pillars ?? []}
 					initiatives={data.blocks?.initiatives ?? []}
 					payments={data.blocks?.payments ?? []}
+					initiativeNotice={data.settings?.['initiatives.disclaimer'] ?? ''}
 				/>
 			</div>
 		{/if}
@@ -331,6 +332,27 @@
 							id="occupation"
 							bind:value={$form.occupation}
 							placeholder="Your work or studies"
+						/>
+					</div>
+
+					<div class="flex flex-col gap-2">
+						<Label for="organisationName">Organisation, if you are applying through one</Label>
+						<Input
+							id="organisationName"
+							bind:value={$form.organisationName}
+							placeholder="An employer, university or association"
+						/>
+					</div>
+
+					<!-- `city` and the region are Ethiopian geography, so a volunteer
+					     writing in from abroad has nowhere else to say where they are. -->
+					<div class="flex flex-col gap-2">
+						<Label for="country">Country</Label>
+						<Input
+							id="country"
+							bind:value={$form.country}
+							autocomplete="country-name"
+							placeholder="Ethiopia, unless you are applying from abroad"
 						/>
 					</div>
 
@@ -928,6 +950,36 @@
 					</label>
 					{#if $errors.agreeCodeOfConduct}
 						<p class="text-sm text-destructive">{$errors.agreeCodeOfConduct}</p>
+					{/if}
+
+					<label class="flex items-start gap-3">
+						<Checkbox
+							checked={$form.declareAccurate}
+							onCheckedChange={(checked) => ($form.declareAccurate = checked === true)}
+							class="mt-0.5"
+						/>
+						<span class="text-sm">
+							I confirm that everything I have entered above is accurate and complete.
+						</span>
+					</label>
+					{#if $errors.declareAccurate}
+						<p class="text-sm text-destructive">{$errors.declareAccurate}</p>
+					{/if}
+
+					<label class="flex items-start gap-3">
+						<Checkbox
+							checked={$form.acknowledgeNoGuarantee}
+							onCheckedChange={(checked) => ($form.acknowledgeNoGuarantee = checked === true)}
+							class="mt-0.5"
+						/>
+						<span class="text-sm">
+							I understand that sending this application does not guarantee a placement. Every
+							application goes through safeguarding checks, and we can only place volunteers where
+							there is a role to fill.
+						</span>
+					</label>
+					{#if $errors.acknowledgeNoGuarantee}
+						<p class="text-sm text-destructive">{$errors.acknowledgeNoGuarantee}</p>
 					{/if}
 				</div>
 

@@ -12,7 +12,18 @@ import { optionalEmailField, optionalNumberField } from '$lib/forms/fields';
  * here is what stops the two drifting apart.
  */
 
-export const ITEM_CONDITIONS = ['new', 'like_new', 'good', 'used', 'needs_repair'] as const;
+export const ITEM_CONDITIONS = [
+	'new',
+	'like_new',
+	'refurbished',
+	'good',
+	'used',
+	'needs_repair'
+] as const;
+
+/** The single source for the condition union — see `InKindItemInput`. */
+export type ItemCondition = (typeof ITEM_CONDITIONS)[number];
+
 export const ITEM_AGE_GROUPS = ['any', 'infant', 'child', 'teen', 'adult', 'elderly'] as const;
 export const ITEM_GENDERS = ['unisex', 'female', 'male'] as const;
 
@@ -150,6 +161,9 @@ export const IN_KIND_STATUS_COLORS: Record<InKindStatusValue, string> = {
 export const CONDITION_LABELS: Record<string, string> = {
 	new: 'New, unused',
 	like_new: 'As good as new',
+	// Distinct from "good": somebody has repaired or reconditioned it, which is
+	// what a laptop or a piece of medical equipment usually arrives as.
+	refurbished: 'Refurbished or reconditioned',
 	good: 'Used, good condition',
 	used: 'Well used, still usable',
 	needs_repair: 'Needs a repair first'

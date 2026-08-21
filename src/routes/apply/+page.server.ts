@@ -67,6 +67,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			alternateContactPhone: '',
 			consentToStore: false,
 			consentToVerify: false,
+			declareAccurate: false,
+			acknowledgeNoGuarantee: false,
 			website: ''
 		}
 	});
@@ -143,6 +145,8 @@ export const actions: Actions = {
 				})),
 				consentToVerify: data.consentToVerify,
 				consentToStore: data.consentToStore,
+				declareAccurate: data.declareAccurate,
+				acknowledgeNoGuarantee: data.acknowledgeNoGuarantee,
 				documents
 			});
 

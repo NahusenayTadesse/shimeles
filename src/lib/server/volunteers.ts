@@ -309,6 +309,8 @@ export type VolunteerSubmission = {
 	dateOfBirth: string | null;
 	gender: 'female' | 'male' | 'other' | 'prefer_not_to_say' | null;
 	occupation: string | null;
+	organisationName: string | null;
+	country: string | null;
 	emergencyContactName: string | null;
 	emergencyContactPhone: string | null;
 	emergencyContactRelationship: string | null;
@@ -346,6 +348,8 @@ export type VolunteerSubmission = {
 	priorConvictionDetail: string | null;
 	consentBackgroundCheck: boolean;
 	agreeCodeOfConduct: boolean;
+	declareAccurate: boolean;
+	acknowledgeNoGuarantee: boolean;
 };
 
 /**
@@ -457,6 +461,8 @@ export async function createVolunteerApplication(
 				dateOfBirth: input.dateOfBirth,
 				gender: input.gender,
 				occupation: input.occupation,
+				organisationName: input.organisationName,
+				country: input.country,
 				emergencyContactName: input.emergencyContactName,
 				emergencyContactPhone: input.emergencyContactPhone,
 				emergencyContactRelationship: input.emergencyContactRelationship,
@@ -474,6 +480,8 @@ export async function createVolunteerApplication(
 				// Stamped from the server clock, not from anything posted.
 				backgroundCheckConsentAt: input.consentBackgroundCheck ? now : null,
 				codeOfConductAgreedAt: input.agreeCodeOfConduct ? now : null,
+				declaredAccurateAt: input.declareAccurate ? now : null,
+				acknowledgedNoGuaranteeAt: input.acknowledgeNoGuarantee ? now : null,
 				statusId: status?.id ?? null,
 				createdAt: now,
 				updatedAt: now

@@ -241,6 +241,24 @@ async function seedSettings() {
 			value: 'Every birr is accounted for and reported back to the people who gave it.'
 		},
 
+		// Future initiatives. §0: the disclaimer is a row, not a string in a
+		// component — it is a legal notice the Foundation must be able to revise
+		// (or withdraw, by clearing it) the day a programme actually opens,
+		// without waiting on a deploy.
+		{
+			key: 'initiatives.disclaimer',
+			label: 'Future initiatives disclaimer',
+			group: 'initiatives',
+			valueType: 'textarea',
+			hint: 'Shown wherever the long-term initiatives are listed. Clear it to remove the notice.',
+			value:
+				'These initiatives are in the strategic planning phase and are not open for ' +
+				'beneficiary registration, volunteer assignment or service requests. Please do not ' +
+				'apply for them. Registration will be announced by national press release and on ' +
+				'this website well ahead of each launch. Gifts towards them are welcome and are held ' +
+				'against the named initiative.'
+		},
+
 		// Homepage
 		{
 			key: 'hero.headline',
@@ -393,6 +411,15 @@ async function seedStatuses() {
 			label: 'Receiving support',
 			color: 'clay'
 		},
+		{
+			context: 'application',
+			stage: 'waitlisted',
+			label: 'Waitlisted',
+			color: 'amber',
+			publicDescription:
+				'You are on the waiting list. We assess the list at each intake round and will ' +
+				'contact you if you match an upcoming camp or programme.'
+		},
 		{ context: 'application', stage: 'closed', label: 'Closed', color: 'slate' },
 		{
 			context: 'application',
@@ -446,6 +473,7 @@ async function seedStatuses() {
 			label: status.label,
 			color: status.color,
 			isDefault: 'isDefault' in status ? status.isDefault : false,
+			publicDescription: 'publicDescription' in status ? status.publicDescription : null,
 			sortOrder: index
 		});
 	}
@@ -2490,6 +2518,29 @@ async function seedInKindCategories() {
 			defaultUnit: 'events'
 		},
 		{
+			slug: 'land',
+			name: 'Land and property',
+			icon: 'LandPlot',
+			description: 'A plot, a building, or a long lease given to the Foundation.',
+			defaultUnit: 'plots',
+			requiresTransport: false,
+			acceptanceNote:
+				'A gift of land or property is handled by the Foundation directly rather than ' +
+				'through a collection. Register it here and a coordinator will call to go through ' +
+				'title, transfer and the legal work before anything is agreed.'
+		},
+		{
+			slug: 'machinery',
+			name: 'Machinery and heavy equipment',
+			icon: 'Tractor',
+			description: 'Generators, pumps, workshop and farm machinery, vehicles.',
+			defaultUnit: 'units',
+			requiresTransport: true,
+			acceptanceNote:
+				'Tell us the make, model and working condition. Anything powered is inspected ' +
+				'before it is accepted, and moving it needs a vehicle we have to book.'
+		},
+		{
 			slug: 'other-goods',
 			name: 'Something else',
 			icon: 'Package',
@@ -2746,7 +2797,18 @@ async function seedTranslations() {
 		{ key: 'donate.email', en: 'Email', group: 'donate' },
 		{ key: 'donate.phone', en: 'Phone', group: 'donate' },
 		{ key: 'donate.message', en: 'A message, if you would like', group: 'donate' },
+		{
+			key: 'donate.organisation',
+			en: 'Organisation, if you are giving on its behalf',
+			group: 'donate'
+		},
+		{
+			key: 'donate.organisation_hint',
+			en: 'A company, school, church or group',
+			group: 'donate'
+		},
 		{ key: 'donate.is_diaspora', en: 'I am giving from outside Ethiopia', group: 'donate' },
+		{ key: 'donate.country', en: 'Which country are you giving from?', group: 'donate' },
 		{
 			key: 'donate.anonymous',
 			en: 'Keep my gift anonymous',

@@ -46,6 +46,7 @@
 		forms = {},
 		testimonials = [],
 		labels = {},
+		initiativeNotice = '',
 		class: className = ''
 	}: {
 		blocks: RenderBlock[];
@@ -72,6 +73,13 @@
 		/** `testimonial_slider` blocks render these. */
 		testimonials?: RenderTestimonial[];
 		labels?: Record<string, string>;
+		/**
+		 * The `initiatives.disclaimer` setting, rendered under an
+		 * `initiative_grid`. Passed in rather than read here for the same reason
+		 * as everything else on this component — see the note above — and empty
+		 * when staff have cleared it, in which case nothing renders.
+		 */
+		initiativeNotice?: string;
 		class?: string;
 	} = $props();
 
@@ -356,6 +364,16 @@
 						</div>
 					{/each}
 				</div>
+				{#if initiativeNotice.trim()}
+					<!-- A legal notice, so it sits with the grid it qualifies rather
+					     than at the foot of the page where nobody reads it. -->
+					<div
+						class="mt-6 rounded-2xl border border-warning/30 bg-warning/8 p-5 text-sm text-muted-foreground"
+					>
+						<p class="mb-1 font-medium text-foreground">Please take notice</p>
+						<p class="whitespace-pre-wrap">{initiativeNotice}</p>
+					</div>
+				{/if}
 			{:else if block.type === 'form_embed'}
 				<!-- `{ slug, label }` — the form itself renders right here (data
 				     comes from `hydrateBlocks`' `loadEmbeddedForms`), so applying

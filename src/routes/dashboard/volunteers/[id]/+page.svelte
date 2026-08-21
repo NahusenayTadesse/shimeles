@@ -534,12 +534,22 @@
 					{/if}
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Lives in</dt>
-						<dd class="mt-1 text-sm">{a.city ?? '—'}</dd>
+						<dd class="mt-1 text-sm">
+							{a.city ?? '—'}{a.country ? ` · ${a.country}` : ''}
+						</dd>
 					</div>
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Occupation</dt>
 						<dd class="mt-1 text-sm">{a.occupation ?? '—'}</dd>
 					</div>
+					{#if a.organisationName}
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">
+								Applying through
+							</dt>
+							<dd class="mt-1 text-sm">{a.organisationName}</dd>
+						</div>
+					{/if}
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Date of birth</dt>
 						<dd class="mt-1 text-sm">{a.dateOfBirth ?? '—'}</dd>
@@ -579,6 +589,20 @@
 						</dt>
 						<dd class="mt-1 text-sm">
 							{a.codeOfConductAgreedAt ? fmt(a.codeOfConductAgreedAt) : 'Not accepted'}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Declared accurate</dt>
+						<dd class="mt-1 text-sm">
+							{a.declaredAccurateAt ? fmt(a.declaredAccurateAt) : 'Not declared'}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-xs tracking-wide text-muted-foreground uppercase">
+							Understood no guarantee
+						</dt>
+						<dd class="mt-1 text-sm">
+							{a.acknowledgedNoGuaranteeAt ? fmt(a.acknowledgedNoGuaranteeAt) : 'Not acknowledged'}
 						</dd>
 					</div>
 

@@ -86,7 +86,9 @@ export const load: PageServerLoad = async ({ url }) => {
 			donorName: '',
 			donorEmail: '',
 			donorPhone: '',
+			donorOrganisation: '',
 			isDiaspora: false,
+			donorCountry: '',
 			isAnonymous: false,
 			donorMessage: '',
 			joinNewsletter: false,
@@ -252,6 +254,8 @@ export const actions: Actions = {
 				fullName: data.donorName,
 				email,
 				phone: data.donorPhone?.trim() || null,
+				organisationName: data.donorOrganisation?.trim() || null,
+				country: data.donorCountry?.trim() || null,
 				isDiaspora: data.isDiaspora,
 				userId: event.locals.user?.id ?? null
 			});

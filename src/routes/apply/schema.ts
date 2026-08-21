@@ -120,6 +120,22 @@ export const applySchema = z
 			.boolean()
 			.refine((value) => value === true, 'We need your permission to keep this application'),
 		consentToVerify: z.coerce.boolean().default(false),
+		/**
+		 * Required, unlike verification consent. An assessment rests entirely on
+		 * what is written here, and the declaration that it is true is the only
+		 * thing a caseworker has to start from.
+		 */
+		declareAccurate: z.coerce
+			.boolean()
+			.refine((value) => value === true, 'Please confirm that what you have told us is accurate'),
+		/**
+		 * Required too, and for the applicant's sake: the waiting list is the
+		 * usual outcome, assessed each intake round, and nobody should discover
+		 * that only after months of waiting for a call.
+		 */
+		acknowledgeNoGuarantee: z.coerce
+			.boolean()
+			.refine((value) => value === true, 'Please confirm you understand this'),
 
 		/** Honeypot — permissive on purpose; see the note in the contact schema. */
 		website: z.string().max(200).optional().or(z.literal(''))

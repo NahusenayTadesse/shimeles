@@ -73,11 +73,18 @@
 		{ value: '', name: 'Unassigned' },
 		...data.reviewers.map((row) => ({ value: row.id, name: row.name }))
 	]);
+	/**
+	 * The triage categories on the registration form — urgent, standard,
+	 * deferred — mapped onto the priority column that already existed. `normal`
+	 * is what the form calls "standard"; the label says so, the value does not
+	 * change, and nothing stored has to be rewritten.
+	 */
 	const priorityItems = [
-		{ value: 'low', name: 'Low' },
-		{ value: 'normal', name: 'Normal' },
+		{ value: 'urgent', name: 'Urgent' },
 		{ value: 'high', name: 'High' },
-		{ value: 'urgent', name: 'Urgent' }
+		{ value: 'normal', name: 'Standard' },
+		{ value: 'low', name: 'Low' },
+		{ value: 'deferred', name: 'Deferred' }
 	];
 
 	/**
@@ -132,7 +139,12 @@
 				<StatusBadge label={s.statusLabel} color={s.statusColor} />
 				{#if s.pillarName}<Badge variant="secondary">{s.pillarName}</Badge>{/if}
 				{#if s.priority !== 'normal'}
-					<Badge variant={s.priority === 'low' ? 'outline' : 'destructive'} class="capitalize">
+					<!-- Deferred is a triage decision, not an alarm, so it reads as an
+					     outline badge alongside low rather than in red. -->
+					<Badge
+						variant={s.priority === 'low' || s.priority === 'deferred' ? 'outline' : 'destructive'}
+						class="capitalize"
+					>
 						{s.priority}
 					</Badge>
 				{/if}
@@ -305,6 +317,23 @@
 								{subject.consentToStoreAt ? 'To store' : 'Not given'}{subject.consentToVerifyAt
 									? ', to verify'
 									: ''}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Declarations</dt>
+							<dd class="text-sm">
+								{#if subject.declaredAccurateAt || subject.acknowledgedNoGuaranteeAt}
+									{[
+										subject.declaredAccurateAt ? 'Accurate' : null,
+										subject.acknowledgedNoGuaranteeAt ? 'No guarantee understood' : null
+									]
+										.filter(Boolean)
+										.join(', ')}
+								{:else}
+									<!-- Applications taken before the declarations were added, and
+									     any taken through the older dynamic form, have neither. -->
+									Not recorded
+								{/if}
 							</dd>
 						</div>
 					</dl>

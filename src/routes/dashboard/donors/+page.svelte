@@ -20,6 +20,12 @@
 		indexColumn,
 		column('fullName', 'Name'),
 		{
+			id: 'organisationName',
+			header: 'Organisation',
+			enableSorting: false,
+			cell: ({ row }: any) => row.original.organisationName ?? '—'
+		},
+		{
 			id: 'contact',
 			header: 'Contact',
 			enableSorting: false,
@@ -40,9 +46,12 @@
 			id: 'isDiaspora',
 			header: 'Where',
 			enableSorting: false,
+			// The country when we have one, the diaspora flag when we do not —
+			// "Diaspora" alone does not tell a fundraiser which embassy letter or
+			// which currency a supporter needs.
 			cell: ({ row }: any) =>
 				renderComponent(BadgeCell, {
-					label: row.original.isDiaspora ? 'Diaspora' : 'Ethiopia',
+					label: row.original.country || (row.original.isDiaspora ? 'Diaspora' : 'Ethiopia'),
 					variant: row.original.isDiaspora ? 'secondary' : 'outline'
 				})
 		}

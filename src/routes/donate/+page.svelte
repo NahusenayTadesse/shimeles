@@ -292,6 +292,16 @@
 										</Button>
 									{/each}
 								</div>
+								{#if $form.designationType === 'future_initiative' && data.settings?.['initiatives.disclaimer']}
+									<!-- Shown at the point of choosing, not only further down
+									     the page: this gift is towards something that does not
+									     exist yet, and the donor should know before they give. -->
+									<p
+										class="rounded-xl border border-warning/30 bg-warning/8 p-3 text-xs text-muted-foreground"
+									>
+										{data.settings['initiatives.disclaimer']}
+									</p>
+								{/if}
 								<input type="hidden" name="designationType" value={$form.designationType} />
 								<input
 									type="hidden"
@@ -363,6 +373,18 @@
 							</div>
 
 							<div class="flex flex-col gap-2">
+								<Label for="donorOrganisation">
+									{s('donate.organisation', 'Organisation, if you are giving on its behalf')}
+								</Label>
+								<Input
+									id="donorOrganisation"
+									name="donorOrganisation"
+									bind:value={$form.donorOrganisation}
+									placeholder={s('donate.organisation_hint', 'A company, school, church or group')}
+								/>
+							</div>
+
+							<div class="flex flex-col gap-2">
 								<Label for="donorMessage"
 									>{s('donate.message', 'A message, if you would like')}</Label
 								>
@@ -380,6 +402,23 @@
 									<input type="hidden" name="isDiaspora" value={$form.isDiaspora} />
 									{s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
 								</label>
+
+								<!-- Only asked of a diaspora donor: for a gift sent from
+								     inside Ethiopia the answer is already known, and an
+								     extra box on a donation form costs gifts. -->
+								{#if $form.isDiaspora}
+									<div class="flex flex-col gap-2 pt-1 pl-6">
+										<Label for="donorCountry">
+											{s('donate.country', 'Which country are you giving from?')}
+										</Label>
+										<Input
+											id="donorCountry"
+											name="donorCountry"
+											bind:value={$form.donorCountry}
+											autocomplete="country-name"
+										/>
+									</div>
+								{/if}
 								<label class="flex items-center gap-2 text-sm">
 									<Checkbox bind:checked={$form.isAnonymous} />
 									<input type="hidden" name="isAnonymous" value={$form.isAnonymous} />
@@ -442,6 +481,7 @@
 			initiatives={data.blocks.initiatives}
 			metrics={data.metrics}
 			payments={data.blocks.payments}
+			initiativeNotice={data.settings?.['initiatives.disclaimer'] ?? ''}
 		/>
 	</div>
 {/if}

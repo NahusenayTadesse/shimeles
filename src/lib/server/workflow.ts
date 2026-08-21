@@ -25,7 +25,14 @@ import { assertPillarAccess } from '$lib/server/permissions';
  */
 
 export type ApplicationStage =
-	'submitted' | 'under_review' | 'verified' | 'approved' | 'declined' | 'active' | 'closed';
+	| 'submitted'
+	| 'under_review'
+	| 'verified'
+	| 'approved'
+	| 'waitlisted'
+	| 'declined'
+	| 'active'
+	| 'closed';
 
 export type VolunteerStage =
 	| 'submitted'
@@ -40,6 +47,16 @@ export const SUPPORTED_STAGES: ApplicationStage[] = ['active', 'closed'];
 
 /** Terminal stages — a case here needs reopening before it moves again. */
 export const CLOSED_STAGES: ApplicationStage[] = ['declined', 'closed'];
+
+/**
+ * Waiting on the next intake round rather than on us.
+ *
+ * Deliberately **not** in `CLOSED_STAGES`: a waitlisted case is still open, is
+ * reassessed at each intake round, and must not have `closedAt` stamped on it.
+ * The registration form promises exactly that reassessment, and a case the
+ * dashboard files away as finished is a promise nobody keeps.
+ */
+export const WAITING_STAGES: ApplicationStage[] = ['waitlisted'];
 
 /* ==========================================================================
    Status lookup

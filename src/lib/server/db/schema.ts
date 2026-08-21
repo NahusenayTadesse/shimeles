@@ -300,6 +300,12 @@ export const statusOptions = sqliteTable(
 				'under_review',
 				'verified',
 				'approved',
+				// The PDF registration form makes this the *usual* outcome, not an
+				// exception: an applicant is placed on a triage waitlist and only
+				// contacted when they match an upcoming camp or programme. Distinct
+				// from `declined` — nothing has been refused — and non-terminal, so
+				// the six-monthly reassessment can move it on.
+				'waitlisted',
 				'declined',
 				'active',
 				'closed',
@@ -746,8 +752,16 @@ export const formSubmissions = sqliteTable(
 		language: text('language', { enum: ['en', 'am'] })
 			.default('en')
 			.notNull(),
-		/** Staff triage flag, independent of workflow stage. */
-		priority: text('priority', { enum: ['low', 'normal', 'high', 'urgent'] })
+		/**
+		 * Staff triage flag, independent of workflow stage.
+		 *
+		 * `deferred` is the registration form's third triage category alongside
+		 * urgent and standard, and it is a priority rather than a stage on
+		 * purpose: a deferred case is still open and still assessed, it simply
+		 * sorts below everything else. Refusing it is `declined`; parking it
+		 * until the next intake round is `waitlisted`.
+		 */
+		priority: text('priority', { enum: ['low', 'normal', 'high', 'urgent', 'deferred'] })
 			.default('normal')
 			.notNull(),
 		/** Unread badge in the dashboard; not part of the workflow. */
@@ -978,6 +992,15 @@ export const applicationSubjects = sqliteTable(
 		 */
 		consentToVerifyAt: timestampMs('consent_to_verify_at'),
 		consentToStoreAt: timestampMs('consent_to_store_at'),
+		/** "All information provided is accurate and complete." See §Section G. */
+		declaredAccurateAt: timestampMs('declared_accurate_at'),
+		/**
+		 * "I understand that submission does not guarantee immediate service or
+		 * acceptance." The waitlist is the normal outcome, so this is the one
+		 * declaration that has to be on the form rather than in a policy page
+		 * nobody opens.
+		 */
+		acknowledgedNoGuaranteeAt: timestampMs('acknowledged_no_guarantee_at'),
 
 		...publicFields
 	},
@@ -1235,6 +1258,13 @@ export const donors = sqliteTable(
 		fullName: text('full_name').notNull(),
 		email: text('email'),
 		phone: text('phone'),
+		/**
+		 * Set when the gift comes from a company, school, church or association
+		 * rather than a person. `fullName` stays the human being we actually
+		 * speak to — a receipt has to name the organisation, and a collection
+		 * call has to reach somebody.
+		 */
+		organisationName: text('organisation_name'),
 		/** Drives which payment account and currency the donate page leads with. */
 		isDiaspora: integer('is_diaspora', { mode: 'boolean' }).default(false).notNull(),
 		country: text('country'),
@@ -1696,7 +1726,7 @@ export const inKindDonationItems = sqliteTable(
 		/** Free text, seeded from the category's `defaultUnit`. */
 		unit: text('unit').default('items').notNull(),
 		condition: text('condition', {
-			enum: ['new', 'like_new', 'good', 'used', 'needs_repair']
+			enum: ['new', 'like_new', 'refurbished', 'good', 'used', 'needs_repair']
 		})
 			.default('good')
 			.notNull(),
@@ -1800,6 +1830,18 @@ export const volunteerApplications = sqliteTable(
 		dateOfBirth: text('date_of_birth'),
 		gender: text('gender', { enum: ['female', 'male', 'other', 'prefer_not_to_say'] }),
 		occupation: text('occupation'),
+		/**
+		 * The employer, university or association volunteering on this person's
+		 * behalf. Set for a company sending a team; null for someone applying in
+		 * their own name, which is most of them.
+		 */
+		organisationName: text('organisation_name'),
+		/**
+		 * Country of residence or citizenship. `regionId` and `city` are
+		 * Ethiopian administrative geography and cannot express "applying from
+		 * Toronto" — which is the whole diaspora and every visiting professional.
+		 */
+		country: text('country'),
 		/** The one contact we call if something happens on a placement. */
 		emergencyContactName: text('emergency_contact_name'),
 		emergencyContactPhone: text('emergency_contact_phone'),
@@ -1862,6 +1904,19 @@ export const volunteerApplications = sqliteTable(
 		 */
 		backgroundCheckConsentAt: timestampMs('background_check_consent_at'),
 		codeOfConductAgreedAt: timestampMs('code_of_conduct_agreed_at'),
+		/**
+		 * "I confirm that all information provided above is accurate and
+		 * complete." A timestamp rather than a boolean, for the same reason as
+		 * every other declaration here: a safeguarding review asks *when* it was
+		 * declared, and a `true` cannot answer that.
+		 */
+		declaredAccurateAt: timestampMs('declared_accurate_at'),
+		/**
+		 * "I understand that submission does not guarantee acceptance." Recorded
+		 * so nobody can later be told they were never warned — and so the
+		 * Foundation can show it asked.
+		 */
+		acknowledgedNoGuaranteeAt: timestampMs('acknowledged_no_guarantee_at'),
 		/** Self-declaration. A `true` is not a bar; an undisclosed one is. */
 		hasPriorConviction: integer('has_prior_conviction', { mode: 'boolean' }),
 		priorConvictionDetail: text('prior_conviction_detail'),

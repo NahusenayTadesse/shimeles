@@ -261,7 +261,7 @@ export const actions: Actions = {
 		const formData = await event.request.formData();
 		const priority = String(formData.get('priority') ?? 'normal');
 
-		if (!['low', 'normal', 'high', 'urgent'].includes(priority)) {
+		if (!['low', 'normal', 'high', 'urgent', 'deferred'].includes(priority)) {
 			return fail(400, { error: 'Unknown priority.' });
 		}
 

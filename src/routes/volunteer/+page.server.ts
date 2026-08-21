@@ -35,9 +35,11 @@ export const load: PageServerLoad = async () => {
 			phone: '',
 			city: '',
 			regionId: catalog.regions.find((region) => region.isDefault)?.id ?? null,
+			country: '',
 			dateOfBirth: '',
 			gender: null,
 			occupation: '',
+			organisationName: '',
 			emergencyContactName: '',
 			emergencyContactPhone: '',
 			emergencyContactRelationship: '',
@@ -64,6 +66,8 @@ export const load: PageServerLoad = async () => {
 			priorConvictionDetail: '',
 			consentBackgroundCheck: false,
 			agreeCodeOfConduct: false,
+			declareAccurate: false,
+			acknowledgeNoGuarantee: false,
 			website: ''
 		}
 	});
@@ -100,9 +104,11 @@ export const actions: Actions = {
 				phone: data.phone,
 				city: trim(data.city),
 				regionId: data.regionId,
+				country: trim(data.country),
 				dateOfBirth: trim(data.dateOfBirth),
 				gender: data.gender,
 				occupation: trim(data.occupation),
+				organisationName: trim(data.organisationName),
 				emergencyContactName: data.emergencyContactName,
 				emergencyContactPhone: data.emergencyContactPhone,
 				emergencyContactRelationship: trim(data.emergencyContactRelationship),
@@ -145,7 +151,9 @@ export const actions: Actions = {
 				hasPriorConviction: data.hasPriorConviction,
 				priorConvictionDetail: trim(data.priorConvictionDetail),
 				consentBackgroundCheck: data.consentBackgroundCheck,
-				agreeCodeOfConduct: data.agreeCodeOfConduct
+				agreeCodeOfConduct: data.agreeCodeOfConduct,
+				declareAccurate: data.declareAccurate,
+				acknowledgeNoGuarantee: data.acknowledgeNoGuarantee
 			});
 
 			// Both fire-and-forget: the application is already stored, and a slow

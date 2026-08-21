@@ -29,7 +29,15 @@ export const donateSchema = z.object({
 	donorName: z.string().trim().min(2, 'Enter your name').max(150),
 	donorEmail: optionalEmailField(),
 	donorPhone: z.string().trim().max(32).optional().or(z.literal('')),
+	/**
+	 * Optional throughout: most gifts are from a person. A company, school or
+	 * association giving in its own name still needs a human being on the
+	 * record, so `donorName` stays required and this sits beside it.
+	 */
+	donorOrganisation: z.string().trim().max(200).optional().or(z.literal('')),
 	isDiaspora: z.coerce.boolean().default(false),
+	/** Where the gift is coming from. Asked of diaspora donors, kept for all. */
+	donorCountry: z.string().trim().max(100).optional().or(z.literal('')),
 
 	isAnonymous: z.coerce.boolean().default(false),
 	donorMessage: z

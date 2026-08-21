@@ -39,7 +39,15 @@
 
 	const unassigned = $derived(data.rows.filter((row) => row.statusId == null));
 
-	const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+	const priorityRank: Record<string, number> = {
+		urgent: 0,
+		high: 1,
+		normal: 2,
+		low: 3,
+		// Deferred sorts below everything: the case is open and still assessed,
+		// it just is not what anyone should pick up first.
+		deferred: 4
+	};
 	const sortCards = <T extends { priority: string }>(cards: T[]) =>
 		[...cards].sort((a, b) => (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2));
 
@@ -214,6 +222,8 @@
 											<Badge variant="destructive" class="h-4 px-1.5 text-[10px] capitalize">
 												{card.priority}
 											</Badge>
+										{:else if card.priority === 'deferred'}
+											<Badge variant="outline" class="h-4 px-1.5 text-[10px]">Deferred</Badge>
 										{/if}
 									</div>
 									<span class="font-medium">{card.name || 'Anonymous'}</span>
