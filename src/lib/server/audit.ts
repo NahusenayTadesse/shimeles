@@ -61,7 +61,9 @@ export type AuditEntity =
 	| 'user'
 	| 'role'
 	| 'file'
-	| 'export';
+	| 'export'
+	/** A palette lookup across cases, volunteers, donors and messages. */
+	| 'search';
 
 export type AuditAction =
 	| 'viewed'

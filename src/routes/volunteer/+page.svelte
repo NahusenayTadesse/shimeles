@@ -14,6 +14,8 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
+	import { formDraft } from '$lib/formComponents/form-draft.svelte';
+	import DraftBanner from '$lib/formComponents/DraftBanner.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
@@ -81,6 +83,28 @@
 	/** Set once the application is stored; the page then shows the reference. */
 	let confirmation = $state<string | null>(null);
 
+	/*
+	 * A draft of this form, kept on this device only.
+	 *
+	 * Saved on a debounce as the person types and offered back behind a banner
+	 * — never applied on its own. Cleared the moment the form is submitted, so
+	 * a finished application does not sit in the browser afterwards.
+	 */
+	const draft = formDraft('volunteer');
+
+	$effect(() => {
+		// Reading `$form` is what subscribes this effect to every keystroke.
+		const snapshot = { ...$form };
+		// `$tainted` gates it: without that, merely opening the page would write
+		// a draft of the empty form and offer it back on the next visit.
+		if (!confirmation && $tainted) draft.save(snapshot);
+	});
+
+	function restoreDraft() {
+		const saved = draft.restore();
+		if (saved) $form = { ...$form, ...saved };
+	}
+
 	$effect(() => {
 		if (!$message) return;
 		if ($message.type === 'error') {
@@ -94,6 +118,9 @@
 			// are no longer unsaved work — without this the leave-guard would
 			// challenge someone for navigating away from a finished submission.
 			$tainted = undefined;
+			// The answers are on the server now; nothing should keep a copy of a
+			// household's circumstances in this browser.
+			draft.discard();
 			if ($message.reference) {
 				confirmation = $message.reference;
 				window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -334,6 +361,14 @@
 			use:observeSections
 			class="flex flex-col gap-8"
 		>
+			{#if draft.available}
+				<DraftBanner
+					savedAt={draft.savedAt}
+					onrestore={restoreDraft}
+					ondiscard={() => draft.discard()}
+				/>
+			{/if}
+
 			<Errors allErrors={$allErrors} />
 
 			<!-- Honeypot. Hidden from people, irresistible to bots; a filled value
