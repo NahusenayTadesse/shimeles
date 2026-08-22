@@ -13,6 +13,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
@@ -71,10 +72,10 @@
 	 * post working would make the schema unreadable for a form that already
 	 * needs JavaScript to add a credential row at all.
 	 */
-	const { form, errors, enhance, delayed, message, allErrors } = superForm(data.form, {
+	const { form, errors, enhance, delayed, message, allErrors, tainted } = superForm(data.form, {
 		dataType: 'json',
 		resetForm: false,
-		taintedMessage: null
+		taintedMessage: 'You have not finished this form. Leave anyway?'
 	});
 
 	/** Set once the application is stored; the page then shows the reference. */
@@ -84,8 +85,15 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The toast fades and the summary is a long way up the page; this is
+			// what actually takes the person to the question they missed.
+			focusFirstError($allErrors);
 		} else {
 			toast.success($message.text);
+			// The application is stored, so the answers still sitting in `$form`
+			// are no longer unsaved work — without this the leave-guard would
+			// challenge someone for navigating away from a finished submission.
+			$tainted = undefined;
 			if ($message.reference) {
 				confirmation = $message.reference;
 				window.scrollTo({ top: 0, behavior: 'smooth' });

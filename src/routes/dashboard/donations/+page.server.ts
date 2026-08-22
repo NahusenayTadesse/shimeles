@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { and, desc, eq, isNull, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	donationReconciliationLog,
@@ -11,6 +11,7 @@ import {
 	pillars,
 	recurringPledges
 } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { audit, auditList } from '$lib/server/audit';
 import { invalidateImpact } from '$lib/server/impact';
@@ -46,18 +47,14 @@ export const load: PageServerLoad = async (event) => {
 
 	const clauses: (SQL | undefined)[] = [isNull(donations.deletedAt)];
 	if (status !== 'all') clauses.push(eq(donations.status, status as never));
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(
-				like(donations.referenceCode, needle),
-				like(donors.fullName, needle),
-				like(donors.email, needle),
-				like(donors.phone, needle),
-				like(donations.providerTransactionId, needle)
-			)
-		);
-	}
+	const searchClause = searchFilter(search, [
+		donations.referenceCode,
+		donors.fullName,
+		donors.email,
+		donors.phone,
+		donations.providerTransactionId
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const [rows, totals] = await Promise.all([
 		db

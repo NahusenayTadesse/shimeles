@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { env } from '$env/dynamic/private';
+import { formatDayLong } from '$lib/dates';
 
 /**
  * Outbound mail.
@@ -141,13 +142,7 @@ export const inKindDecisionTemplate = (input: {
 	/** ISO date, for the scheduled handover. */
 	when: string | null;
 }) => {
-	const date = input.when
-		? new Intl.DateTimeFormat('en-GB', {
-				weekday: 'long',
-				day: 'numeric',
-				month: 'long'
-			}).format(new Date(input.when))
-		: null;
+	const date = input.when ? formatDayLong(input.when, '') || null : null;
 
 	const bodies: Record<typeof input.outcome, { heading: string; subject: string; body: string }> = {
 		accepted: {

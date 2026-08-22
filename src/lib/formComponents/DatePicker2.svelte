@@ -5,6 +5,7 @@
 	import { cn } from '$lib/utils.js';
 	import { CalendarDate, getLocalTimeZone, today, parseDate } from '@internationalized/date';
 	import { CalendarIcon } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let {
 		data = $bindable(),
@@ -41,17 +42,14 @@
 		if (next !== data) data = next;
 	});
 
-	const formatDate = (date: CalendarDate | undefined): string => {
-		if (!date) return '';
-
-		const formatter = new Intl.DateTimeFormat('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
-
-		return formatter.format(date.toDate(getLocalTimeZone()));
-	};
+	/**
+	 * The trigger label, in the app's one date format.
+	 *
+	 * This was the `en-US` outlier: a staff member picked a date here, saw
+	 * `August 22, 2026`, and then saw `22/08/2026` in the table below it.
+	 */
+	const label = (date: CalendarDate | undefined): string =>
+		date ? formatDate(date.toDate(getLocalTimeZone()), '') : '';
 </script>
 
 <Popover.Root>
@@ -66,11 +64,32 @@
 	>
 		<div class="flex items-center gap-2">
 			<CalendarIcon />
-			{formatDate(form)}
+			{label(form)}
 		</div>
 	</Popover.Trigger>
 
 	<Popover.Content class="flex flex-wrap gap-2 border-t p-0 px-2 py-4!">
+		{#if year}
+			<!-- Typing is the fast path for a date decades in the past. The native
+			     control takes `yyyy-mm-dd`, which is exactly what `data` holds, and
+			     it renders in the viewer's own date convention — so nobody has to
+			     work out whether the box wants day or month first. -->
+			<label class="flex w-full flex-col gap-1 px-1 text-xs text-muted-foreground">
+				Type it
+				<input
+					type="date"
+					class="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+					value={form ? form.toString() : ''}
+					max={futureDays ? today(getLocalTimeZone()).toString() : undefined}
+					min={todayDate ? todayDate.toString() : undefined}
+					oninput={(event) => {
+						const next = event.currentTarget.value;
+						// An in-progress year ("0002-01-01") is not a date anyone meant.
+						form = /^\d{4}-\d{2}-\d{2}$/.test(next) ? parseDate(next) : form;
+					}}
+				/>
+			</label>
+		{/if}
 		<Calendar
 			type="single"
 			captionLayout={year ? 'dropdown-years' : 'label'}

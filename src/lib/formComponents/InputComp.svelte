@@ -80,6 +80,18 @@
 	const controlId = $derived(id ?? name);
 
 	/**
+	 * A calendar with only arrows is the wrong control for a date of birth.
+	 *
+	 * To reach 1985 from today a volunteer coordinator clicks the back arrow
+	 * roughly 490 times. `DatePicker2` can show a year dropdown, but only when
+	 * it is told to — and it was told on `/apply` and nowhere else, so the same
+	 * question on `/volunteer` and on the beneficiary screen had the 490-click
+	 * version. Detecting it from the field name means the next date-of-birth
+	 * field cannot miss it either.
+	 */
+	const yearDropdown = $derived(year || (oldDays && /birth|dob/i.test(String(name ?? ''))));
+
+	/**
 	 * `for` only points at controls a label can actually be associated with.
 	 *
 	 * The date, select, combobox, multi-checkbox and file branches all render a
@@ -142,7 +154,7 @@
 	{:else if type === 'select'}
 		<SelectComp {name} bind:value {items} />
 	{:else if type === 'date'}
-		<DatePicker2 bind:data={value} {oldDays} {year} {futureDays} />
+		<DatePicker2 bind:data={value} {oldDays} year={yearDropdown} {futureDays} />
 		<input type="hidden" {name} bind:value />
 	{:else if type === 'combo'}
 		<ComboboxComp {name} bind:value {items} {required} />

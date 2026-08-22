@@ -9,6 +9,7 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import ChoiceGroup from '$lib/formComponents/ChoiceGroup.svelte';
@@ -42,6 +43,9 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The toast fades and the summary is a long way up the page; this is
+			// what actually takes the person to the question they missed.
+			focusFirstError($allErrors);
 		} else {
 			toast.success($message.text);
 			confirmation = $message.reference ?? '';

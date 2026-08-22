@@ -16,6 +16,7 @@
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import { formatMoney, toMajor } from '$lib/money';
 	import { CheckCircle2 } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data, form } = $props();
 
@@ -42,14 +43,7 @@
 
 	const summary = (status: string) => data.totals.find((row) => row.status === status);
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '—';
+	const fmt = (value: Date | string | null) => formatDate(value, '—');
 
 	const designationLabel = (row: (typeof data.rows)[number]) =>
 		row.pillarName ?? row.initiativeName ?? 'Where most needed';

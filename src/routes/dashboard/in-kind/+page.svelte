@@ -10,6 +10,7 @@
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import { IN_KIND_STATUS_COLORS, IN_KIND_STATUS_LABELS } from '$lib/inKind';
 	import InKindFlagsCell from './in-kind-flags-cell.svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
 
@@ -59,14 +60,7 @@
 		)
 	);
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '—';
+	const fmt = (value: Date | string | null) => formatDate(value, '—');
 
 	const donorLabel = (row: (typeof data.rows)[number]) =>
 		row.isAnonymous ? 'Anonymous' : (row.organisationName ?? row.donorName);

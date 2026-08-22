@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, like, notInArray, or, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, notInArray, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	applicationNeeds,
@@ -11,6 +11,7 @@ import {
 	statusOptions,
 	user
 } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { pillarScope, requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { auditList } from '$lib/server/audit';
@@ -78,17 +79,13 @@ export const load: PageServerLoad = async (event) => {
 			)
 		);
 	}
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(
-				like(formSubmissions.referenceNumber, needle),
-				like(formSubmissions.submittedByName, needle),
-				like(formSubmissions.submittedByPhone, needle),
-				like(formSubmissions.submittedByEmail, needle)
-			)
-		);
-	}
+	const searchClause = searchFilter(search, [
+		formSubmissions.referenceNumber,
+		formSubmissions.submittedByName,
+		formSubmissions.submittedByPhone,
+		formSubmissions.submittedByEmail
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const where = and(...(clauses.filter(Boolean) as SQL[]));
 

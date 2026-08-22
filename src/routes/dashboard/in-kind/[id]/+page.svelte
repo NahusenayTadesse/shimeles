@@ -16,6 +16,7 @@
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import { assetUrl } from '$lib/assets';
 	import { formatMoney } from '$lib/money';
+	import { formatDate, formatDayLong } from '$lib/dates';
 	import {
 		AGE_GROUP_LABELS,
 		CONDITION_LABELS,
@@ -84,23 +85,9 @@
 		other: 'Other'
 	};
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '—';
+	const fmt = (value: Date | string | null) => formatDate(value, '—');
 
-	const fmtDay = (value: string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					weekday: 'long',
-					day: 'numeric',
-					month: 'long'
-				}).format(new Date(value))
-			: '—';
+	const fmtDay = (value: Date | string | null) => formatDayLong(value, '—');
 
 	const today = new Date().toISOString().slice(0, 10);
 

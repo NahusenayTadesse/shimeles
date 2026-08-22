@@ -6,6 +6,7 @@
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import { formatMoney } from '$lib/money';
 	import { ArrowLeft, Eye, Mail, Phone, Users } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
 
@@ -13,14 +14,7 @@
 
 	const totalReceived = $derived(data.payments.reduce((sum, row) => sum + row.amount, 0));
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '—';
+	const fmt = (value: Date | string | null) => formatDate(value, '—');
 </script>
 
 <svelte:head><title>{b.fullName} · Beneficiaries</title></svelte:head>

@@ -11,6 +11,7 @@
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import { assetUrl } from '$lib/assets';
 	import { formatMoney } from '$lib/money';
+	import { formatDateTime } from '$lib/dates';
 	import {
 		ArrowLeft,
 		FileText,
@@ -110,16 +111,7 @@
 
 	const answeredFields = $derived(data.fields.filter((field) => field.fieldType !== 'heading'));
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDateTime(value, '');
 </script>
 
 <svelte:head><title>{s.reference} · Dashboard</title></svelte:head>

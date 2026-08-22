@@ -7,6 +7,7 @@
 	import { ArrowRight, ClipboardList, HandHeart, HeartHandshake, Wallet } from '@lucide/svelte';
 
 	import type { Permission } from '$lib/permissions';
+	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
 
@@ -14,14 +15,7 @@
 
 	const totalCases = $derived(data.byStatus.reduce((sum, row) => sum + row.total, 0));
 
-	const fmtDate = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '';
+	const fmtDate = (value: Date | string | null) => formatDate(value, '');
 </script>
 
 <svelte:head><title>Overview · Dashboard</title></svelte:head>

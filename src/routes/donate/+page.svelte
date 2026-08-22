@@ -13,6 +13,7 @@
 	import DonationCampaigns from '$lib/content/DonationCampaigns.svelte';
 	import InKindForm from '$lib/donate/InKindForm.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
@@ -55,6 +56,9 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The toast fades and the summary is a long way up the page; this is
+			// what actually takes the person to the question they missed.
+			focusFirstError($allErrors);
 		} else {
 			toast.success($message.text);
 			if ($message.reference) {

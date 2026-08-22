@@ -10,19 +10,13 @@
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import { ShieldAlert, Stethoscope } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
 
 	let search = $state(data.filters.search);
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDate(value, '');
 
 	const blockedCount = $derived(data.rows.filter((row) => !row.safeguardingComplete).length);
 

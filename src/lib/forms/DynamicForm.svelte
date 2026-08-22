@@ -6,6 +6,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import { CircleCheck, Copy, Send, ShieldCheck } from '@lucide/svelte';
@@ -48,6 +49,9 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The toast fades and the summary is a long way up the page; this is
+			// what actually takes the person to the question they missed.
+			focusFirstError($allErrors);
 		} else {
 			toast.success($message.text);
 			reference = $message.reference ?? null;

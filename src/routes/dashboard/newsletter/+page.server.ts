@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
-import { and, count, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { newsletterSubscribers } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { audit, auditList } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
@@ -38,12 +39,11 @@ export const load: PageServerLoad = async (event) => {
 			)
 		);
 	}
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(like(newsletterSubscribers.email, needle), like(newsletterSubscribers.name, needle))
-		);
-	}
+	const searchClause = searchFilter(search, [
+		newsletterSubscribers.email,
+		newsletterSubscribers.name
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const where = clauses.length ? and(...(clauses.filter(Boolean) as SQL[])) : undefined;
 

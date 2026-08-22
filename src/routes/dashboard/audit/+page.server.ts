@@ -1,6 +1,7 @@
-import { and, desc, eq, gte, like, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { auditLog, user } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import type { PageServerLoad } from './$types';
 
@@ -27,10 +28,8 @@ export const load: PageServerLoad = async (event) => {
 	const clauses: (SQL | undefined)[] = [gte(auditLog.createdAt, since)];
 	if (action) clauses.push(eq(auditLog.action, action));
 	if (entityType) clauses.push(eq(auditLog.entityType, entityType));
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(or(like(user.name, needle), like(auditLog.entityId, needle)));
-	}
+	const searchClause = searchFilter(search, [user.name, auditLog.entityId]);
+	if (searchClause) clauses.push(searchClause);
 
 	const rows = await db
 		.select({

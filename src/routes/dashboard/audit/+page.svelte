@@ -9,6 +9,7 @@
 	import { indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import { ScrollText } from '@lucide/svelte';
+	import { formatDateTime } from '$lib/dates';
 
 	let { data } = $props();
 
@@ -58,17 +59,7 @@
 				? 'secondary'
 				: 'outline';
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit',
-					second: '2-digit'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDateTime(value, '');
 
 	const hasFilters = $derived(
 		Boolean(data.filters.action || data.filters.entityType || data.filters.search)

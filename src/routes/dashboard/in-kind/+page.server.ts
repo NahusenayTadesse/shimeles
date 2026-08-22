@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	futureInitiatives,
@@ -8,6 +8,7 @@ import {
 	regions,
 	user
 } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { auditList } from '$lib/server/audit';
 import type { PageServerLoad } from './$types';
@@ -61,20 +62,16 @@ export const load: PageServerLoad = async (event) => {
 	if (handover) clauses.push(eq(inKindDonations.handoverMethod, handover as never));
 	if (perishable) clauses.push(eq(inKindDonations.isPerishable, true));
 
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(
-				like(inKindDonations.referenceCode, needle),
-				like(inKindDonations.donorName, needle),
-				like(inKindDonations.organisationName, needle),
-				like(inKindDonations.donorEmail, needle),
-				like(inKindDonations.donorPhone, needle),
-				like(inKindDonations.summary, needle),
-				like(inKindDonations.pickupCity, needle)
-			)
-		);
-	}
+	const searchClause = searchFilter(search, [
+		inKindDonations.referenceCode,
+		inKindDonations.donorName,
+		inKindDonations.organisationName,
+		inKindDonations.donorEmail,
+		inKindDonations.donorPhone,
+		inKindDonations.summary,
+		inKindDonations.pickupCity
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const today = new Date().toISOString().slice(0, 10);
 

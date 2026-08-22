@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Snowflake, Sparkle, Timer, Truck, TriangleAlert } from '@lucide/svelte';
+	import { formatDateShort } from '$lib/dates';
 
 	/**
 	 * The things about an offer that change what someone does next.
@@ -38,8 +39,7 @@
 	const overdue = $derived(Boolean(scheduledFor) && scheduledFor! <= today);
 	const expiringSoon = $derived(Boolean(expiresOn) && expiresOn! <= addDays(today, 30));
 
-	const shortDate = (value: string) =>
-		new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(value));
+	const shortDate = (value: string) => formatDateShort(value, '');
 </script>
 
 <div class="flex flex-wrap items-center gap-1">

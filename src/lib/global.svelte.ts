@@ -1,4 +1,5 @@
 import { SvelteDate } from 'svelte/reactivity';
+import { formatDateLong } from '$lib/dates';
 
 export const bgGradient = `bg-linear-to-r from-background to-secondary`;
 
@@ -20,12 +21,11 @@ export function isMobile() {
 	return window.innerWidth <= 768;
 }
 
-export const formatEthiopianDate = (date: Date | string | undefined): string => {
-	if (!date) return '';
-
-	return new Intl.DateTimeFormat('en-US', {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	}).format(new SvelteDate(date));
-};
+/**
+ * Kept for its callers; the formatting itself now lives in `$lib/dates`.
+ *
+ * The name is a leftover — it never produced an Ethiopian-calendar date, and
+ * the app is deliberately Gregorian for v1.
+ */
+export const formatEthiopianDate = (date: Date | string | undefined): string =>
+	date ? formatDateLong(new SvelteDate(date), '') : '';

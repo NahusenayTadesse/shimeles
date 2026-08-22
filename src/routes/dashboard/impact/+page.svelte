@@ -8,6 +8,7 @@
 	import { formatMoney } from '$lib/money';
 	import { Info, RefreshCw } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
+	import { formatDateTime, formatMonth } from '$lib/dates';
 
 	let { data, form } = $props();
 
@@ -30,20 +31,11 @@
 
 	const monthLabel = (month: string) => {
 		const [year, m] = month.split('-');
-		return new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(
-			new Date(Number(year), Number(m) - 1, 1)
-		);
+		// Just the month: the chart's own axis carries the year.
+		return formatMonth(new Date(Number(year), Number(m) - 1, 1)).split(' ')[0];
 	};
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					hour: '2-digit',
-					minute: '2-digit'
-				}).format(new Date(value))
-			: 'never';
+	const fmt = (value: Date | string | null) => formatDateTime(value, 'never');
 </script>
 
 <svelte:head><title>Impact · Dashboard</title></svelte:head>

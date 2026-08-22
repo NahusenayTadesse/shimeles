@@ -19,6 +19,7 @@
 		TriangleAlert
 	} from '@lucide/svelte';
 	import { cn } from '$lib/utils';
+	import { formatDateTime } from '$lib/dates';
 
 	let { data, form } = $props();
 
@@ -73,16 +74,7 @@
 		{ value: 'note', name: 'No contact' }
 	];
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDateTime(value, '');
 
 	const CHANNEL_LABELS: Record<string, string> = {
 		email: 'by email',

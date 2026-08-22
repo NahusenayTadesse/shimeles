@@ -9,6 +9,7 @@
 	import type { DateRange } from 'bits-ui';
 	import type { DateValue } from '@internationalized/date';
 	import { CalendarIcon, X } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	/**
 	 * A date-range filter for a server-filtered list.
@@ -82,12 +83,7 @@
 
 	const fmt = (value: string) => {
 		const date = parse(value);
-		if (!date) return '';
-		return new Intl.DateTimeFormat('en-GB', {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric'
-		}).format(date.toDate(getLocalTimeZone()));
+		return date ? formatDate(date.toDate(getLocalTimeZone()), '') : '';
 	};
 
 	const active = $derived(Boolean(from || to));

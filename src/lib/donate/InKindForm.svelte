@@ -9,6 +9,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
@@ -82,11 +83,11 @@
 	 * quantity, condition and dates. Photos ride alongside as a plain file input
 	 * read off the body on the server.
 	 */
-	const { form, errors, enhance, delayed, message, allErrors } = superForm(formData, {
+	const { form, errors, enhance, delayed, message, allErrors, tainted } = superForm(formData, {
 		id: 'in-kind',
 		dataType: 'json',
 		resetForm: false,
-		taintedMessage: null
+		taintedMessage: 'You have not finished this form. Leave anyway?'
 	});
 
 	/** Set once the offer is recorded; the page then shows its reference. */
@@ -97,8 +98,15 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The toast fades and the summary is a long way up the page; this is
+			// what actually takes the person to the question they missed.
+			focusFirstError($allErrors);
 		} else {
 			toast.success($message.text);
+			// The application is stored, so the answers still sitting in `$form`
+			// are no longer unsaved work — without this the leave-guard would
+			// challenge someone for navigating away from a finished submission.
+			$tainted = undefined;
 			if ($message.reference) {
 				confirmation = { reference: $message.reference, summary: $message.amount ?? '' };
 			}

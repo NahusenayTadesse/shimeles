@@ -11,6 +11,7 @@
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import { ArrowLeft, Mail, Phone, ShieldAlert, ShieldCheck, UserRoundCheck } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data, form } = $props();
 
@@ -125,14 +126,7 @@
 	const isExpired = (expiresOn: string | null) =>
 		Boolean(expiresOn) && new Date(expiresOn!) < new Date();
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDate(value, '');
 </script>
 
 <svelte:head><title>{a.fullName} · Volunteers</title></svelte:head>

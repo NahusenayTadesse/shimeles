@@ -8,6 +8,7 @@
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import SubscriberToggle from './subscriber-toggle.svelte';
 	import { Mail, MailX } from '@lucide/svelte';
+	import { formatDate } from '$lib/dates';
 
 	let { data, form } = $props();
 
@@ -30,14 +31,7 @@
 		manual: 'Added by staff'
 	};
 
-	const fmt = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'short',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '';
+	const fmt = (value: Date | string | null) => formatDate(value, '');
 
 	const columns = [
 		indexColumn,

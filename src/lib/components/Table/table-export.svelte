@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
 	import Papa from 'papaparse';
+	import { formatDate } from '$lib/dates';
 
 	const {
 		fileName = page.url.pathname.split('/').pop() || 'export',
@@ -79,7 +80,9 @@
 			return;
 		}
 
-		const title = `${fileName} — ${new Date().toLocaleDateString()}`;
+		// Was the browser's default locale, so the printed header disagreed with
+		// every date in the table underneath it.
+		const title = `${fileName} — ${formatDate(new Date())}`;
 
 		win.document.write(`<!doctype html>
 <html>

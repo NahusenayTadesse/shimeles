@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
-import { and, asc, desc, eq, isNull, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { contactMessages, contactSubjects, statusOptions, user } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { audit, auditList } from '$lib/server/audit';
@@ -45,19 +46,15 @@ export const load: PageServerLoad = async (event) => {
 		clauses.push(eq(contactMessages.assignedToId, event.locals.user.id));
 	}
 
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(
-				like(contactMessages.referenceNumber, needle),
-				like(contactMessages.fullName, needle),
-				like(contactMessages.email, needle),
-				like(contactMessages.phone, needle),
-				like(contactMessages.organization, needle),
-				like(contactMessages.message, needle)
-			)
-		);
-	}
+	const searchClause = searchFilter(search, [
+		contactMessages.referenceNumber,
+		contactMessages.fullName,
+		contactMessages.email,
+		contactMessages.phone,
+		contactMessages.organization,
+		contactMessages.message
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const [rows, statuses, subjects] = await Promise.all([
 		db

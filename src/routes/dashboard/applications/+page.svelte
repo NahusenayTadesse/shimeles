@@ -12,6 +12,7 @@
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import { Columns3, Inbox, Table2 } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
+	import { formatDateShort } from '$lib/dates';
 
 	let { data } = $props();
 
@@ -51,10 +52,7 @@
 	const sortCards = <T extends { priority: string }>(cards: T[]) =>
 		[...cards].sort((a, b) => (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2));
 
-	const fmtDate = (value: Date | string | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(value))
-			: '';
+	const fmtDate = (value: Date | string | null) => formatDateShort(value, '');
 
 	const hasFilters = $derived(
 		Boolean(

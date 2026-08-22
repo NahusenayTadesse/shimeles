@@ -26,7 +26,7 @@
 					<span class="hidden text-xs text-muted-foreground sm:inline">{data.access.roleName}</span>
 				{/if}
 				<Search permissions={data.access.permissions} />
-				
+
 				<DarkMode />
 				<AvatarSettings data={data.user?.name} />
 				{#if data.access.isSuperAdmin}

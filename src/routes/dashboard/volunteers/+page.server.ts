@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, like, or, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	regions,
@@ -10,6 +10,7 @@ import {
 	volunteerSkills,
 	volunteerTimeSlots
 } from '$lib/server/db/schema';
+import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { auditList } from '$lib/server/audit';
@@ -66,17 +67,13 @@ export const load: PageServerLoad = async (event) => {
 			)
 		);
 	}
-	if (search) {
-		const needle = `%${search}%`;
-		clauses.push(
-			or(
-				like(volunteerApplications.referenceNumber, needle),
-				like(volunteerApplications.fullName, needle),
-				like(volunteerApplications.email, needle),
-				like(volunteerApplications.phone, needle)
-			)
-		);
-	}
+	const searchClause = searchFilter(search, [
+		volunteerApplications.referenceNumber,
+		volunteerApplications.fullName,
+		volunteerApplications.email,
+		volunteerApplications.phone
+	]);
+	if (searchClause) clauses.push(searchClause);
 
 	const [rows, statuses, skillOptions, slotOptions] = await Promise.all([
 		db

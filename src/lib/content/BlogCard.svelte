@@ -1,4 +1,6 @@
 <script lang="ts" module>
+	import { formatDateLong, type DateInput } from '$lib/dates';
+
 	/**
 	 * Accent classes for a category chip, keyed by `blog_categories.color`.
 	 * Written out rather than interpolated because Tailwind only ships classes
@@ -12,14 +14,8 @@
 			sky: 'text-sky bg-sky/10 border-sky/25'
 		})[color ?? ''] ?? 'text-primary bg-primary/10 border-primary/25';
 
-	export const formatPostDate = (value: number | null) =>
-		value
-			? new Intl.DateTimeFormat('en-GB', {
-					day: 'numeric',
-					month: 'long',
-					year: 'numeric'
-				}).format(new Date(value))
-			: '';
+	/** Blog dates are stored as epoch milliseconds; the public pages have room for the whole month. */
+	export const formatPostDate = (value: DateInput) => formatDateLong(value, '');
 </script>
 
 <script lang="ts">
