@@ -523,7 +523,7 @@
 				onchange={onPhotos}
 			/>
 			<p class="text-xs text-muted-foreground">
-				Optional, and the single most useful thing you can send — a photo answers most of what we
+				Optional, and the single most useful thing you can send: a photo answers most of what we
 				would otherwise have to ask on the phone. Up to eight.
 			</p>
 			{#if photoNames.length}
@@ -558,7 +558,7 @@
 		{#if suggestsTransport && $form.handoverMethod === 'dropoff'}
 			<p class="-mt-2 flex items-start gap-2 text-xs text-muted-foreground">
 				<TriangleAlert class="mt-0.5 size-3.5 shrink-0" />
-				Furniture and appliances are usually easier for us to collect — choose "please collect it" if
+				Furniture and appliances are usually easier for us to collect, so choose "please collect it" if
 				that suits you better.
 			</p>
 		{/if}
@@ -882,7 +882,7 @@
 				<Textarea
 					rows={2}
 					bind:value={$form.restrictedItemsNote}
-					placeholder="Tell us what, and where it came from — it decides whether we may accept it."
+					placeholder="Tell us what, and where it came from. It decides whether we may accept it."
 				/>
 			{/if}
 

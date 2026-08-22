@@ -932,7 +932,7 @@
 				<CheckboxField
 					bind:checked={$form.safeToContact}
 					invert
-					label="Please be careful how you contact me — it may not be safe or private to call at any time."
+					label="Please be careful how you contact me. It may not be safe or private to call at any time."
 				/>
 
 				{#if !$form.safeToContact}
@@ -961,7 +961,7 @@
 						{errors}
 						bind:checked={$form.consentToVerify}
 						name="consentToVerify"
-						label="I agree that the Foundation may check what I have said — with a hospital, a school, or by visiting. Optional; it usually makes the assessment faster."
+						label="I agree that the Foundation may check what I have said, with a hospital, a school, or by visiting. Optional; it usually makes the assessment faster."
 					/>
 
 					<CheckboxField {errors} bind:checked={$form.declareAccurate} name="declareAccurate">
