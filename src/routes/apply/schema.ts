@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { optionalEmailField, optionalNumberField } from '$lib/forms/fields';
+import { flagField, optionalEmailField, optionalNumberField } from '$lib/forms/fields';
 
 /**
  * The assistance application.
@@ -103,7 +103,7 @@ export const applySchema = z
 		otherSupport: optional(1000),
 
 		/* --- Reaching them ----------------------------------------------------- */
-		safeToContact: z.coerce.boolean().default(true),
+		safeToContact: flagField(true),
 		contactNotes: optional(500),
 		bestTimeToContact: optional(120),
 		alternateContactName: optional(150),
@@ -116,26 +116,29 @@ export const applySchema = z
 		 * for separately and an application without it is still accepted, just
 		 * slower to assess.
 		 */
-		consentToStore: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'We need your permission to keep this application'),
-		consentToVerify: z.coerce.boolean().default(false),
+		consentToStore: flagField(false).refine(
+			(value) => value === true,
+			'We need your permission to keep this application'
+		),
+		consentToVerify: flagField(false),
 		/**
 		 * Required, unlike verification consent. An assessment rests entirely on
 		 * what is written here, and the declaration that it is true is the only
 		 * thing a caseworker has to start from.
 		 */
-		declareAccurate: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'Please confirm that what you have told us is accurate'),
+		declareAccurate: flagField(false).refine(
+			(value) => value === true,
+			'Please confirm that what you have told us is accurate'
+		),
 		/**
 		 * Required too, and for the applicant's sake: the waiting list is the
 		 * usual outcome, assessed each intake round, and nobody should discover
 		 * that only after months of waiting for a call.
 		 */
-		acknowledgeNoGuarantee: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'Please confirm you understand this'),
+		acknowledgeNoGuarantee: flagField(false).refine(
+			(value) => value === true,
+			'Please confirm you understand this'
+		),
 
 		/** Honeypot — permissive on purpose; see the note in the contact schema. */
 		website: z.string().max(200).optional().or(z.literal(''))

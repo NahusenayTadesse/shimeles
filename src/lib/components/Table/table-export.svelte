@@ -3,12 +3,47 @@
 	import { Printer, Download, Grid3x3 } from '@lucide/svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index';
 	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
 	import Papa from 'papaparse';
 
 	const {
 		fileName = page.url.pathname.split('/').pop() || 'export',
 		tableId
 	}: { fileName?: string; tableId: string } = $props();
+
+	/**
+	 * Exporting is a permission (`data.export`), not something every staff member
+	 * who can see a table may do — a caseworker can read their own pillar's cases
+	 * on screen without being able to take the list away as a file.
+	 */
+	const canExport = $derived(
+		(page.data.access?.permissions as string[] | undefined)?.includes('data.export') ?? false
+	);
+
+	/**
+	 * Asks the server before exporting, so the permission is enforced somewhere
+	 * that cannot be edited in a browser and the act leaves an audit row (§3.11).
+	 * Nothing is written to a file unless this comes back 200.
+	 */
+	async function authorise(format: 'csv' | 'print', rows: number) {
+		try {
+			const response = await fetch('/dashboard/export', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ table: fileName, format, rows })
+			});
+
+			if (response.ok) return true;
+			toast.error(
+				response.status === 403
+					? 'You do not have permission to export this table.'
+					: 'The export could not be started.'
+			);
+		} catch {
+			toast.error('The export could not be started.');
+		}
+		return false;
+	}
 
 	/** Reads the live table out of the DOM so exports match what is on screen. */
 	const findTable = () => {
@@ -24,9 +59,10 @@
 	 * the previous jsPDF/autoTable export dropped them. A `<base>` tag makes the
 	 * table's relative image URLs resolve against this site.
 	 */
-	function printTable() {
+	async function printTable() {
 		const table = findTable();
 		if (!table) return;
+		if (!(await authorise('print', table.querySelectorAll('tbody tr').length))) return;
 
 		const clone = table.cloneNode(true) as HTMLTableElement;
 
@@ -95,7 +131,7 @@
 		});
 	}
 
-	function exportCsv() {
+	async function exportCsv() {
 		const table = findTable();
 		if (!table) return;
 
@@ -104,6 +140,8 @@
 				(cell as HTMLElement).innerText.trim()
 			)
 		);
+
+		if (!(await authorise('csv', Math.max(0, rows.length - 1)))) return;
 
 		const blob = new Blob([Papa.unparse(rows)], { type: 'text/csv;charset=utf-8;' });
 		const url = URL.createObjectURL(blob);
@@ -116,28 +154,30 @@
 	}
 </script>
 
-<DropdownMenu.Root>
-	<DropdownMenu.Trigger>
-		{#snippet child({ props })}
-			<Button {...props} variant="outline" class="ml-auto">
-				<Download class="size-5" />
-			</Button>
-		{/snippet}
-	</DropdownMenu.Trigger>
-	<DropdownMenu.Content class="flex w-auto flex-col gap-2 p-2">
-		<DropdownMenu.Item class="capitalize">
+{#if canExport}
+	<DropdownMenu.Root>
+		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="default" onclick={printTable}>
-					<Printer class="size-4 text-white dark:text-black" /> Print
+				<Button {...props} variant="outline" class="ml-auto">
+					<Download class="size-5" />
 				</Button>
 			{/snippet}
-		</DropdownMenu.Item>
-		<DropdownMenu.Item class="capitalize">
-			{#snippet child({ props })}
-				<Button {...props} variant="default" onclick={exportCsv}>
-					<Grid3x3 class="size-4 text-white dark:text-black" /> Export to CSV
-				</Button>
-			{/snippet}
-		</DropdownMenu.Item>
-	</DropdownMenu.Content>
-</DropdownMenu.Root>
+		</DropdownMenu.Trigger>
+		<DropdownMenu.Content class="flex w-auto flex-col gap-2 p-2">
+			<DropdownMenu.Item class="capitalize">
+				{#snippet child({ props })}
+					<Button {...props} variant="default" onclick={printTable}>
+						<Printer class="size-4 text-white dark:text-black" /> Print
+					</Button>
+				{/snippet}
+			</DropdownMenu.Item>
+			<DropdownMenu.Item class="capitalize">
+				{#snippet child({ props })}
+					<Button {...props} variant="default" onclick={exportCsv}>
+						<Grid3x3 class="size-4 text-white dark:text-black" /> Export to CSV
+					</Button>
+				{/snippet}
+			</DropdownMenu.Item>
+		</DropdownMenu.Content>
+	</DropdownMenu.Root>
+{/if}

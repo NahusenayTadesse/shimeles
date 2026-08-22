@@ -196,6 +196,7 @@
 					<InputComp
 						{form}
 						{errors}
+						bind:value={$form[field.key]}
 						label={field.required ? `${field.label} *` : field.label}
 						name={field.key}
 						type={inputType(field)}
@@ -222,6 +223,7 @@
 				{form}
 				{errors}
 				label={t('form.your_name', 'Your name')}
+				bind:value={$form.submittedByName}
 				name="submittedByName"
 				type="text"
 			/>
@@ -229,6 +231,7 @@
 				{form}
 				{errors}
 				label={t('form.your_phone', 'Phone')}
+				bind:value={$form.submittedByPhone}
 				name="submittedByPhone"
 				type="tel"
 			/>
@@ -236,6 +239,7 @@
 				{form}
 				{errors}
 				label={t('form.your_email', 'Email')}
+				bind:value={$form.submittedByEmail}
 				name="submittedByEmail"
 				type="email"
 			/>

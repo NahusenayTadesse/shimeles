@@ -28,7 +28,7 @@
 </div>
 
 <div class="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
-	<div use:reveal={{ delay: 100 }} class="rounded-[2rem] border bg-card p-6 shadow-warm md:p-10">
+	<div use:reveal={{ delay: 100 }} class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 		<DynamicForm form={data.definition} data={data.form} labels={data.strings ?? {}} />
 	</div>
 </div>

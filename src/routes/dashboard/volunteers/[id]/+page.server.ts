@@ -319,6 +319,7 @@ export const actions: Actions = {
 	toggleCheck: async (event) => {
 		const access = await requirePermission(event, 'volunteers.safeguarding');
 		const id = Number(event.params.id);
+		if (!Number.isFinite(id)) throw error(404, 'Not found');
 		const formData = await event.request.formData();
 		const itemId = Number(formData.get('itemId'));
 		const note = String(formData.get('note') ?? '').trim();
@@ -377,6 +378,7 @@ export const actions: Actions = {
 	verifyCredential: async (event) => {
 		const access = await requirePermission(event, 'volunteers.safeguarding');
 		const id = Number(event.params.id);
+		if (!Number.isFinite(id)) throw error(404, 'Not found');
 		const formData = await event.request.formData();
 		const credentialId = Number(formData.get('credentialId'));
 		const status = String(formData.get('status') ?? '');

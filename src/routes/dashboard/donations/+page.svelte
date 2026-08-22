@@ -149,7 +149,11 @@
 		</Card.Root>
 	</div>
 
-	<FilterBar bind:search placeholder="Reference code, donor name, email or phone…" hasFilters={Boolean(data.filters.search)}>
+	<FilterBar
+		bind:search
+		placeholder="Reference code, donor name, email or phone…"
+		hasFilters={Boolean(data.filters.search)}
+	>
 		{#snippet children({ applyFilter })}
 			{#each statusTabs as tab (tab.value)}
 				<Button

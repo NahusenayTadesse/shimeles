@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod/v4';
 import { emailField } from '$lib/forms/fields';
 import { db } from '$lib/server/db';
-import { pillars, roles, user, userPillarAssignments } from '$lib/server/db/schema';
+import { pillars, roles, session, user, userPillarAssignments } from '$lib/server/db/schema';
 import { auth } from '$lib/server/auth';
 import { invalidateAccess, requirePermission, ROLE } from '$lib/server/permissions';
 import { audit, auditList } from '$lib/server/audit';
@@ -208,8 +208,24 @@ export const actions: Actions = {
 
 		await db
 			.update(user)
-			.set({ banned, banReason: banned ? 'Suspended by an administrator' : null })
+			.set({
+				banned,
+				banReason: banned ? 'Suspended by an administrator' : null,
+				// Cleared alongside the flag: a stale expiry left behind on an
+				// unbanned account would re-suspend nobody, but a stale one left on a
+				// *re*-banned account would silently expire the new suspension.
+				banExpires: null
+			})
 			.where(eq(user.id, userId));
+
+		// Suspension has to end the sessions the account already holds, not just
+		// refuse the next request. `requireUser` catches those too, but `/files`
+		// and anything else reading `loadAccess` directly are safer with the
+		// session gone. Better Auth's own `revokeUserSessions` lives in the
+		// `admin` plugin, which this project does not load, so the rows go here.
+		if (banned) {
+			await db.delete(session).where(eq(session.userId, userId));
+		}
 
 		invalidateAccess(userId);
 		audit({ event, action: 'updated', entityType: 'user', entityId: userId, metadata: { banned } });

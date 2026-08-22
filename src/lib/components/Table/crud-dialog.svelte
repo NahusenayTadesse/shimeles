@@ -122,6 +122,7 @@
 						<InputComp
 							{form}
 							{errors}
+							bind:value={$form[field.name]}
 							label={field.label}
 							name={field.name}
 							type={field.type ?? 'text'}

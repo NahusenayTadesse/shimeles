@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 import { donors, futureInitiatives, pillars, recurringPledges } from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
 import { notifyPledgeReminder } from '$lib/server/notify';
-import { nextDonationReference } from '$lib/server/reference';
+import { nextDonationReference, withReference } from '$lib/server/reference';
 import { donations } from '$lib/server/db/schema';
 import { formatMoney } from '$lib/money';
 import { audit, auditList } from '$lib/server/audit';
@@ -89,19 +89,26 @@ export const actions: Actions = {
 			return fail(422, { error: 'That pledge is paused or cancelled.' });
 		}
 
-		const referenceCode = nextDonationReference();
+		// Reference and row commit together — see `withReference`.
+		const referenceCode = withReference(() => {
+			const referenceCode = nextDonationReference();
 
-		await db.insert(donations).values({
-			donorId: pledge.donorId,
-			amount: pledge.amount,
-			currency: pledge.currency,
-			frequency: 'monthly',
-			designationType: pledge.designationType,
-			designationPillarId: pledge.designationPillarId,
-			designationInitiativeId: pledge.designationInitiativeId,
-			status: 'pending_reconciliation',
-			referenceCode,
-			recurringPledgeId: pledge.id
+			db.insert(donations)
+				.values({
+					donorId: pledge.donorId,
+					amount: pledge.amount,
+					currency: pledge.currency,
+					frequency: 'monthly',
+					designationType: pledge.designationType,
+					designationPillarId: pledge.designationPillarId,
+					designationInitiativeId: pledge.designationInitiativeId,
+					status: 'pending_reconciliation',
+					referenceCode,
+					recurringPledgeId: pledge.id
+				})
+				.run();
+
+			return referenceCode;
 		});
 
 		if (pledge.channel === 'email' && pledge.donorEmail) {

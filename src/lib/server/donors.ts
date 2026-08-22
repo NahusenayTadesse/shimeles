@@ -24,11 +24,14 @@ export async function upsertDonor(input: {
 	isDiaspora: boolean;
 	userId: string | null;
 }): Promise<number> {
-	const match = input.email
-		? eq(donors.email, input.email)
-		: input.phone
-			? eq(donors.phone, input.phone)
-			: null;
+	// Normalised here rather than trusted from the caller. Addresses are matched
+	// exactly, so `Abebe@Example.com` and `abebe@example.com` would otherwise be
+	// two supporters with two lifetime totals — and the three call sites happened
+	// to agree on lowercasing only by convention, which is not a guarantee.
+	const email = input.email?.trim().toLowerCase() || null;
+	const phone = input.phone?.trim() || null;
+
+	const match = email ? eq(donors.email, email) : phone ? eq(donors.phone, phone) : null;
 
 	if (match) {
 		const [existing] = await db
@@ -43,7 +46,7 @@ export async function upsertDonor(input: {
 				.update(donors)
 				.set({
 					fullName: input.fullName,
-					phone: input.phone ?? undefined,
+					phone: phone ?? undefined,
 					// `?? undefined` throughout, never `?? null`: a gift that did not
 					// ask for the organisation or the country must not erase what an
 					// earlier one recorded.
@@ -61,8 +64,8 @@ export async function upsertDonor(input: {
 		.insert(donors)
 		.values({
 			fullName: input.fullName,
-			email: input.email,
-			phone: input.phone,
+			email,
+			phone,
 			organisationName: input.organisationName ?? null,
 			country: input.country ?? null,
 			isDiaspora: input.isDiaspora,

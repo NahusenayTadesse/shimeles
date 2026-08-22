@@ -25,7 +25,9 @@
 			.filter((item) => has(item.permission))
 			.flatMap((item) =>
 				item.items
-					? item.items.filter((sub) => has(sub.permission)).map((sub) => ({ label: sub.title, path: sub.url }))
+					? item.items
+							.filter((sub) => has(sub.permission))
+							.map((sub) => ({ label: sub.title, path: sub.url }))
 					: [{ label: item.title, path: item.url }]
 			)
 	);

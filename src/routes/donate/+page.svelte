@@ -5,8 +5,6 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -16,6 +14,8 @@
 	import InKindForm from '$lib/donate/InKindForm.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import { CircleCheck, Copy, HeartHandshake, Package } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
@@ -40,6 +40,17 @@
 	/** Set once the gift is recorded; the page then shows the transfer reference. */
 	let confirmation = $state<{ reference: string; amount: string } | null>(null);
 
+	/**
+	 * The reference only ever lived on-screen. A donor who closes the tab (or
+	 * whose bank takes a few days) before they transfer had no way to find it
+	 * again — this mirrors it into localStorage so reopening the donate page
+	 * brings it back, for up to a week.
+	 */
+	const LAST_GIFT_KEY = 'donate:lastReference';
+	let recoveredReference = $state<{ reference: string; amount: string; savedAt: number } | null>(
+		null
+	);
+
 	$effect(() => {
 		if (!$message) return;
 		if ($message.type === 'error') {
@@ -48,7 +59,30 @@
 			toast.success($message.text);
 			if ($message.reference) {
 				confirmation = { reference: $message.reference, amount: $message.amount ?? '' };
+				try {
+					localStorage.setItem(
+						LAST_GIFT_KEY,
+						JSON.stringify({ ...confirmation, savedAt: Date.now() })
+					);
+				} catch {
+					// Private browsing or storage disabled — the on-screen copy is still there.
+				}
+				recoveredReference = null;
 			}
+		}
+	});
+
+	$effect(() => {
+		if (confirmation) return;
+		try {
+			const raw = localStorage.getItem(LAST_GIFT_KEY);
+			if (!raw) return;
+			const saved = JSON.parse(raw);
+			if (Date.now() - saved.savedAt < 7 * 24 * 60 * 60 * 1000) {
+				recoveredReference = saved;
+			}
+		} catch {
+			// Nothing to recover.
 		}
 	});
 
@@ -100,6 +134,27 @@
      made a form that was mostly scrolling. -->
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-16 md:py-24">
 	<div class="flex min-w-0 flex-col gap-6">
+		{#if recoveredReference && !confirmation}
+			<div
+				class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3.5 text-sm"
+			>
+				<span>
+					Still to transfer? Your last reference was
+					<button
+						type="button"
+						onclick={() => copy(recoveredReference?.reference ?? '')}
+						class="font-mono font-semibold underline underline-offset-2"
+					>
+						{recoveredReference.reference}
+					</button>
+					for {recoveredReference.amount}.
+				</span>
+				<Button variant="ghost" size="sm" onclick={() => (recoveredReference = null)}>
+					Dismiss
+				</Button>
+			</div>
+		{/if}
+
 		<Tabs.Root bind:value={giftKind} class="w-full">
 			<Tabs.List class="grid w-full grid-cols-2">
 				<Tabs.Trigger value="money">
@@ -180,12 +235,26 @@
 		{:else}
 			<Card.Root class="p-6 md:p-8">
 				<form method="post" action="?/donate" use:enhance class="flex flex-col gap-6">
-					<div class="flex items-center gap-2">
-						<HeartHandshake class="size-5 text-primary" />
-						<h2 class="font-heading text-xl font-semibold">
-							{s('donate.form_title', 'Make a gift')}
-						</h2>
+					<div class="flex items-center justify-between gap-3">
+						<div class="flex items-center gap-2">
+							<HeartHandshake class="size-5 text-primary" />
+							<h2 class="font-heading text-xl font-semibold">
+								{s('donate.form_title', 'Make a gift')}
+							</h2>
+						</div>
+						{#if data.campaigns?.length}
+							<a
+								href="#card-payment"
+								class="shrink-0 text-sm text-primary underline underline-offset-2"
+							>
+								Prefer to pay by card?
+							</a>
+						{/if}
 					</div>
+					<p class="-mt-3 text-xs text-muted-foreground">
+						This records your gift and gives you a bank-transfer reference — it does not charge you
+						directly.
+					</p>
 
 					<Errors allErrors={$allErrors} />
 
@@ -343,92 +412,91 @@
 						</div>
 
 						<div class="flex min-w-0 flex-col gap-5">
-							<div class="flex flex-col gap-2">
-								<Label for="donorName">{s('donate.name', 'Your name')}</Label>
-								<Input id="donorName" name="donorName" bind:value={$form.donorName} required />
-								{#if $errors.donorName}<p class="text-sm text-destructive">
-										{$errors.donorName}
-									</p>{/if}
-							</div>
+							<InputComp
+								{errors}
+								bind:value={$form.donorName}
+								name="donorName"
+								label={s('donate.name', 'Your name')}
+								type="text"
+								autocomplete="name"
+								labelClass=""
+								required
+							/>
 
 							<div class="grid gap-2 sm:grid-cols-2">
-								<div class="flex flex-col gap-2">
-									<Label for="donorEmail">{s('donate.email', 'Email')}</Label>
-									<Input
-										id="donorEmail"
-										name="donorEmail"
-										type="email"
-										bind:value={$form.donorEmail}
-									/>
-								</div>
-								<div class="flex flex-col gap-2">
-									<Label for="donorPhone">{s('donate.phone', 'Phone')}</Label>
-									<Input
-										id="donorPhone"
-										name="donorPhone"
-										type="tel"
-										bind:value={$form.donorPhone}
-									/>
-								</div>
-							</div>
-
-							<div class="flex flex-col gap-2">
-								<Label for="donorOrganisation">
-									{s('donate.organisation', 'Organisation, if you are giving on its behalf')}
-								</Label>
-								<Input
-									id="donorOrganisation"
-									name="donorOrganisation"
-									bind:value={$form.donorOrganisation}
-									placeholder={s('donate.organisation_hint', 'A company, school, church or group')}
+								<InputComp
+									{errors}
+									bind:value={$form.donorEmail}
+									name="donorEmail"
+									label={s('donate.email', 'Email')}
+									type="email"
+									autocomplete="email"
+									labelClass=""
+								/>
+								<InputComp
+									{errors}
+									bind:value={$form.donorPhone}
+									name="donorPhone"
+									label={s('donate.phone', 'Phone')}
+									type="tel"
+									autocomplete="tel"
+									labelClass=""
 								/>
 							</div>
 
-							<div class="flex flex-col gap-2">
-								<Label for="donorMessage"
-									>{s('donate.message', 'A message, if you would like')}</Label
-								>
-								<Textarea
-									id="donorMessage"
-									name="donorMessage"
-									rows={3}
-									bind:value={$form.donorMessage}
-								/>
-							</div>
+							<InputComp
+								{errors}
+								bind:value={$form.donorOrganisation}
+								name="donorOrganisation"
+								label={s('donate.organisation', 'Organisation, if you are giving on its behalf')}
+								type="text"
+								placeholder={s('donate.organisation_hint', 'A company, school, church or group')}
+								labelClass=""
+							/>
+
+							<InputComp
+								{errors}
+								bind:value={$form.donorMessage}
+								name="donorMessage"
+								label={s('donate.message', 'A message, if you would like')}
+								type="textarea"
+								rows={3}
+								labelClass=""
+							/>
 
 							<div class="flex flex-col gap-2">
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox bind:checked={$form.isDiaspora} />
-									<input type="hidden" name="isDiaspora" value={$form.isDiaspora} />
-									{s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
-								</label>
+								<CheckboxField
+									bind:checked={$form.isDiaspora}
+									name="isDiaspora"
+									label={s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
+								/>
 
 								<!-- Only asked of a diaspora donor: for a gift sent from
 								     inside Ethiopia the answer is already known, and an
 								     extra box on a donation form costs gifts. -->
 								{#if $form.isDiaspora}
-									<div class="flex flex-col gap-2 pt-1 pl-6">
-										<Label for="donorCountry">
-											{s('donate.country', 'Which country are you giving from?')}
-										</Label>
-										<Input
-											id="donorCountry"
-											name="donorCountry"
+									<div class="pt-1 pl-6">
+										<InputComp
+											{errors}
 											bind:value={$form.donorCountry}
+											name="donorCountry"
+											label={s('donate.country', 'Which country are you giving from?')}
+											type="text"
 											autocomplete="country-name"
+											labelClass=""
 										/>
 									</div>
 								{/if}
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox bind:checked={$form.isAnonymous} />
-									<input type="hidden" name="isAnonymous" value={$form.isAnonymous} />
-									{s('donate.anonymous', 'Keep my gift anonymous')}
-								</label>
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox bind:checked={$form.joinNewsletter} />
-									<input type="hidden" name="joinNewsletter" value={$form.joinNewsletter} />
-									{s('donate.newsletter', 'Send me occasional updates')}
-								</label>
+								<CheckboxField
+									bind:checked={$form.isAnonymous}
+									name="isAnonymous"
+									label={s('donate.anonymous', 'Keep my gift anonymous')}
+								/>
+								<CheckboxField
+									bind:checked={$form.joinNewsletter}
+									name="joinNewsletter"
+									label={s('donate.newsletter', 'Send me occasional updates')}
+								/>
 							</div>
 						</div>
 					</div>
@@ -457,7 +525,7 @@
 	</div>
 
 	{#if data.campaigns?.length}
-		<Card.Root class="p-6 md:p-8">
+		<Card.Root id="card-payment" class="scroll-mt-[105px] p-6 md:p-8">
 			<DonationCampaigns
 				campaigns={data.campaigns}
 				videos={data.campaignVideos}

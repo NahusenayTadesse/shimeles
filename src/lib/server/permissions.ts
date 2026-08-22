@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { auth } from '$lib/server/auth';
 import {
 	permissions,
 	rolePermissions,
@@ -27,6 +28,15 @@ export interface Access {
 	roleSlug: RoleSlug | null;
 	roleName: string | null;
 	isSuperAdmin: boolean;
+	/**
+	 * Whether the account is currently suspended.
+	 *
+	 * Read here rather than left to Better Auth: this project runs
+	 * `betterAuth/minimal` without the `admin` plugin, so nothing in the auth
+	 * layer looks at `user.banned` — a suspended account's session keeps working
+	 * until something on our side refuses it. `requireUser` is that something.
+	 */
+	isBanned: boolean;
 	permissions: Set<Permission>;
 	/**
 	 * Pillar ids this user may see case data for. `null` means "all pillars" —
@@ -50,7 +60,13 @@ export function loadAccess(userId: string): Promise<Access> {
 		`access:${userId}`,
 		async () => {
 			const [row] = await db
-				.select({ roleSlug: roles.slug, roleName: roles.name, roleActive: roles.isActive })
+				.select({
+					roleSlug: roles.slug,
+					roleName: roles.name,
+					roleActive: roles.isActive,
+					banned: userTable.banned,
+					banExpires: userTable.banExpires
+				})
 				.from(userTable)
 				.leftJoin(roles, eq(roles.id, userTable.roleId))
 				.where(eq(userTable.id, userId))
@@ -60,6 +76,12 @@ export function loadAccess(userId: string): Promise<Access> {
 				row?.roleActive === false ? null : (row?.roleSlug ?? null)
 			) as RoleSlug | null;
 			const isSuperAdmin = roleSlug === ROLE.SUPER_ADMIN;
+
+			// `banned` is nullable — null for an account never suspended. A
+			// `banExpires` in the past is a suspension that has run its course;
+			// null means it does not expire.
+			const isBanned =
+				row?.banned === true && !(row.banExpires && row.banExpires.getTime() <= Date.now());
 
 			const [granted, extra, assignments] = await Promise.all([
 				roleSlug
@@ -110,6 +132,7 @@ export function loadAccess(userId: string): Promise<Access> {
 				roleSlug,
 				roleName: row?.roleName ?? null,
 				isSuperAdmin,
+				isBanned,
 				permissions: effective,
 				// A super admin sees every pillar. Everyone else sees exactly what they
 				// have been assigned — including nothing, which is the correct default
@@ -154,17 +177,58 @@ export async function requirePermission(
 	return access;
 }
 
-/** Session check alone, for screens every signed-in staff member may open. */
+/**
+ * Session check alone, for screens every signed-in staff member may open.
+ *
+ * Also the one place a suspension is enforced. Better Auth is running without
+ * its `admin` plugin, so it happily keeps honouring the session cookie of an
+ * account someone has just suspended; refusing here means a suspension takes
+ * effect on the suspended user's *next request* rather than whenever their
+ * session happens to expire.
+ *
+ * The session is ended rather than merely refused. A bare 403 would be a dead
+ * end: the only sign-out control in the app is an action on `/dashboard`, which
+ * is itself behind this guard, so a suspended user would have no way out and
+ * `/login` would bounce them back here on the still-valid cookie.
+ */
 export async function requireUser(event: RequestEvent): Promise<Access> {
 	if (!event.locals.user) {
 		throw redirect(302, `/login?redirectTo=${encodeURIComponent(event.url.pathname)}`);
 	}
-	return loadAccess(event.locals.user.id);
+
+	const access = await loadAccess(event.locals.user.id);
+
+	if (access.isBanned) {
+		audit({
+			event,
+			action: 'permission_denied',
+			entityType: 'user',
+			entityId: access.userId,
+			metadata: { reason: 'account_suspended', path: event.url.pathname }
+		});
+
+		try {
+			await auth.api.signOut({ headers: event.request.headers });
+		} catch (err) {
+			// The refusal is the control; clearing the cookie is a courtesy. If it
+			// fails, the next request is refused here again.
+			console.error('sign-out of suspended account failed', err);
+		}
+
+		throw redirect(302, '/login?suspended=1');
+	}
+
+	return access;
 }
 
-/** Non-throwing check, for hiding a nav item the user cannot use anyway. */
+/**
+ * Non-throwing check, for hiding a nav item the user cannot use anyway.
+ *
+ * A suspended account holds no permission at all, so a stale `Access` handed to
+ * a component cannot draw a link the guard would refuse.
+ */
 export const can = (access: Access | null | undefined, permission: Permission) =>
-	access?.permissions.has(permission) ?? false;
+	(access && !access.isBanned && access.permissions.has(permission)) ?? false;
 
 /* ==========================================================================
    Pillar scoping

@@ -84,6 +84,15 @@ interface AuditInput {
 	action: AuditAction;
 	entityType: AuditEntity;
 	entityId?: string | number | null;
+	/**
+	 * Who did it, when `event.locals.user` does not know yet.
+	 *
+	 * Sign-in is the case: the session cookie is set by Better Auth during the
+	 * action, but `locals` was populated at the start of the request and is
+	 * still empty — so every `login` row was landing with a null `user_id`, on
+	 * the one table whose whole purpose is saying who did what.
+	 */
+	userId?: string | null;
 	/** Anything that helps reconstruct the action: old/new status, filters used. */
 	metadata?: Record<string, unknown>;
 }
@@ -96,11 +105,11 @@ interface AuditInput {
  * table is locked would be a worse outcome than a missing log line, and the
  * failure is loud in the server log either way.
  */
-export function audit({ event, action, entityType, entityId, metadata }: AuditInput): void {
+export function audit({ event, action, entityType, entityId, userId, metadata }: AuditInput): void {
 	try {
 		db.insert(auditLog)
 			.values({
-				userId: event.locals.user?.id ?? null,
+				userId: userId ?? event.locals.user?.id ?? null,
 				action,
 				entityType,
 				entityId: entityId == null ? null : String(entityId),

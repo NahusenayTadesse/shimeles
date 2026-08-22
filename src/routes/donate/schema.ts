@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
-import { optionalEmailField } from '$lib/forms/fields';
+import { flagField, optionalEmailField } from '$lib/forms/fields';
+import { toMinor } from '$lib/money';
 
 /**
  * The public donation form.
@@ -16,7 +17,7 @@ export const donateSchema = z.object({
 		.number({ message: 'Enter an amount' })
 		.min(1, 'Enter an amount')
 		.max(10_000_000, 'For a gift this size, please contact us directly')
-		.transform((birr) => Math.round(birr * 100)),
+		.transform((birr) => toMinor(birr)),
 
 	frequency: z.enum(['one_time', 'monthly']).default('one_time'),
 
@@ -35,11 +36,11 @@ export const donateSchema = z.object({
 	 * record, so `donorName` stays required and this sits beside it.
 	 */
 	donorOrganisation: z.string().trim().max(200).optional().or(z.literal('')),
-	isDiaspora: z.coerce.boolean().default(false),
+	isDiaspora: flagField(false),
 	/** Where the gift is coming from. Asked of diaspora donors, kept for all. */
 	donorCountry: z.string().trim().max(100).optional().or(z.literal('')),
 
-	isAnonymous: z.coerce.boolean().default(false),
+	isAnonymous: flagField(false),
 	donorMessage: z
 		.string()
 		.trim()
@@ -48,10 +49,10 @@ export const donateSchema = z.object({
 		.or(z.literal('')),
 
 	/** Opt-in, checked before the donor is ever added to the newsletter. */
-	joinNewsletter: z.coerce.boolean().default(false),
+	joinNewsletter: flagField(false),
 
 	/** Honeypot — see the note in `$lib/server/forms`. */
-	website: z.string().max(0).optional().or(z.literal(''))
+	website: z.string().max(200).optional().or(z.literal(''))
 });
 
 export type DonateSchema = typeof donateSchema;

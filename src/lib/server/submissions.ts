@@ -10,7 +10,7 @@ import {
 	regions
 } from '$lib/server/db/schema';
 import { saveUploadedFile } from '$lib/server/upload';
-import { nextSubmissionReference } from '$lib/server/reference';
+import { nextSubmissionReference, withReference } from '$lib/server/reference';
 import { defaultStatus } from '$lib/server/workflow';
 import { audit } from '$lib/server/audit';
 import { isFieldVisible } from '$lib/server/forms';
@@ -93,28 +93,36 @@ export async function submitForm(
 
 	const regionId = await resolveRegion(mapped.region ?? null);
 	const status = await defaultStatus(definition.statusContext);
-	const referenceNumber = nextSubmissionReference(definition.referencePrefix);
+	// The reference and the row it belongs to commit together — see
+	// `withReference`. Read outside a transaction, two submissions arriving
+	// together can derive the same `max(existing)` and collide on a UNIQUE column.
+	const { id: submissionId, referenceNumber } = withReference(() => {
+		const referenceNumber = nextSubmissionReference(definition.referencePrefix);
 
-	const [submission] = await db
-		.insert(formSubmissions)
-		.values({
-			formDefinitionId: definition.id,
-			referenceNumber,
-			data: answers,
-			statusId: status?.id ?? null,
-			// Denormalised so the case list filters by pillar without a join, and
-			// so the case keeps its pillar if the form is later repointed.
-			pillarId: definition.pillarId,
-			// The explicit contact fields on the form win over a mapped question,
-			// since they are the ones the submitter saw labelled as contact details.
-			submittedByName: str(payload.submittedByName) ?? mapped.name ?? null,
-			submittedByPhone: str(payload.submittedByPhone) ?? mapped.phone ?? null,
-			submittedByEmail: str(payload.submittedByEmail) ?? mapped.email ?? null,
-			regionId,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		})
-		.returning({ id: formSubmissions.id });
+		const [submission] = db
+			.insert(formSubmissions)
+			.values({
+				formDefinitionId: definition.id,
+				referenceNumber,
+				data: answers,
+				statusId: status?.id ?? null,
+				// Denormalised so the case list filters by pillar without a join, and
+				// so the case keeps its pillar if the form is later repointed.
+				pillarId: definition.pillarId,
+				// The explicit contact fields on the form win over a mapped question,
+				// since they are the ones the submitter saw labelled as contact details.
+				submittedByName: str(payload.submittedByName) ?? mapped.name ?? null,
+				submittedByPhone: str(payload.submittedByPhone) ?? mapped.phone ?? null,
+				submittedByEmail: str(payload.submittedByEmail) ?? mapped.email ?? null,
+				regionId,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			})
+			.returning({ id: formSubmissions.id })
+			.all();
+
+		return { id: submission.id, referenceNumber };
+	});
 
 	// Documents are stored private and scoped to the form's pillar, so the
 	// §3.10 rule ("Mental Wellness staff must not see Medical Hardship
@@ -125,7 +133,7 @@ export async function submitForm(
 			pillarId: definition.pillarId
 		});
 		await db.insert(formSubmissionDocuments).values({
-			formSubmissionId: submission.id,
+			formSubmissionId: submissionId,
 			fileId: saved.id,
 			label: upload.label,
 			fieldKey: upload.field
@@ -136,11 +144,11 @@ export async function submitForm(
 		event,
 		action: 'created',
 		entityType: 'form_submission',
-		entityId: submission.id,
+		entityId: submissionId,
 		metadata: { form: definition.slug, reference: referenceNumber, documents: uploads.length }
 	});
 
-	return { id: submission.id, referenceNumber };
+	return { id: submissionId, referenceNumber };
 }
 
 const str = (value: unknown): string | null => {

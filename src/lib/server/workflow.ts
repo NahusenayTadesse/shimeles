@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, eq, isNull } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import {
@@ -291,9 +291,27 @@ export async function setVolunteerStatus(
 				entityId: applicationId,
 				metadata: { reason: 'safeguarding_incomplete', attemptedStatusId: statusId }
 			});
+
+			// An empty checklist is `incomplete` too, and deliberately so — but
+			// "complete every check" is unfollowable advice when there are no
+			// checks to complete, which is the state of a fresh installation.
+			// Name the actual problem instead of sending a coordinator looking for
+			// a list that does not exist.
+			const [{ total }] = await db
+				.select({ total: count() })
+				.from(volunteerSafeguardingChecklistItems)
+				.where(
+					and(
+						eq(volunteerSafeguardingChecklistItems.isActive, true),
+						isNull(volunteerSafeguardingChecklistItems.deletedAt)
+					)
+				);
+
 			throw error(
 				422,
-				'This volunteer cannot be approved until every safeguarding check is complete.'
+				total === 0
+					? 'No safeguarding checks have been set up yet, and a volunteer cannot be approved without them. Add them under Configuration → Safeguarding checklist.'
+					: 'This volunteer cannot be approved until every safeguarding check is complete.'
 			);
 		}
 

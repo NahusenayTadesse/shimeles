@@ -12,7 +12,7 @@
 		year = false,
 		futureDays = false
 	}: {
-		data: string;
+		data: string | null | undefined;
 		oldDays?: boolean;
 		year?: boolean;
 		futureDays?: boolean;
@@ -20,12 +20,25 @@
 
 	const todayDate = $derived(oldDays ? undefined : today(getLocalTimeZone()));
 
-	let form = $state(
-		parseDate(data || todayDate?.toString() || new Date().toISOString().split('T')[0])
-	);
+	/**
+	 * Empty stays empty.
+	 *
+	 * This used to seed `form` with today whenever `data` was blank and then
+	 * write it straight back through an effect — so simply *rendering* an
+	 * optional date field answered it. A beneficiary with no date of birth on
+	 * file got today's date (and date of birth is half the key
+	 * `acceptApplication` matches returning families on), an unpublished blog
+	 * post got today's publish date, and every optional date question on a
+	 * public form auto-answered before anyone touched it.
+	 *
+	 * `undefined` renders as the placeholder, and `data` is only written when a
+	 * date is actually chosen.
+	 */
+	let form = $state<CalendarDate | undefined>(data ? parseDate(data) : undefined);
 
 	$effect(() => {
-		data = form.toString();
+		const next = form ? form.toString() : '';
+		if (next !== data) data = next;
 	});
 
 	const formatDate = (date: CalendarDate | undefined): string => {

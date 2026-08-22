@@ -57,8 +57,12 @@
 	>
 		<div class="sticky top-0 z-10 border-b border-sidebar-border bg-sidebar px-4 py-4">
 			<a href="/" target="_blank" title="Open the public site" class="flex flex-col gap-0.5">
-				<span class="font-heading text-sm font-semibold text-sidebar-foreground">Shimeles Abera</span>
-				<span class="text-[10px] tracking-widest text-sidebar-foreground/60 uppercase">Foundation</span>
+				<span class="font-heading text-sm font-semibold text-sidebar-foreground"
+					>Shimeles Abera</span
+				>
+				<span class="text-[10px] tracking-widest text-sidebar-foreground/60 uppercase"
+					>Foundation</span
+				>
 			</a>
 		</div>
 

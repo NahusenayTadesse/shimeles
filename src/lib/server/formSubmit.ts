@@ -4,7 +4,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { buildSchema, formStatusContext, loadForm } from '$lib/server/forms';
 import { submitForm } from '$lib/server/submissions';
 import { submitVolunteerApplication } from '$lib/server/volunteers';
-import { notifyNewSubmission } from '$lib/server/notify';
+import { notifyNewSubmission, notifyNewVolunteer } from '$lib/server/notify';
 
 /**
  * Validates and stores one public form submission — shared by the standalone
@@ -57,9 +57,18 @@ export async function handleFormSubmission(
 
 		// Fire-and-forget: a mail server being slow must not make the applicant
 		// wait, and must not fail a submission that is already safely stored.
-		void notifyNewSubmission(definition.slug, result).catch((err) =>
-			console.error('submission notification failed', err)
-		);
+		//
+		// The notification has to follow the same branch as the write. A volunteer
+		// application's id is a `volunteer_applications` id, and
+		// `notifyNewSubmission` builds a `/dashboard/applications/…` link — so
+		// sending both down that path pointed staff at whichever unrelated case
+		// happened to share the number.
+		const notify =
+			context === 'volunteer'
+				? notifyNewVolunteer(result)
+				: notifyNewSubmission(definition.slug, result);
+
+		void notify.catch((err) => console.error('submission notification failed', err));
 
 		return message(form, {
 			type: 'success',

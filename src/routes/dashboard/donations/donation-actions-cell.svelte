@@ -32,7 +32,9 @@
 		<form
 			method="post"
 			action="?/setStatus"
-			use:enhance={() => async ({ update }) => await update({ reset: false })}
+			use:enhance={() =>
+				async ({ update }) =>
+					await update({ reset: false })}
 		>
 			<input type="hidden" name="id" value={id} />
 			<input type="hidden" name="status" value="failed" />
@@ -48,7 +50,9 @@
 			<form
 				method="post"
 				action="?/sendReceipt"
-				use:enhance={() => async ({ update }) => await update({ reset: false })}
+				use:enhance={() =>
+					async ({ update }) =>
+						await update({ reset: false })}
 			>
 				<input type="hidden" name="id" value={id} />
 				<Button

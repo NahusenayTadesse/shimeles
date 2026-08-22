@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { optionalEmailField } from '$lib/forms/fields';
+import { flagField, optionalEmailField } from '$lib/forms/fields';
 
 /**
  * Rendered by `/contact` as well as enforced here, which is why it is a
@@ -54,7 +54,7 @@ export const contactSchema = z
 		preferredChannel: z.enum(['email', 'phone', 'either']).default('either'),
 
 		/** Opt-in, checked before anyone is added to the newsletter. */
-		joinNewsletter: z.coerce.boolean().default(false),
+		joinNewsletter: flagField(false),
 
 		/**
 		 * Honeypot. Deliberately permissive rather than `max(0)`: failing

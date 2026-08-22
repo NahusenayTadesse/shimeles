@@ -5,13 +5,13 @@
 	import PageHero from '$lib/content/PageHero.svelte';
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
+	import ChoiceGroup from '$lib/formComponents/ChoiceGroup.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import SocialIcon from '$lib/components/social-icon.svelte';
@@ -162,12 +162,14 @@
 					     "Safeguarding concern" is an edit rather than a deploy. -->
 					{#if data.catalog.subjects.length}
 						<div class="flex flex-col gap-2">
-							<Label>What is this about?</Label>
-							<div class="flex flex-wrap gap-2">
+							<Label id="subject-label">What is this about?</Label>
+							<div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="subject-label">
 								{#each data.catalog.subjects as subject (subject.id)}
 									<Button
 										type="button"
 										size="sm"
+										role="radio"
+										aria-checked={$form.subjectId === subject.id}
 										variant={$form.subjectId === subject.id ? 'default' : 'outline'}
 										onclick={() =>
 											($form.subjectId = $form.subjectId === subject.id ? null : subject.id)}
@@ -205,60 +207,54 @@
 					{/if}
 
 					<div class="grid gap-5 md:grid-cols-2">
-						<div class="flex flex-col gap-2">
-							<Label for="fullName">Your name</Label>
-							<Input
-								id="fullName"
-								name="fullName"
-								bind:value={$form.fullName}
-								autocomplete="name"
-							/>
-							{#if $errors.fullName}<p class="text-sm text-destructive">{$errors.fullName}</p>{/if}
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<Label for="organization">Organisation, if any</Label>
-							<Input
-								id="organization"
-								name="organization"
-								bind:value={$form.organization}
-								autocomplete="organization"
-							/>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<Label for="email">Email address</Label>
-							<Input
-								id="email"
-								name="email"
-								type="email"
-								bind:value={$form.email}
-								autocomplete="email"
-							/>
-							{#if $errors.email}<p class="text-sm text-destructive">{$errors.email}</p>{/if}
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<Label for="phone">Phone number</Label>
-							<Input
-								id="phone"
-								name="phone"
-								type="tel"
-								bind:value={$form.phone}
-								autocomplete="tel"
-							/>
-							{#if $errors.phone}<p class="text-sm text-destructive">{$errors.phone}</p>{/if}
-						</div>
+						<InputComp
+							{errors}
+							bind:value={$form.fullName}
+							name="fullName"
+							label="Your name"
+							type="text"
+							autocomplete="name"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={$form.organization}
+							name="organization"
+							label="Organisation, if any"
+							type="text"
+							autocomplete="organization"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={$form.email}
+							name="email"
+							label="Email address"
+							type="email"
+							autocomplete="email"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={$form.phone}
+							name="phone"
+							label="Phone number"
+							type="tel"
+							autocomplete="tel"
+							labelClass=""
+						/>
 					</div>
 
 					<div class="flex flex-col gap-2">
-						<Label for="message">Your message</Label>
-						<Textarea
-							id="message"
+						<InputComp
+							{errors}
+							bind:value={$form.message}
 							name="message"
+							label="Your message"
+							type="textarea"
 							rows={4}
 							maxlength={MAX_CONTACT_MESSAGE}
-							bind:value={$form.message}
+							labelClass=""
 						/>
 						<div class="flex items-start justify-between gap-3">
 							<p class="text-sm text-muted-foreground">
@@ -268,39 +264,24 @@
 								{$form.message?.length ?? 0}/{MAX_CONTACT_MESSAGE}
 							</span>
 						</div>
-						{#if $errors.message}<p class="text-sm text-destructive">{$errors.message}</p>{/if}
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label>How should we reply?</Label>
-						<div class="flex flex-wrap gap-2">
-							{#each [{ value: 'either', name: 'Either is fine' }, { value: 'email', name: 'By email' }, { value: 'phone', name: 'By phone' }] as option (option.value)}
-								<Button
-									type="button"
-									size="sm"
-									variant={$form.preferredChannel === option.value ? 'default' : 'outline'}
-									onclick={() =>
-										($form.preferredChannel = option.value as typeof $form.preferredChannel)}
-								>
-									{option.name}
-								</Button>
-							{/each}
-						</div>
-						<input type="hidden" name="preferredChannel" value={$form.preferredChannel} />
-					</div>
+					<ChoiceGroup
+						{errors}
+						bind:value={$form.preferredChannel}
+						name="preferredChannel"
+						label="How should we reply?"
+						options={[
+							{ value: 'either', name: 'Either is fine' },
+							{ value: 'email', name: 'By email' },
+							{ value: 'phone', name: 'By phone' }
+						]}
+					/>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.joinNewsletter}
-							onCheckedChange={(checked) => ($form.joinNewsletter = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							Send me occasional news from the Foundation. Separate from a reply to this message,
-							and you can unsubscribe from any of them.
-						</span>
-					</label>
-					<input type="hidden" name="joinNewsletter" value={String($form.joinNewsletter)} />
+					<CheckboxField bind:checked={$form.joinNewsletter} name="joinNewsletter">
+						Send me occasional news from the Foundation. Separate from a reply to this message, and
+						you can unsubscribe from any of them.
+					</CheckboxField>
 
 					<Separator />
 

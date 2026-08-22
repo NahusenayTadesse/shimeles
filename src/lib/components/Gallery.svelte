@@ -43,7 +43,7 @@
 				type="button"
 				use:reveal={{ delay: stagger(index, 60, 6) }}
 				onclick={() => open(index)}
-				class="group aspect-square overflow-hidden rounded-2xl bg-muted shadow-warm transition-transform hover:-translate-y-1"
+				class="group shadow-warm aspect-square overflow-hidden rounded-2xl bg-muted transition-transform hover:-translate-y-1"
 			>
 				<img
 					src={assetUrl(image.storagePath)}

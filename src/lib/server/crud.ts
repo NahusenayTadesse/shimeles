@@ -7,8 +7,15 @@ import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { db } from '$lib/server/db';
 import { savePublicImage } from '$lib/server/upload';
 import { audit, type AuditEntity } from '$lib/server/audit';
-import { requirePermission, type Permission } from '$lib/server/permissions';
+import {
+	assertPillarAccess,
+	pillarScopeOrNull,
+	requirePermission,
+	type Access,
+	type Permission
+} from '$lib/server/permissions';
 import { invalidate } from '$lib/server/cache';
+import { toMinor } from '$lib/money';
 
 /**
  * The generic CRUD generator.
@@ -37,25 +44,6 @@ export const idSchema = z.object({ id: z.coerce.number() });
 /** Reused by every content form: the integer that decides display order. */
 export const sortOrderField = z.coerce.number().int().min(0).default(0);
 
-/**
- * A boolean that survives the several shapes HTML gives one.
- *
- * `z.coerce.boolean()` is wrong here: an unticked checkbox and a `<select>` set
- * to "No" both post the *string* `"false"`, and `Boolean("false")` is `true` —
- * which silently turns every "hide this from the site" into "show it". This
- * parses the string forms explicitly and only then falls back to truthiness.
- */
-export const flagField = (fallback = true) =>
-	z
-		.union([z.boolean(), z.string(), z.number(), z.undefined(), z.null()])
-		.default(fallback)
-		.transform((value) => {
-			if (typeof value === 'boolean') return value;
-			if (value == null || value === '') return fallback;
-			if (typeof value === 'number') return value !== 0;
-			return !['false', '0', 'no', 'off'].includes(value.trim().toLowerCase());
-		});
-
 type AnyTable = SQLiteTable & Record<string, any>;
 type AnySchema = z.ZodType<any, any>;
 type FormData = Record<string, any> & { id: number };
@@ -78,6 +66,35 @@ interface CrudOptions {
 	jsonFields?: string[];
 	/** Extra WHERE applied to the list, e.g. scoping to one page's blocks. */
 	filter?: (event: RequestEvent) => SQL | undefined;
+	/**
+	 * The column carrying the pillar a row belongs to, for tables holding case
+	 * data (§3.10).
+	 *
+	 * Set it and the scope is folded into the list *and* into every write — a
+	 * caseworker assigned to Mental Wellness cannot list, edit or delete a
+	 * Medical Hardship row, whether they clicked a link or posted the id
+	 * directly. Without it a screen is unscoped, which is right for the content
+	 * tables (a pillar, a translation, a status option belong to nobody) and
+	 * wrong for anything hanging off a case.
+	 *
+	 * Rows with a *null* pillar stay visible to everyone: on `disbursements`
+	 * that is a general-fund payment, which belongs to no programme rather than
+	 * to a programme you cannot see. Where a null pillar would instead mean
+	 * "unfiled case data", derive it in `beforeWrite` so it is never null.
+	 */
+	pillarColumn?: AnyTable[string];
+	/**
+	 * Last chance to correct the validated values before they are written.
+	 *
+	 * Runs after validation and after the scope check, with the row as it is on
+	 * disk for an edit. For deriving a column that must not be taken from the
+	 * form — `disbursements.pillar_id` is read back from the case the payment is
+	 * against, so it cannot be posted as null to slip a row past the scope.
+	 */
+	beforeWrite?: (
+		values: Record<string, any>,
+		context: { event: RequestEvent; access: Access; existing?: Record<string, any> }
+	) => Promise<Record<string, any>> | Record<string, any>;
 	/** Cache keys to drop after a write, so the public site picks the edit up. */
 	invalidates?: string[];
 	/**
@@ -98,19 +115,63 @@ export function contentCrud({
 	listFields = [],
 	jsonFields = [],
 	filter,
+	pillarColumn,
+	beforeWrite,
 	invalidates = [],
 	hardDelete = false
 }: CrudOptions) {
 	/** Admin-chosen order where the table has one; id otherwise. */
 	const orderColumn = table.sortOrder ?? table.id;
 	const supportsSoftDelete = 'deletedAt' in table;
+	/**
+	 * The *JavaScript* property the pillar column is reached by — `pillarId`,
+	 * not `pillar_id`.
+	 *
+	 * `column.name` is the database name, and both the things checked against it
+	 * are keyed the other way: validated form data comes from a Zod schema
+	 * written in camelCase, and a Drizzle `select()` row is keyed by the property
+	 * on the table object. Using `column.name` looks right, reads `undefined`
+	 * from both, and turns every scope check below into a silent no-op — which is
+	 * the worst possible failure for a control whose whole job is to refuse.
+	 */
+	const pillarName: string | undefined = pillarColumn
+		? Object.keys(table).find((key) => table[key] === pillarColumn)
+		: undefined;
 
-	const liveRows = (event: RequestEvent) => {
+	if (pillarColumn && !pillarName) {
+		throw new Error(
+			`contentCrud(${label}): pillarColumn is not a column of the table it was given.`
+		);
+	}
+
+	const liveRows = (event: RequestEvent, access: Access) => {
 		const clauses = [filter?.(event)];
+		if (pillarColumn) clauses.push(pillarScopeOrNull(access, pillarColumn));
 		if (supportsSoftDelete) clauses.push(isNull(table.deletedAt));
 		const where = clauses.filter(Boolean) as SQL[];
 		const query = db.select().from(table);
 		return (where.length ? query.where(and(...where)) : query).orderBy(asc(orderColumn));
+	};
+
+	/** The row as it is on disk, for checking what a write is about to touch. */
+	const existingRow = async (id: number): Promise<Record<string, any> | undefined> => {
+		if (!pillarColumn && !beforeWrite) return undefined;
+		const [row] = await db.select().from(table).where(eq(table.id, id)).limit(1);
+		return row as Record<string, any> | undefined;
+	};
+
+	/**
+	 * Refuses a write that reaches outside the user's pillars.
+	 *
+	 * A null pillar passes — see the note on `pillarColumn`. Both ends of an
+	 * edit are checked by the callers: the row as it stands, so another
+	 * programme's record cannot be edited, and the values being written, so a
+	 * record cannot be pushed into a programme the user cannot see.
+	 */
+	const assertInScope = (event: RequestEvent, access: Access, pillarId: unknown) => {
+		if (!pillarColumn || access.pillarIds === null) return;
+		if (pillarId == null) return;
+		assertPillarAccess(event, access, Number(pillarId));
 	};
 
 	const dropCaches = () => invalidates.forEach((key) => invalidate(key));
@@ -158,13 +219,13 @@ export function contentCrud({
 	};
 
 	const load = async (event: RequestEvent) => {
-		await requirePermission(event, permission);
+		const access = await requirePermission(event, permission);
 
 		const [addForm, editForm, deleteForm, rows] = await Promise.all([
 			superValidate(zod4(addSchema)),
 			superValidate(zod4(editSchema)),
 			superValidate(zod4(idSchema)),
-			liveRows(event)
+			liveRows(event, access)
 		]);
 
 		audit({ event, action: 'viewed_list', entityType: entity });
@@ -184,8 +245,18 @@ export function contentCrud({
 				);
 			}
 
+			// Outside the try: a refusal is a 403 with a reason, not a "could not
+			// add" swallowed by the catch below and reported as a server fault.
+			const data = form.data as FormData;
+			if (pillarName) assertInScope(event, access, data[pillarName]);
+
 			try {
-				const values = await toRow(form.data as FormData, access.userId);
+				let values = await toRow(data, access.userId);
+				if (beforeWrite) {
+					values = await beforeWrite(values, { event, access });
+					if (pillarName) assertInScope(event, access, values[pillarName]);
+				}
+
 				const [row] = await db
 					.insert(table)
 					.values({ ...values, createdBy: access.userId, updatedBy: access.userId })
@@ -211,9 +282,26 @@ export function contentCrud({
 				);
 			}
 
+			const data = form.data as FormData;
+			const existing = await existingRow(data.id);
+
+			// Outside the try, so a refusal is a 403 with a reason rather than a
+			// generic failure. Both ends are checked: the row as it stands, so
+			// another programme's record cannot be edited, and the values coming in,
+			// so a record cannot be pushed into a programme this user cannot see.
+			if (pillarName) {
+				if (!existing) return message(form, { type: 'error', text: 'Not found' }, { status: 404 });
+				assertInScope(event, access, existing[pillarName]);
+				assertInScope(event, access, data[pillarName]);
+			}
+
 			try {
-				const data = form.data as FormData;
-				const values = await toRow(data, access.userId);
+				let values = await toRow(data, access.userId);
+				if (beforeWrite) {
+					values = await beforeWrite(values, { event, access, existing });
+					if (pillarName) assertInScope(event, access, values[pillarName]);
+				}
+
 				await db
 					.update(table)
 					.set({ ...values, updatedBy: access.userId, updatedAt: new Date() })
@@ -242,6 +330,14 @@ export function contentCrud({
 			}
 
 			const { id } = form.data as FormData;
+
+			// Outside the try — see `add`.
+			if (pillarName) {
+				const existing = await existingRow(id);
+				if (!existing) return message(form, { type: 'error', text: 'Not found' }, { status: 404 });
+				assertInScope(event, access, existing[pillarName]);
+			}
+
 			try {
 				if (supportsSoftDelete && !hardDelete) {
 					await db
@@ -296,10 +392,16 @@ export const optionalIdField = z
 export const idField = z.coerce.number().int().positive('Required');
 
 /** Re-exported so a schema needs only one import. See `$lib/forms/fields`. */
-export { emailField, optionalEmailField, optionalNumberField } from '$lib/forms/fields';
+export {
+	emailField,
+	optionalEmailField,
+	optionalNumberField,
+	flagField,
+	optionalFlagField
+} from '$lib/forms/fields';
 
 /** Money entered in birr, stored in santim. See `$lib/money`. */
 export const moneyField = z.coerce
 	.number()
 	.min(0, 'Cannot be negative')
-	.transform((major) => Math.round(major * 100));
+	.transform((major) => toMinor(major));

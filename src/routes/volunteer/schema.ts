@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { emailField, optionalEmailField } from '$lib/forms/fields';
+import { emailField, flagField, optionalEmailField, optionalFlagField } from '$lib/forms/fields';
 
 /**
  * The volunteer application form.
@@ -124,7 +124,7 @@ export const volunteerSchema = z
 		heardAbout: optional(150),
 
 		/* --- Professional standing ------------------------------------------ */
-		isProfessional: z.coerce.boolean().default(false),
+		isProfessional: flagField(false),
 		credentials: z.array(credentialSchema).max(12, 'Twelve qualifications is plenty').default([]),
 
 		/* --- References ------------------------------------------------------ */
@@ -134,30 +134,34 @@ export const volunteerSchema = z
 			.max(6, 'Six references is more than enough'),
 
 		/* --- Declarations ---------------------------------------------------- */
-		hasPriorConviction: z.coerce.boolean().nullable().default(null),
+		hasPriorConviction: optionalFlagField(),
 		priorConvictionDetail: optional(1500),
-		consentBackgroundCheck: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'We cannot proceed without this consent'),
-		agreeCodeOfConduct: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'Please read and accept the code of conduct'),
+		consentBackgroundCheck: flagField(false).refine(
+			(value) => value === true,
+			'We cannot proceed without this consent'
+		),
+		agreeCodeOfConduct: flagField(false).refine(
+			(value) => value === true,
+			'Please read and accept the code of conduct'
+		),
 		/**
 		 * Required. Everything downstream — references, licence checks,
 		 * safeguarding — is an act of trust in what was typed here, so the
 		 * declaration that it is true is not an optional extra.
 		 */
-		declareAccurate: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'Please confirm that what you have told us is accurate'),
+		declareAccurate: flagField(false).refine(
+			(value) => value === true,
+			'Please confirm that what you have told us is accurate'
+		),
 		/**
 		 * Required too, and for the applicant's sake rather than ours: approval
 		 * depends on safeguarding checks and on there being a placement to offer,
 		 * and nobody should learn that only after waiting.
 		 */
-		acknowledgeNoGuarantee: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'Please confirm you understand this'),
+		acknowledgeNoGuarantee: flagField(false).refine(
+			(value) => value === true,
+			'Please confirm you understand this'
+		),
 
 		/**
 		 * Honeypot — see the note in `$lib/server/forms`.

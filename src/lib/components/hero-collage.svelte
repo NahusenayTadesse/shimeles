@@ -29,7 +29,9 @@
 </script>
 
 {#if photos.length >= 2}
-	<div class={cn(box, 'grid gap-4', photos.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2')}>
+	<div
+		class={cn(box, 'grid gap-4', photos.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2')}
+	>
 		{#if photos.length === 2}
 			<img
 				use:reveal={{ x: -20, scale: 0.96 }}
@@ -78,6 +80,6 @@
 		use:reveal={{ scale: 0.97 }}
 		src={assetUrl(photos[0]?.storagePath ?? fallbackImage ?? '')}
 		alt={photos[0]?.caption ?? ''}
-		class={cn('tilt-right rounded-[2.5rem]', box, 'w-full object-cover shadow-warm')}
+		class={cn('tilt-right rounded-[2.5rem]', box, 'shadow-warm w-full object-cover')}
 	/>
 {/if}

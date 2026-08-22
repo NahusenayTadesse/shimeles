@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod/v4';
-import { emailField, optionalEmailField } from '$lib/forms/fields';
+import { emailField, flagField, optionalEmailField } from '$lib/forms/fields';
+import { MAX_UPLOAD_BYTES } from '$lib/server/upload';
 import { db } from '$lib/server/db';
 import { formDefinitions, formFields, pillars } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
@@ -225,9 +226,15 @@ function fieldSchema(field: RenderField): z.ZodTypeAny {
 
 		case 'checkbox':
 			// A required checkbox means "must be ticked" — a consent box.
+			//
+			// `flagField`, never `z.coerce.boolean()`: the renderer mirrors the box
+			// into a hidden input (`InputComp.svelte`, `checkboxSingle`), so an
+			// unticked box posts the string `"false"` — which coercion turns into
+			// `true`, storing the opposite of what was ticked and letting a direct
+			// POST of `consent=false` satisfy the `.refine` below.
 			return required
-				? z.coerce.boolean().refine((value) => value === true, `${field.label} is required`)
-				: z.coerce.boolean().default(false);
+				? flagField(false).refine((value) => value === true, `${field.label} is required`)
+				: flagField(false);
 
 		case 'date': {
 			const schema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `${field.label} must be a valid date`);
@@ -339,7 +346,9 @@ function fieldSchema(field: RenderField): z.ZodTypeAny {
 	}
 }
 
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+/** The storage layer owns the ceiling; re-exported so schemas read one name. */
+export { MAX_UPLOAD_BYTES } from '$lib/server/upload';
+
 export const ACCEPTED_UPLOAD_TYPES = [
 	'application/pdf',
 	'image/jpeg',
@@ -373,7 +382,7 @@ export function buildSchema(form: RenderForm) {
 		 * Honeypot. Bots fill every input they find; a human never sees this one,
 		 * so any value at all means the submission is discarded silently.
 		 */
-		website: z.string().max(0).optional().or(z.literal(''))
+		website: z.string().max(200).optional().or(z.literal(''))
 	});
 }
 

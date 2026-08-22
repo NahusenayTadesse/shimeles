@@ -307,6 +307,27 @@ async function seedSettings() {
 			hint: 'Leave blank to use the live total of completed donations.'
 		},
 
+		// Which pillar each per-pillar counter reads. Settings rather than
+		// literals in the code, because a pillar's slug is editable and a counter
+		// that silently stopped counting is worse than one that is obviously
+		// pointed at the wrong place (§0).
+		{
+			key: 'impact.pillar_students_sponsored',
+			value: 'youth-education',
+			label: 'Students sponsored: which pillar',
+			group: 'impact',
+			valueType: 'text',
+			hint: 'The slug of the pillar this counter counts. Change it if you rename that pillar.'
+		},
+		{
+			key: 'impact.pillar_elders_cared_for',
+			value: 'elder-care',
+			label: 'Elders cared for: which pillar',
+			group: 'impact',
+			valueType: 'text',
+			hint: 'The slug of the pillar this counter counts. Change it if you rename that pillar.'
+		},
+
 		// Footer
 		{
 			key: 'footer.blurb',

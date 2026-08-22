@@ -14,6 +14,7 @@ import { upsertDonor } from '$lib/server/donors';
 import { nextInKindReference } from '$lib/server/reference';
 import { saveUploadedFile } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
+import { toMinor } from '$lib/money';
 import { cached, invalidate } from '$lib/server/cache';
 import { IN_KIND_STATUS_LABELS, type InKindCategoryOption, type ItemCondition } from '$lib/inKind';
 
@@ -154,7 +155,7 @@ export type InKindOfferResult = {
 };
 
 /** Birr to santim. Blank stays blank rather than becoming a confident zero. */
-const minorUnits = (value: number | null) => (value === null ? null : Math.round(value * 100));
+const minorUnits = (value: number | null) => (value === null ? null : toMinor(value));
 
 /**
  * "3 boxes of children's coats and 2 more kinds of thing" — what a queue row
@@ -264,7 +265,6 @@ export async function createInKindOffer(
 		userId: input.userId
 	});
 
-	const referenceCode = nextInKindReference();
 	const now = new Date();
 
 	const summary = summarise(items);
@@ -280,7 +280,10 @@ export async function createInKindOffer(
 		? itemValues.reduce((total, value) => total + (value as number), 0)
 		: null;
 
-	const offerId = db.transaction((tx) => {
+	// Allocated inside the transaction that consumes it — see `withReference`.
+	const { id: offerId, referenceCode } = db.transaction((tx) => {
+		const referenceCode = nextInKindReference();
+
 		const [offer] = tx
 			.insert(inKindDonations)
 			.values({
@@ -370,7 +373,7 @@ export async function createInKindOffer(
 			)
 			.run();
 
-		return id;
+		return { id, referenceCode };
 	});
 
 	// Photos land after the commit. They are of the inside of someone's home,

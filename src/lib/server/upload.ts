@@ -26,6 +26,13 @@ import { invalidateStatCache } from '$lib/server/fileCache';
 
 const FILES_DIR = env.FILES_DIR ?? '.tempFiles';
 
+/**
+ * The ceiling for anything written to disk, matching the per-field limit the
+ * dynamic form applies. Declared here rather than imported from
+ * `$lib/server/forms` so the storage layer does not depend on the form engine.
+ */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 if (!fs.existsSync(FILES_DIR)) fs.mkdirSync(FILES_DIR, { recursive: true });
 
 /** Extensions we are willing to hand back out. Anything else is rejected. */
@@ -67,6 +74,14 @@ export async function saveUploadedFile(file: File, options: SaveOptions = {}): P
 	const ext = path.extname(file.name).toLowerCase();
 	if (!ALLOWED_EXTENSIONS.has(ext)) {
 		throw new Error(`Files of type "${ext || 'unknown'}" are not accepted`);
+	}
+
+	// The dynamic form enforces this in its schema, but `/apply`'s documents and
+	// the in-kind photos reach this function without passing through one — and a
+	// public endpoint that streams an unbounded body to disk is a way to fill the
+	// volume that holds the case documents.
+	if (file.size > MAX_UPLOAD_BYTES) {
+		throw new Error(`Files must be under ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB`);
 	}
 
 	const storagePath = `${randomUUID()}${ext}`;

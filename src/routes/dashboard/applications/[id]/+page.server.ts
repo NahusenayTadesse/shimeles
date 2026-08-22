@@ -136,7 +136,17 @@ export const load: PageServerLoad = async (event) => {
 			})
 			.from(formSubmissionDocuments)
 			.innerJoin(files, eq(files.id, formSubmissionDocuments.fileId))
-			.where(and(eq(formSubmissionDocuments.formSubmissionId, id), isNull(files.deletedAt))),
+			// Both tombstones, not just the file's: a document detached from the case
+			// stays out of the list even when the underlying file is still on disk.
+			// `getApplicationDetail` filters the join row, and the two panels
+			// disagreeing about what is attached is worse than either answer.
+			.where(
+				and(
+					eq(formSubmissionDocuments.formSubmissionId, id),
+					isNull(formSubmissionDocuments.deletedAt),
+					isNull(files.deletedAt)
+				)
+			),
 
 		listStatuses('application'),
 

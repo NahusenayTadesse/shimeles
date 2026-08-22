@@ -117,10 +117,11 @@
 					<form
 						method="post"
 						action={updateCaptionAction}
-						use:enhance={() => async ({ update }) => {
-							await update({ reset: false });
-							toast.success('Caption saved');
-						}}
+						use:enhance={() =>
+							async ({ update }) => {
+								await update({ reset: false });
+								toast.success('Caption saved');
+							}}
 						class="flex gap-2"
 					>
 						<input type="hidden" name="imageId" value={image.id} />
@@ -280,7 +281,9 @@
 
 		<Button type="submit" size="sm" disabled={uploading || pending.length === 0} class="w-fit">
 			<UploadCloud class="size-4" />
-			{uploading ? 'Uploading…' : `Add ${pending.length || ''} photo${pending.length === 1 ? '' : 's'}`}
+			{uploading
+				? 'Uploading…'
+				: `Add ${pending.length || ''} photo${pending.length === 1 ? '' : 's'}`}
 		</Button>
 	</form>
 </div>

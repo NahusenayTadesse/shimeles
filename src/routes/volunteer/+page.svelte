@@ -14,6 +14,8 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import {
 		CalendarClock,
@@ -31,6 +33,36 @@
 	let { data } = $props();
 
 	const s = (key: string, fallback: string) => data.strings?.[key] ?? fallback;
+
+	const SECTIONS = $derived(
+		[
+			{ id: 'section-about', label: 'About you' },
+			{ id: 'section-programmes', label: 'Programmes' },
+			data.catalog.skills.length ? { id: 'section-skills', label: 'Skills' } : null,
+			{ id: 'section-availability', label: 'Availability' },
+			{ id: 'section-credentials', label: 'Credentials' },
+			{ id: 'section-references', label: 'References' },
+			{ id: 'section-consent', label: 'Consent' }
+		].filter((section) => section !== null)
+	);
+	let activeSection = $state('section-about');
+
+	const observeSections = (node: HTMLElement) => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const visible = entries
+					.filter((entry) => entry.isIntersecting)
+					.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+				if (visible) activeSection = visible.target.id;
+			},
+			{ rootMargin: '-15% 0px -70% 0px' }
+		);
+		for (const section of SECTIONS) {
+			const el = node.querySelector(`#${section.id}`);
+			if (el) observer.observe(el);
+		}
+		return { destroy: () => observer.disconnect() };
+	};
 
 	/**
 	 * `dataType: 'json'` because the form posts nested arrays — chosen skills
@@ -271,7 +303,29 @@
 			</div>
 		{/if}
 
-		<form method="post" action="?/apply" use:enhance class="flex flex-col gap-8">
+		<div
+			class="sticky top-[89px] z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b bg-background/95 px-4 py-2 backdrop-blur sm:mx-0 sm:rounded-lg sm:border"
+		>
+			{#each SECTIONS as section, index (section.id)}
+				<a
+					href="#{section.id}"
+					class="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition {activeSection ===
+					section.id
+						? 'bg-primary text-primary-foreground'
+						: 'text-muted-foreground hover:bg-muted'}"
+				>
+					{index + 1}. {section.label}
+				</a>
+			{/each}
+		</div>
+
+		<form
+			method="post"
+			action="?/apply"
+			use:enhance
+			use:observeSections
+			class="flex flex-col gap-8"
+		>
 			<Errors allErrors={$allErrors} />
 
 			<!-- Honeypot. Hidden from people, irresistible to bots; a filled value
@@ -288,73 +342,97 @@
 			</div>
 
 			<!-- ============================ About you ======================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-about" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-6 flex items-center gap-3">
 					<UserRound class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">About you</h2>
 				</div>
 
 				<div class="grid gap-5 md:grid-cols-2">
-					<div class="flex flex-col gap-2">
-						<Label for="fullName">Full name</Label>
-						<Input id="fullName" bind:value={$form.fullName} autocomplete="name" />
-						{#if $errors.fullName}<p class="text-sm text-destructive">{$errors.fullName}</p>{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.fullName}
+						name="fullName"
+						label="Full name"
+						type="text"
+						autocomplete="name"
+						showRequired
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="phone">Phone number</Label>
-						<Input id="phone" type="tel" bind:value={$form.phone} autocomplete="tel" />
-						{#if $errors.phone}<p class="text-sm text-destructive">{$errors.phone}</p>{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.phone}
+						name="phone"
+						label="Phone number"
+						type="tel"
+						autocomplete="tel"
+						showRequired
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="email">Email address</Label>
-						<Input id="email" type="email" bind:value={$form.email} autocomplete="email" />
-						{#if $errors.email}<p class="text-sm text-destructive">{$errors.email}</p>{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.email}
+						name="email"
+						label="Email address"
+						type="email"
+						autocomplete="email"
+						showRequired
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="city">Where do you live?</Label>
-						<Input id="city" bind:value={$form.city} placeholder="Sub-city, or the nearest town" />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.city}
+						name="city"
+						label="Where do you live?"
+						type="text"
+						placeholder="Sub-city, or the nearest town"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="dateOfBirth">Date of birth</Label>
-						<Input id="dateOfBirth" type="date" bind:value={$form.dateOfBirth} />
-						{#if $errors.dateOfBirth}
-							<p class="text-sm text-destructive">{$errors.dateOfBirth}</p>
-						{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.dateOfBirth}
+						name="dateOfBirth"
+						label="Date of birth"
+						type="date"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="occupation">What do you do?</Label>
-						<Input
-							id="occupation"
-							bind:value={$form.occupation}
-							placeholder="Your work or studies"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.occupation}
+						name="occupation"
+						label="What do you do?"
+						type="text"
+						placeholder="Your work or studies"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="organisationName">Organisation, if you are applying through one</Label>
-						<Input
-							id="organisationName"
-							bind:value={$form.organisationName}
-							placeholder="An employer, university or association"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.organisationName}
+						name="organisationName"
+						label="Organisation, if you are applying through one"
+						type="text"
+						placeholder="An employer, university or association"
+						labelClass=""
+					/>
 
 					<!-- `city` and the region are Ethiopian geography, so a volunteer
 					     writing in from abroad has nowhere else to say where they are. -->
-					<div class="flex flex-col gap-2">
-						<Label for="country">Country</Label>
-						<Input
-							id="country"
-							bind:value={$form.country}
-							autocomplete="country-name"
-							placeholder="Ethiopia, unless you are applying from abroad"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.country}
+						name="country"
+						label="Country"
+						type="text"
+						placeholder="Ethiopia, unless you are applying from abroad"
+						autocomplete="country-name"
+						labelClass=""
+					/>
 
 					{#if data.catalog.regions.length > 1}
 						<div class="flex flex-col gap-2">
@@ -408,35 +486,42 @@
 
 				<div class="grid gap-5 md:grid-cols-3">
 					<div class="flex flex-col gap-2">
-						<Label for="emergencyContactName">Their name</Label>
+						<Label for="emergencyContactName"
+							>Their name <span class="text-destructive">*</span></Label
+						>
 						<Input id="emergencyContactName" bind:value={$form.emergencyContactName} />
 						{#if $errors.emergencyContactName}
 							<p class="text-sm text-destructive">{$errors.emergencyContactName}</p>
 						{/if}
 					</div>
 					<div class="flex flex-col gap-2">
-						<Label for="emergencyContactPhone">Their phone number</Label>
+						<Label for="emergencyContactPhone"
+							>Their phone number <span class="text-destructive">*</span></Label
+						>
 						<Input id="emergencyContactPhone" type="tel" bind:value={$form.emergencyContactPhone} />
 						{#if $errors.emergencyContactPhone}
 							<p class="text-sm text-destructive">{$errors.emergencyContactPhone}</p>
 						{/if}
 					</div>
-					<div class="flex flex-col gap-2">
-						<Label for="emergencyContactRelationship">Relationship to you</Label>
-						<Input
-							id="emergencyContactRelationship"
-							bind:value={$form.emergencyContactRelationship}
-							placeholder="Spouse, parent, friend"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.emergencyContactRelationship}
+						name="emergencyContactRelationship"
+						label="Relationship to you"
+						type="text"
+						placeholder="Spouse, parent, friend"
+						labelClass=""
+					/>
 				</div>
 			</Card.Root>
 
 			<!-- ========================= Programmes ========================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-programmes" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<HeartHandshake class="size-5 text-primary" />
-					<h2 class="font-heading text-xl font-semibold">Where would you like to help?</h2>
+					<h2 class="font-heading text-xl font-semibold">
+						Where would you like to help? <span class="text-destructive">*</span>
+					</h2>
 				</div>
 				<p class="mb-5 text-sm text-muted-foreground">
 					Choose as many as you like. It does not lock you in.
@@ -470,7 +555,7 @@
 
 			<!-- =========================== Skills ============================ -->
 			{#if data.catalog.skills.length}
-				<Card.Root class="p-6 md:p-8">
+				<Card.Root id="section-skills" class="scroll-mt-[145px] p-6 md:p-8">
 					<div class="mb-2 flex items-center gap-3">
 						<Sparkles class="size-5 text-primary" />
 						<h2 class="font-heading text-xl font-semibold">What can you bring?</h2>
@@ -563,10 +648,12 @@
 			{/if}
 
 			<!-- ========================= Availability ========================= -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-availability" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<CalendarClock class="size-5 text-primary" />
-					<h2 class="font-heading text-xl font-semibold">When are you usually free?</h2>
+					<h2 class="font-heading text-xl font-semibold">
+						When are you usually free? <span class="text-destructive">*</span>
+					</h2>
 				</div>
 				<p class="mb-6 text-sm text-muted-foreground">
 					Rough is fine. We use this to match you to work that actually happens when you are around.
@@ -619,21 +706,25 @@
 							<p class="text-sm text-destructive">{$errors.hoursPerWeek}</p>
 						{/if}
 					</div>
-					<div class="flex flex-col gap-2">
-						<Label for="commitmentMonths">For how many months?</Label>
-						<Input
-							id="commitmentMonths"
-							type="number"
-							min="1"
-							max="120"
-							bind:value={$form.commitmentMonths}
-							placeholder="Leave blank for open-ended"
-						/>
-					</div>
-					<div class="flex flex-col gap-2">
-						<Label for="availableFrom">Earliest you could start</Label>
-						<Input id="availableFrom" type="date" bind:value={$form.availableFrom} />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.commitmentMonths}
+						name="commitmentMonths"
+						label="For how many months?"
+						type="number"
+						placeholder="Leave blank for open-ended"
+						min="1"
+						max="120"
+						labelClass=""
+					/>
+					<InputComp
+						{errors}
+						bind:value={$form.availableFrom}
+						name="availableFrom"
+						label="Earliest you could start"
+						type="date"
+						labelClass=""
+					/>
 				</div>
 
 				<div class="mt-5 flex flex-col gap-2">
@@ -648,7 +739,7 @@
 			</Card.Root>
 
 			<!-- ======================== Credentials ========================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-credentials" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<ShieldCheck class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">Are you a licensed professional?</h2>
@@ -714,37 +805,44 @@
 										</Select.Root>
 									</div>
 
-									<div class="flex flex-col gap-2">
-										<Label for="otherProfession-{index}">Not listed? Tell us what you are</Label>
-										<Input
-											id="otherProfession-{index}"
-											bind:value={credential.otherProfession}
-											placeholder="Your profession"
-										/>
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.otherProfession}
+										name="otherProfession-{index}"
+										label="Not listed? Tell us what you are"
+										type="text"
+										placeholder="Your profession"
+										labelClass=""
+									/>
 
-									<div class="flex flex-col gap-2">
-										<Label for="licenseNumber-{index}">Licence number</Label>
-										<Input id="licenseNumber-{index}" bind:value={credential.licenseNumber} />
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.licenseNumber}
+										name="licenseNumber-{index}"
+										label="Licence number"
+										type="text"
+										labelClass=""
+									/>
 
-									<div class="flex flex-col gap-2">
-										<Label for="licensingBody-{index}">Issued by</Label>
-										<Input
-											id="licensingBody-{index}"
-											bind:value={credential.licensingBody}
-											placeholder={profession?.defaultLicensingBody ?? 'The licensing authority'}
-										/>
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.licensingBody}
+										name="licensingBody-{index}"
+										label="Issued by"
+										type="text"
+										placeholder={profession?.defaultLicensingBody ?? 'The licensing authority'}
+										labelClass=""
+									/>
 
-									<div class="flex flex-col gap-2">
-										<Label for="specialization-{index}">Specialisation</Label>
-										<Input
-											id="specialization-{index}"
-											bind:value={credential.specialization}
-											placeholder="Paediatrics, trauma counselling…"
-										/>
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.specialization}
+										name="specialization-{index}"
+										label="Specialisation"
+										type="text"
+										placeholder="Paediatrics, trauma counselling…"
+										labelClass=""
+									/>
 
 									<div class="flex flex-col gap-2">
 										<Label for="yearsExperience-{index}">Years practising</Label>
@@ -757,15 +855,23 @@
 										/>
 									</div>
 
-									<div class="flex flex-col gap-2">
-										<Label for="issuedOn-{index}">Issued on</Label>
-										<Input id="issuedOn-{index}" type="date" bind:value={credential.issuedOn} />
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.issuedOn}
+										name="issuedOn-{index}"
+										label="Issued on"
+										type="date"
+										labelClass=""
+									/>
 
-									<div class="flex flex-col gap-2">
-										<Label for="expiresOn-{index}">Expires on</Label>
-										<Input id="expiresOn-{index}" type="date" bind:value={credential.expiresOn} />
-									</div>
+									<InputComp
+										{errors}
+										bind:value={credential.expiresOn}
+										name="expiresOn-{index}"
+										label="Expires on"
+										type="date"
+										labelClass=""
+									/>
 								</div>
 							</div>
 						{/each}
@@ -785,10 +891,12 @@
 			</Card.Root>
 
 			<!-- ========================= References ========================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-references" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<UserRound class="size-5 text-primary" />
-					<h2 class="font-heading text-xl font-semibold">Two references</h2>
+					<h2 class="font-heading text-xl font-semibold">
+						Two references <span class="text-destructive">*</span>
+					</h2>
 				</div>
 				<p class="mb-6 text-sm text-muted-foreground">
 					People who know you well enough to speak to your character, and who are not family. We
@@ -815,14 +923,18 @@
 
 							<div class="grid gap-5 md:grid-cols-2">
 								<div class="flex flex-col gap-2">
-									<Label for="referenceName-{index}">Their full name</Label>
+									<Label for="referenceName-{index}"
+										>Their full name <span class="text-destructive">*</span></Label
+									>
 									<Input id="referenceName-{index}" bind:value={reference.fullName} />
 									{#if $errors.references?.[index]?.fullName}
 										<p class="text-sm text-destructive">{$errors.references[index].fullName}</p>
 									{/if}
 								</div>
 								<div class="flex flex-col gap-2">
-									<Label for="referenceRelationship-{index}">How do they know you?</Label>
+									<Label for="referenceRelationship-{index}"
+										>How do they know you? <span class="text-destructive">*</span></Label
+									>
 									<Input
 										id="referenceRelationship-{index}"
 										bind:value={reference.relationship}
@@ -832,17 +944,22 @@
 										<p class="text-sm text-destructive">{$errors.references[index].relationship}</p>
 									{/if}
 								</div>
-								<div class="flex flex-col gap-2">
-									<Label for="referenceEmail-{index}">Their email</Label>
-									<Input id="referenceEmail-{index}" type="email" bind:value={reference.email} />
-									{#if $errors.references?.[index]?.email}
-										<p class="text-sm text-destructive">{$errors.references[index].email}</p>
-									{/if}
-								</div>
-								<div class="flex flex-col gap-2">
-									<Label for="referencePhone-{index}">Their phone number</Label>
-									<Input id="referencePhone-{index}" type="tel" bind:value={reference.phone} />
-								</div>
+								<InputComp
+									{errors}
+									bind:value={reference.email}
+									name="referenceEmail-{index}"
+									label="Their email"
+									type="email"
+									labelClass=""
+								/>
+								<InputComp
+									{errors}
+									bind:value={reference.phone}
+									name="referencePhone-{index}"
+									label="Their phone number"
+									type="tel"
+									labelClass=""
+								/>
 								<div class="flex flex-col gap-2 md:col-span-2">
 									<Label for="referenceOrganization-{index}">Where they work, if relevant</Label>
 									<Input id="referenceOrganization-{index}" bind:value={reference.organization} />
@@ -861,7 +978,7 @@
 			</Card.Root>
 
 			<!-- ======================== Why, and consent ====================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-consent" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-6 flex items-center gap-3">
 					<ShieldCheck class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">Last few things</h2>
@@ -869,17 +986,23 @@
 
 				<div class="flex flex-col gap-5">
 					<div class="flex flex-col gap-2">
-						<Label for="motivation">Why do you want to volunteer with us?</Label>
+						<Label for="motivation"
+							>Why do you want to volunteer with us? <span class="text-destructive">*</span></Label
+						>
 						<Textarea id="motivation" rows={4} bind:value={$form.motivation} />
 						{#if $errors.motivation}
 							<p class="text-sm text-destructive">{$errors.motivation}</p>
 						{/if}
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label for="heardAbout">How did you hear about the Foundation?</Label>
-						<Input id="heardAbout" bind:value={$form.heardAbout} />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.heardAbout}
+						name="heardAbout"
+						label="How did you hear about the Foundation?"
+						type="text"
+						labelClass=""
+					/>
 
 					<Separator />
 
@@ -920,67 +1043,36 @@
 
 					<Separator />
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.consentBackgroundCheck}
-							onCheckedChange={(checked) => ($form.consentBackgroundCheck = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I agree to the Foundation contacting my references and carrying out the background
-							and, where relevant, licence checks described above.
-						</span>
-					</label>
-					{#if $errors.consentBackgroundCheck}
-						<p class="text-sm text-destructive">{$errors.consentBackgroundCheck}</p>
-					{/if}
+					<CheckboxField
+						{errors}
+						bind:checked={$form.consentBackgroundCheck}
+						name="consentBackgroundCheck"
+					>
+						<span class="text-destructive">*</span> I agree to the Foundation contacting my references
+						and carrying out the background and, where relevant, licence checks described above.
+					</CheckboxField>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.agreeCodeOfConduct}
-							onCheckedChange={(checked) => ($form.agreeCodeOfConduct = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I have read and accept the volunteer
-							<a href="/terms" class="underline underline-offset-2">code of conduct</a>
-							and the
-							<a href="/privacy" class="underline underline-offset-2">privacy policy</a>.
-						</span>
-					</label>
-					{#if $errors.agreeCodeOfConduct}
-						<p class="text-sm text-destructive">{$errors.agreeCodeOfConduct}</p>
-					{/if}
+					<CheckboxField {errors} bind:checked={$form.agreeCodeOfConduct} name="agreeCodeOfConduct">
+						<span class="text-destructive">*</span> I have read and accept the volunteer
+						<a href="/terms" class="underline underline-offset-2">code of conduct</a>
+						and the
+						<a href="/privacy" class="underline underline-offset-2">privacy policy</a>.
+					</CheckboxField>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.declareAccurate}
-							onCheckedChange={(checked) => ($form.declareAccurate = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I confirm that everything I have entered above is accurate and complete.
-						</span>
-					</label>
-					{#if $errors.declareAccurate}
-						<p class="text-sm text-destructive">{$errors.declareAccurate}</p>
-					{/if}
+					<CheckboxField {errors} bind:checked={$form.declareAccurate} name="declareAccurate">
+						<span class="text-destructive">*</span> I confirm that everything I have entered above is
+						accurate and complete.
+					</CheckboxField>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.acknowledgeNoGuarantee}
-							onCheckedChange={(checked) => ($form.acknowledgeNoGuarantee = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I understand that sending this application does not guarantee a placement. Every
-							application goes through safeguarding checks, and we can only place volunteers where
-							there is a role to fill.
-						</span>
-					</label>
-					{#if $errors.acknowledgeNoGuarantee}
-						<p class="text-sm text-destructive">{$errors.acknowledgeNoGuarantee}</p>
-					{/if}
+					<CheckboxField
+						{errors}
+						bind:checked={$form.acknowledgeNoGuarantee}
+						name="acknowledgeNoGuarantee"
+					>
+						<span class="text-destructive">*</span> I understand that sending this application does not
+						guarantee a placement. Every application goes through safeguarding checks, and we can only
+						place volunteers where there is a role to fill.
+					</CheckboxField>
 				</div>
 
 				<Separator class="my-7" />

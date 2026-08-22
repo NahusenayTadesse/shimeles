@@ -56,3 +56,59 @@ export const emailField = (message = 'Enter a valid email address') =>
 /** The same, for a field an untouched input posts as `''`. */
 export const optionalEmailField = (message?: string) =>
 	z.union([emailField(message), z.literal('')]).optional();
+
+/**
+ * A boolean that survives the several shapes HTML gives one.
+ *
+ * `z.coerce.boolean()` is wrong here, and wrong in a way that is silent and
+ * inverted: an unticked checkbox mirrored into a hidden input, and a `<select>`
+ * whose "No" option carries `value="false"`, both post the *string* `"false"` —
+ * and `Boolean("false")` is `true`. Every "hide this from the site" becomes
+ * "show it", every "do not add me to the newsletter" becomes a subscription,
+ * and a required consent box is satisfied by a POST that never ticked it,
+ * because coercion turns the string into `true` before `.refine` ever sees it.
+ *
+ * This parses the string forms explicitly and only then falls back to
+ * truthiness. `fallback` is what a genuinely absent value means — `''` and
+ * `undefined`, not `"false"`.
+ *
+ * Lives here rather than in `$lib/server/crud.ts` because the public schemas
+ * (`/apply`, `/volunteer`, `/donate`, `/contact`, in-kind) need it too, and
+ * importing anything under `$lib/server` into a schema a component also imports
+ * is a build error. `$lib/server/crud.ts` re-exports it.
+ *
+ * Composes with `.refine()` for a consent box that must actually be ticked:
+ *
+ * ```ts
+ * consentToContact: flagField(false).refine((v) => v === true, 'We need your permission')
+ * ```
+ */
+export const flagField = (fallback = true) =>
+	z
+		.union([z.boolean(), z.string(), z.number(), z.undefined(), z.null()])
+		.default(fallback)
+		.transform((value) => {
+			if (typeof value === 'boolean') return value;
+			if (value == null || value === '') return fallback;
+			if (typeof value === 'number') return value !== 0;
+			return !['false', '0', 'no', 'off'].includes(value.trim().toLowerCase());
+		});
+
+/**
+ * The tri-state form: yes, no, or *not answered*.
+ *
+ * For questions where "we did not ask" and "they said no" are different facts
+ * and the column is nullable — `has_prior_conviction` is the one that matters,
+ * since collapsing an unanswered safeguarding question into a confident `false`
+ * is exactly the wrong direction to guess in.
+ */
+export const optionalFlagField = () =>
+	z
+		.union([z.boolean(), z.string(), z.number(), z.undefined(), z.null()])
+		.default(null)
+		.transform((value) => {
+			if (typeof value === 'boolean') return value;
+			if (value == null || value === '') return null;
+			if (typeof value === 'number') return value !== 0;
+			return !['false', '0', 'no', 'off'].includes(value.trim().toLowerCase());
+		});

@@ -21,8 +21,8 @@
 	let {
 		items = [],
 		siteName = 'Shimeles Abera Foundation',
-		siteNameAmharic = "ሽመልስ አበራ ፋውንዴሽን"
-	}: { items?: RenderNavItem[]; siteName?: string; siteNameAmharic: string; } = $props();
+		siteNameAmharic = 'ሽመልስ አበራ ፋውንዴሽን'
+	}: { items?: RenderNavItem[]; siteName?: string; siteNameAmharic: string } = $props();
 
 	let open = $state(false);
 
@@ -41,9 +41,10 @@
 				alt=""
 				class="size-11 shrink-0 rounded-full object-contain ring-2 ring-olive/40 transition-transform group-hover:-rotate-6"
 			/>
-			<span class="truncate font-heading text-md font-semibold">{siteName}
-              <br />
-              {siteNameAmharic}
+			<span class="text-md truncate font-heading font-semibold"
+				>{siteName}
+				<br />
+				{siteNameAmharic}
 			</span>
 		</a>
 
@@ -68,7 +69,10 @@
 			<DarkMode />
 
 			{#each items.filter((item) => item.isCta) as item (item.id)}
-				<a href={item.href} class={cn(buttonVariants({ size: 'sm' }), 'hidden gap-1.5 sm:inline-flex')}>
+				<a
+					href={item.href}
+					class={cn(buttonVariants({ size: 'sm' }), 'hidden gap-1.5 sm:inline-flex')}
+				>
 					<HeartHandshake class="size-3.5" />
 					{item.label}
 				</a>

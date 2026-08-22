@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 import { db } from '$lib/server/db';
 import { contentBlocks, pages } from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
+import { flagField } from '$lib/server/crud';
 import { invalidateContent } from '$lib/server/content';
 import { savePublicImage } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
@@ -65,7 +66,7 @@ const BLOCK_TYPES = [
 const blockSchema = z.object({
 	blockType: z.enum(BLOCK_TYPES),
 	heading: z.string().trim().max(200).optional(),
-	isPublished: z.coerce.boolean().default(true),
+	isPublished: flagField(true),
 	/** Everything type-specific arrives as loose form fields, parsed below. */
 	body: z.string().max(50000).optional(),
 	text: z.string().max(2000).optional(),

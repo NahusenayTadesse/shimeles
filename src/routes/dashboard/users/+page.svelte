@@ -61,7 +61,11 @@
 			header: 'Role',
 			enableSorting: false,
 			cell: ({ row }: any) =>
-				renderComponent(RoleSelect, { userId: row.original.id, roleId: row.original.roleId, roleItems })
+				renderComponent(RoleSelect, {
+					userId: row.original.id,
+					roleId: row.original.roleId,
+					roleItems
+				})
 		},
 		{
 			id: 'pillars',

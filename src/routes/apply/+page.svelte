@@ -14,6 +14,8 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import {
 		CircleCheck,
@@ -33,6 +35,38 @@
 
 	const s = (key: string, fallback: string) => data.strings?.[key] ?? fallback;
 
+	/** Matches the server's own ceiling in `$lib/server/upload.ts`, kept here
+	 *  as a plain constant since client code cannot import server modules. */
+	const MAX_DOCUMENTS = 6;
+	const MAX_DOCUMENT_MB = 10;
+
+	const SECTIONS = [
+		{ id: 'section-who', label: 'Who' },
+		{ id: 'section-about', label: 'About' },
+		{ id: 'section-needs', label: 'Needs' },
+		{ id: 'section-documents', label: 'Documents' },
+		{ id: 'section-reach', label: 'Reaching you' },
+		{ id: 'section-consent', label: 'Consent' }
+	];
+	let activeSection = $state(SECTIONS[0].id);
+
+	const observeSections = (node: HTMLElement) => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const visible = entries
+					.filter((entry) => entry.isIntersecting)
+					.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+				if (visible) activeSection = visible.target.id;
+			},
+			{ rootMargin: '-15% 0px -70% 0px' }
+		);
+		for (const section of SECTIONS) {
+			const el = node.querySelector(`#${section.id}`);
+			if (el) observer.observe(el);
+		}
+		return { destroy: () => observer.disconnect() };
+	};
+
 	/**
 	 * `dataType: 'json'` because the chosen needs are an array of objects, each
 	 * with its own detail, amount and urgency. Documents ride alongside as a
@@ -46,6 +80,7 @@
 
 	let confirmation = $state<string | null>(null);
 	let documentNames = $state<string[]>([]);
+	let documentError = $state<string | null>(null);
 
 	$effect(() => {
 		if (!$message) return;
@@ -123,7 +158,19 @@
 
 	const onDocuments = (event: Event) => {
 		const input = event.currentTarget as HTMLInputElement;
-		documentNames = [...(input.files ?? [])].map((file) => file.name);
+		const files = [...(input.files ?? [])];
+		documentNames = files.map((file) => file.name);
+
+		if (files.length > MAX_DOCUMENTS) {
+			documentError = `You have chosen ${files.length} files — please keep it to ${MAX_DOCUMENTS} or fewer.`;
+			return;
+		}
+		const tooBig = files.filter((file) => file.size > MAX_DOCUMENT_MB * 1024 * 1024);
+		if (tooBig.length) {
+			documentError = `${tooBig.map((file) => file.name).join(', ')} — over ${MAX_DOCUMENT_MB} MB. Please choose a smaller file.`;
+			return;
+		}
+		documentError = null;
 	};
 
 	const copyReference = async () => {
@@ -216,11 +263,30 @@
 			</div>
 		</Card.Root>
 
+		<!-- A section jump-nav so a long, scrolling form still reads as "six
+		     short steps" rather than one wall of fields. -->
+		<div
+			class="sticky top-[89px] z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b bg-background/95 px-4 py-2 backdrop-blur sm:mx-0 sm:rounded-lg sm:border"
+		>
+			{#each SECTIONS as section, index (section.id)}
+				<a
+					href="#{section.id}"
+					class="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition {activeSection ===
+					section.id
+						? 'bg-primary text-primary-foreground'
+						: 'text-muted-foreground hover:bg-muted'}"
+				>
+					{index + 1}. {section.label}
+				</a>
+			{/each}
+		</div>
+
 		<form
 			method="post"
 			action="?/apply"
 			enctype="multipart/form-data"
 			use:enhance
+			use:observeSections
 			class="flex flex-col gap-6"
 		>
 			<Errors allErrors={$allErrors} />
@@ -238,7 +304,7 @@
 			</div>
 
 			<!-- ==================== Who is this for ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-who" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-5 flex items-center gap-3">
 					<UserRound class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">Who is this for?</h2>
@@ -264,17 +330,22 @@
 				<Separator class="my-6" />
 
 				<div class="grid gap-5 md:grid-cols-2">
-					<div class="flex flex-col gap-2">
-						<Label for="applicantName">Your name</Label>
-						<Input id="applicantName" bind:value={$form.applicantName} autocomplete="name" />
-						{#if $errors.applicantName}
-							<p class="text-sm text-destructive">{$errors.applicantName}</p>
-						{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.applicantName}
+						name="applicantName"
+						label="Your name"
+						type="text"
+						autocomplete="name"
+						showRequired
+						labelClass=""
+					/>
 
 					{#if $form.applyingFor === 'other'}
 						<div class="flex flex-col gap-2">
-							<Label for="relationship">How do you know them?</Label>
+							<Label for="relationship"
+								>How do you know them? <span class="text-destructive">*</span></Label
+							>
 							<Input
 								id="relationship"
 								bind:value={$form.relationship}
@@ -318,7 +389,7 @@
 			</Card.Root>
 
 			<!-- ==================== About the person ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-about" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<Home class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">
@@ -332,39 +403,47 @@
 
 				<div class="grid gap-5 md:grid-cols-2">
 					{#if $form.applyingFor === 'other'}
-						<div class="flex flex-col gap-2">
-							<Label for="subjectName">Their name</Label>
-							<Input id="subjectName" bind:value={$form.subjectName} />
-							{#if $errors.subjectName}
-								<p class="text-sm text-destructive">{$errors.subjectName}</p>
-							{/if}
-						</div>
+						<InputComp
+							{errors}
+							bind:value={$form.subjectName}
+							name="subjectName"
+							label="Their name"
+							type="text"
+							showRequired
+							labelClass=""
+						/>
 
-						<div class="flex flex-col gap-2">
-							<Label for="subjectPhone">Their phone number</Label>
-							<Input id="subjectPhone" type="tel" bind:value={$form.subjectPhone} />
-						</div>
+						<InputComp
+							{errors}
+							bind:value={$form.subjectPhone}
+							name="subjectPhone"
+							label="Their phone number"
+							type="tel"
+							labelClass=""
+						/>
 					{/if}
 
-					<div class="flex flex-col gap-2">
-						<Label for="subjectDateOfBirth">Date of birth</Label>
-						<Input id="subjectDateOfBirth" type="date" bind:value={$form.subjectDateOfBirth} />
-						{#if $errors.subjectDateOfBirth}
-							<p class="text-sm text-destructive">{$errors.subjectDateOfBirth}</p>
-						{/if}
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.subjectDateOfBirth}
+						name="subjectDateOfBirth"
+						label="Date of birth"
+						type="date"
+						year
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="subjectApproximateAge">Or roughly how old?</Label>
-						<Input
-							id="subjectApproximateAge"
-							type="number"
-							min="0"
-							max="120"
-							bind:value={$form.subjectApproximateAge}
-							placeholder="If the exact date is not known"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.subjectApproximateAge}
+						name="subjectApproximateAge"
+						label="Or roughly how old?"
+						type="number"
+						placeholder="If the exact date is not known"
+						min="0"
+						max="120"
+						labelClass=""
+					/>
 
 					<div class="flex flex-col gap-2">
 						<Label>Gender</Label>
@@ -382,10 +461,15 @@
 						</Select.Root>
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label for="city">Where do {subjectWord} live?</Label>
-						<Input id="city" bind:value={$form.city} placeholder="Sub-city, town or kebele" />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.city}
+						name="city"
+						label="Where do {subjectWord} live?"
+						type="text"
+						placeholder="Sub-city, town or kebele"
+						labelClass=""
+					/>
 
 					<div class="flex flex-col gap-2 md:col-span-2">
 						<Label for="addressLine">Address, if you can give one</Label>
@@ -439,25 +523,26 @@
 						/>
 					</div>
 
-					<div class="flex flex-col gap-2">
-						<Label for="monthlyIncome">Household income each month (birr)</Label>
-						<Input
-							id="monthlyIncome"
-							type="number"
-							min="0"
-							bind:value={$form.monthlyIncome}
-							placeholder="A rough figure is fine"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.monthlyIncome}
+						name="monthlyIncome"
+						label="Household income each month (birr)"
+						type="number"
+						placeholder="A rough figure is fine"
+						min="0"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="incomeSource">Where does that income come from?</Label>
-						<Input
-							id="incomeSource"
-							bind:value={$form.incomeSource}
-							placeholder="Daily work, a pension, family sending money…"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.incomeSource}
+						name="incomeSource"
+						label="Where does that income come from?"
+						type="text"
+						placeholder="Daily work, a pension, family sending money…"
+						labelClass=""
+					/>
 				</div>
 
 				<Separator class="my-6" />
@@ -529,7 +614,7 @@
 			</Card.Root>
 
 			<!-- ==================== What is needed ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-needs" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<LifeBuoy class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">What do you need?</h2>
@@ -655,7 +740,9 @@
 				<Separator class="my-6" />
 
 				<div class="flex flex-col gap-2">
-					<Label for="story">Tell us what is happening</Label>
+					<Label for="story"
+						>Tell us what is happening <span class="text-destructive">*</span></Label
+					>
 					<p class="text-sm text-muted-foreground">
 						In your own words, in your own language. There is no right way to write this.
 					</p>
@@ -688,14 +775,15 @@
 			</Card.Root>
 
 			<!-- ==================== Documents ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-documents" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-2 flex items-center gap-3">
 					<Paperclip class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">Anything that supports this?</h2>
 				</div>
 				<p class="mb-4 text-sm text-muted-foreground">
 					A medical letter, a school report, a prescription, a photograph of a document. Optional —
-					send what you have, and nothing if you have nothing. Up to six files.
+					send what you have, and nothing if you have nothing. Up to {MAX_DOCUMENTS} files, {MAX_DOCUMENT_MB}
+					MB each.
 				</p>
 
 				{#if evidenceHints.length}
@@ -717,6 +805,10 @@
 					onchange={onDocuments}
 				/>
 
+				{#if documentError}
+					<p class="mt-2 text-sm text-destructive">{documentError}</p>
+				{/if}
+
 				{#if documentNames.length}
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#each documentNames as name (name)}
@@ -727,35 +819,41 @@
 			</Card.Root>
 
 			<!-- ==================== Reaching you ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-reach" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-5 flex items-center gap-3">
 					<Phone class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">How should we reach you?</h2>
 				</div>
 
 				<div class="grid gap-5 md:grid-cols-2">
-					<div class="flex flex-col gap-2">
-						<Label for="bestTimeToContact">Best time to call</Label>
-						<Input
-							id="bestTimeToContact"
-							bind:value={$form.bestTimeToContact}
-							placeholder="Mornings, after 6pm, weekends…"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.bestTimeToContact}
+						name="bestTimeToContact"
+						label="Best time to call"
+						type="text"
+						placeholder="Mornings, after 6pm, weekends…"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="alternateContactName">Someone else we can call</Label>
-						<Input
-							id="alternateContactName"
-							bind:value={$form.alternateContactName}
-							placeholder="If we cannot reach you"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.alternateContactName}
+						name="alternateContactName"
+						label="Someone else we can call"
+						type="text"
+						placeholder="If we cannot reach you"
+						labelClass=""
+					/>
 
-					<div class="flex flex-col gap-2">
-						<Label for="alternateContactPhone">Their number</Label>
-						<Input id="alternateContactPhone" type="tel" bind:value={$form.alternateContactPhone} />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.alternateContactPhone}
+						name="alternateContactPhone"
+						label="Their number"
+						type="tel"
+						labelClass=""
+					/>
 				</div>
 
 				<Separator class="my-6" />
@@ -763,17 +861,11 @@
 				<!-- Not politeness. Someone applying about a family situation or a
 				     mental health crisis may not be safe to ring at home, and a
 				     caseworker has to know that before they dial. -->
-				<label class="flex items-start gap-3">
-					<Checkbox
-						checked={!$form.safeToContact}
-						onCheckedChange={(checked) => ($form.safeToContact = checked !== true)}
-						class="mt-0.5"
-					/>
-					<span class="text-sm">
-						Please be careful how you contact me — it may not be safe or private to call at any
-						time.
-					</span>
-				</label>
+				<CheckboxField
+					bind:checked={$form.safeToContact}
+					invert
+					label="Please be careful how you contact me — it may not be safe or private to call at any time."
+				/>
 
 				{#if !$form.safeToContact}
 					<div class="mt-3 flex flex-col gap-2">
@@ -784,72 +876,42 @@
 			</Card.Root>
 
 			<!-- ==================== Consent ==================== -->
-			<Card.Root class="p-6 md:p-8">
+			<Card.Root id="section-consent" class="scroll-mt-[145px] p-6 md:p-8">
 				<div class="mb-5 flex items-center gap-3">
 					<ShieldCheck class="size-5 text-primary" />
 					<h2 class="font-heading text-xl font-semibold">Before you send it</h2>
 				</div>
 
 				<div class="flex flex-col gap-4">
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.consentToStore}
-							onCheckedChange={(checked) => ($form.consentToStore = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I agree that the Foundation may keep this application and the details in it in order
-							to assess it. See the
-							<a href="/privacy" class="underline underline-offset-2">privacy policy</a>.
-						</span>
-					</label>
-					{#if $errors.consentToStore}
-						<p class="text-sm text-destructive">{$errors.consentToStore}</p>
-					{/if}
+					<CheckboxField {errors} bind:checked={$form.consentToStore} name="consentToStore">
+						<span class="text-destructive">*</span> I agree that the Foundation may keep this
+						application and the details in it in order to assess it. See the
+						<a href="/privacy" class="underline underline-offset-2">privacy policy</a>.
+					</CheckboxField>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.consentToVerify}
-							onCheckedChange={(checked) => ($form.consentToVerify = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I agree that the Foundation may check what I have said — with a hospital, a school, or
-							by visiting. Optional; it usually makes the assessment faster.
-						</span>
-					</label>
+					<CheckboxField
+						{errors}
+						bind:checked={$form.consentToVerify}
+						name="consentToVerify"
+						label="I agree that the Foundation may check what I have said — with a hospital, a school, or by visiting. Optional; it usually makes the assessment faster."
+					/>
 
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.declareAccurate}
-							onCheckedChange={(checked) => ($form.declareAccurate = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I confirm that what I have written here is accurate and complete, as far as I know.
-						</span>
-					</label>
-					{#if $errors.declareAccurate}
-						<p class="text-sm text-destructive">{$errors.declareAccurate}</p>
-					{/if}
+					<CheckboxField {errors} bind:checked={$form.declareAccurate} name="declareAccurate">
+						<span class="text-destructive">*</span> I confirm that what I have written here is accurate
+						and complete, as far as I know.
+					</CheckboxField>
 
 					<!-- Said plainly and on the form itself, because the waiting list
 					     is the ordinary outcome rather than the exception. -->
-					<label class="flex items-start gap-3">
-						<Checkbox
-							checked={$form.acknowledgeNoGuarantee}
-							onCheckedChange={(checked) => ($form.acknowledgeNoGuarantee = checked === true)}
-							class="mt-0.5"
-						/>
-						<span class="text-sm">
-							I understand that sending this application does not guarantee help, and does not
-							guarantee it straight away. Applications go onto a waiting list and are assessed at
-							each intake round; we get in touch when there is a programme you match.
-						</span>
-					</label>
-					{#if $errors.acknowledgeNoGuarantee}
-						<p class="text-sm text-destructive">{$errors.acknowledgeNoGuarantee}</p>
-					{/if}
+					<CheckboxField
+						{errors}
+						bind:checked={$form.acknowledgeNoGuarantee}
+						name="acknowledgeNoGuarantee"
+					>
+						<span class="text-destructive">*</span> I understand that sending this application does not
+						guarantee help, and does not guarantee it straight away. Applications go onto a waiting list
+						and are assessed at each intake round; we get in touch when there is a programme you match.
+					</CheckboxField>
 				</div>
 
 				<Separator class="my-6" />
@@ -863,7 +925,7 @@
 							If this is an emergency, please call us rather than waiting for a reply.
 						{/if}
 					</p>
-					<Button type="submit" size="lg" disabled={$delayed}>
+					<Button type="submit" size="lg" disabled={$delayed || Boolean(documentError)}>
 						{#if $delayed}
 							<LoadingBtn name="Sending" />
 						{:else}

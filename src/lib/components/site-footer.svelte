@@ -164,6 +164,8 @@
 			</p>
 			<p>{s('footer.registration') || ''}</p>
 		</div>
-		<p class="text-center mb-2 text-[8px] text-[oklch(0.94_0.012_80)]/50"> Developed By: <a target="_blank" href="https://nahusenaytadesse.vercel.app">NT</a></p>
+		<p class="mb-2 text-center text-[8px] text-[oklch(0.94_0.012_80)]/50">
+			Developed By: <a target="_blank" href="https://nahusenaytadesse.vercel.app">NT</a>
+		</p>
 	</div>
 </footer>

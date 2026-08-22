@@ -2,12 +2,11 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import { ShieldCheck, UserPlus } from '@lucide/svelte';
 
 	let { data } = $props();
@@ -46,45 +45,49 @@
 		<form method="post" use:enhance class="flex flex-col gap-4">
 			<Errors allErrors={$allErrors} />
 
-			<div class="flex flex-col gap-2">
-				<Label for="name">Your name</Label>
-				<Input id="name" name="name" bind:value={$form.name} required />
-				{#if $errors.name}<p class="text-sm text-destructive">{$errors.name}</p>{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.name}
+				name="name"
+				label="Your name"
+				type="text"
+				autocomplete="name"
+				labelClass=""
+				required
+			/>
 
-			<div class="flex flex-col gap-2">
-				<Label for="email">Email</Label>
-				<Input id="email" name="email" type="email" bind:value={$form.email} required />
-				{#if $errors.email}<p class="text-sm text-destructive">{$errors.email}</p>{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.email}
+				name="email"
+				label="Email"
+				type="email"
+				autocomplete="email"
+				labelClass=""
+				required
+			/>
 
-			<div class="flex flex-col gap-2">
-				<Label for="password">Password</Label>
-				<Input
-					id="password"
-					name="password"
-					type="password"
-					autocomplete="new-password"
-					bind:value={$form.password}
-					required
-				/>
-				{#if $errors.password}<p class="text-sm text-destructive">{$errors.password}</p>{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.password}
+				name="password"
+				label="Password"
+				type="password"
+				autocomplete="new-password"
+				labelClass=""
+				required
+			/>
 
-			<div class="flex flex-col gap-2">
-				<Label for="confirmPassword">Confirm password</Label>
-				<Input
-					id="confirmPassword"
-					name="confirmPassword"
-					type="password"
-					autocomplete="new-password"
-					bind:value={$form.confirmPassword}
-					required
-				/>
-				{#if $errors.confirmPassword}
-					<p class="text-sm text-destructive">{$errors.confirmPassword}</p>
-				{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.confirmPassword}
+				name="confirmPassword"
+				label="Confirm password"
+				type="password"
+				autocomplete="new-password"
+				labelClass=""
+				required
+			/>
 
 			<Button type="submit" class="mt-2">
 				{#if $delayed}

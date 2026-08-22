@@ -26,7 +26,7 @@ import { getImpactMetrics } from '$lib/server/impact';
 import { createInKindOffer, getInKindCategories } from '$lib/server/inKind';
 import { upsertDonor } from '$lib/server/donors';
 import { notifyNewInKindOffer } from '$lib/server/notify';
-import { nextDonationReference } from '$lib/server/reference';
+import { nextDonationReference, withReference } from '$lib/server/reference';
 import { sendEmail, donationPledgeTemplate, inKindOfferTemplate } from '$lib/server/email';
 import { formatMoney } from '$lib/money';
 import { blankInKindItem, inKindSchema } from '$lib/inKind';
@@ -289,30 +289,36 @@ export const actions: Actions = {
 				pledgeId = pledge.id;
 			}
 
-			const referenceCode = nextDonationReference();
+			// Reference and row commit together — see `withReference`.
+			const { id: donationId, referenceCode } = withReference(() => {
+				const referenceCode = nextDonationReference();
 
-			const [donation] = await db
-				.insert(donations)
-				.values({
-					donorId,
-					amount: data.amount,
-					currency,
-					frequency: data.frequency,
-					designationType,
-					designationPillarId: pillar?.id ?? null,
-					designationInitiativeId: initiative?.id ?? null,
-					paymentMethodId: account?.paymentMethodId ?? null,
-					paymentAccountId: account?.id ?? null,
-					// Not `completed`: nobody has seen this money yet. Finance moves it
-					// on in the reconciliation queue, and only then does it count.
-					status: 'pending_reconciliation',
-					referenceCode,
-					donorMessage: data.donorMessage?.trim() || null,
-					isAnonymous: data.isAnonymous,
-					recurringPledgeId: pledgeId,
-					regionId: defaultRegion?.id ?? null
-				})
-				.returning({ id: donations.id });
+				const [donation] = db
+					.insert(donations)
+					.values({
+						donorId,
+						amount: data.amount,
+						currency,
+						frequency: data.frequency,
+						designationType,
+						designationPillarId: pillar?.id ?? null,
+						designationInitiativeId: initiative?.id ?? null,
+						paymentMethodId: account?.paymentMethodId ?? null,
+						paymentAccountId: account?.id ?? null,
+						// Not `completed`: nobody has seen this money yet. Finance moves it
+						// on in the reconciliation queue, and only then does it count.
+						status: 'pending_reconciliation',
+						referenceCode,
+						donorMessage: data.donorMessage?.trim() || null,
+						isAnonymous: data.isAnonymous,
+						recurringPledgeId: pledgeId,
+						regionId: defaultRegion?.id ?? null
+					})
+					.returning({ id: donations.id })
+					.all();
+
+				return { id: donation.id, referenceCode };
+			});
 
 			if (data.joinNewsletter && email) {
 				await db
@@ -332,7 +338,7 @@ export const actions: Actions = {
 				event,
 				action: 'created',
 				entityType: 'donation',
-				entityId: donation.id,
+				entityId: donationId,
 				metadata: { reference: referenceCode, frequency: data.frequency, designationType }
 			});
 

@@ -40,7 +40,14 @@ const PRAGMAS = [
 	'mmap_size = 268435456',
 	// Checkpoint roughly every 4 MB of WAL rather than letting it grow unbounded.
 	'wal_autocheckpoint = 1000',
-	// Let SQLite reclaim space from soft-deleted rows without a manual VACUUM.
+	/*
+	 * Lets SQLite reclaim space from soft-deleted rows without a manual VACUUM —
+	 * but *only on a database created with it set*. SQLite ignores a change to
+	 * `auto_vacuum` on a populated file; switching an existing one over needs a
+	 * full `VACUUM` first. So this is doing its job on a fresh install and is
+	 * inert on `local.db`, where the hourly `incremental_vacuum` below is
+	 * consequently a no-op rather than the tidy-up it looks like.
+	 */
 	'auto_vacuum = INCREMENTAL'
 ];
 

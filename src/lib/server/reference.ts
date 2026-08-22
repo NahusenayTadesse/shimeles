@@ -33,11 +33,20 @@ const normalisePrefix = (prefix: string) =>
 		.slice(0, 6) || 'GEN';
 
 function nextSequence(pattern: string, column: string, table: string): number {
-	// `substr(reference, -4)` is the sequence; casting makes SQLite sort it
-	// numerically rather than as text, so 0009 → 0010 rather than 0009 → 001.
+	// Everything after the prefix is the sequence, and the prefix is a known
+	// length — so the substring starts at `pattern.length + 1` (SQLite's `substr`
+	// is 1-indexed) rather than being taken from the right.
+	//
+	// `substr(column, -4)` would be the obvious way to write this and is wrong:
+	// it reads the last four characters, so the moment a series passes
+	// `SAF-XXX-YYYY-9999` and `padStart` yields five digits, `10000` is read back
+	// as `0000` and the series silently restarts at 1 — against a UNIQUE column.
+	//
+	// Casting makes SQLite compare numerically rather than as text, so 0009 → 10
+	// rather than 0009 → 001.
 	const row = db.all<{ max: number | null }>(
 		sql.raw(
-			`select max(cast(substr(${column}, -4) as integer)) as max
+			`select max(cast(substr(${column}, ${pattern.length + 1}) as integer)) as max
 			 from ${table}
 			 where ${column} like '${pattern}%'`
 		)

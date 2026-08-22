@@ -19,6 +19,7 @@ import { nextSubmissionReference } from '$lib/server/reference';
 import { defaultStatus } from '$lib/server/workflow';
 import { saveUploadedFile } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
+import { toMinor } from '$lib/money';
 import { cached } from '$lib/server/cache';
 import type { SubmitResult } from '$lib/server/submissions';
 
@@ -334,7 +335,6 @@ export async function createApplication(
 	const definition = await definitionForPillar(pillarId);
 	const status = await defaultStatus('application');
 	const regionId = validRegion[0]?.id ?? defaultRegion[0]?.id ?? null;
-	const referenceNumber = nextSubmissionReference(definition?.referencePrefix ?? 'APP');
 	const now = new Date();
 
 	// The subject repeats the applicant when they are the same person, so "who
@@ -343,7 +343,13 @@ export async function createApplication(
 		input.applyingFor === 'self' ? input.applicantName : (input.subjectName ?? input.applicantName);
 	const subjectPhone = input.applyingFor === 'self' ? input.applicantPhone : input.subjectPhone;
 
-	const submissionId = db.transaction((tx) => {
+	// The reference is allocated *inside* the transaction that consumes it.
+	// `nextSubmissionReference` derives the next number from `max(existing)`, so
+	// reading it outside leaves a window in which a second submission can read
+	// the same maximum — see `withReference` in `$lib/server/reference`.
+	const { id: submissionId, referenceNumber } = db.transaction((tx) => {
+		const referenceNumber = nextSubmissionReference(definition?.referencePrefix ?? 'APP');
+
 		const [submission] = tx
 			.insert(formSubmissions)
 			.values({
@@ -390,7 +396,7 @@ export async function createApplication(
 				householdSize: input.householdSize,
 				dependantsCount: input.dependantsCount,
 				// Entered in birr, stored in santim — see `$lib/money`.
-				monthlyIncome: input.monthlyIncome === null ? null : Math.round(input.monthlyIncome * 100),
+				monthlyIncome: input.monthlyIncome === null ? null : toMinor(input.monthlyIncome),
 				incomeSource: input.incomeSource,
 				isEmployed: input.isEmployed,
 				hasDisability: input.hasDisability,
@@ -419,15 +425,14 @@ export async function createApplication(
 						formSubmissionId: id,
 						needId: need.needId,
 						detail: need.detail,
-						estimatedAmount:
-							need.estimatedAmount === null ? null : Math.round(need.estimatedAmount * 100),
+						estimatedAmount: need.estimatedAmount === null ? null : toMinor(need.estimatedAmount),
 						urgency: need.urgency
 					}))
 				)
 				.run();
 		}
 
-		return id;
+		return { id, referenceNumber };
 	});
 
 	// Documents are saved after the transaction: a failed upload must not lose
@@ -518,7 +523,23 @@ export async function acceptApplication(
 
 	const fullName =
 		subject?.fullName?.trim() || submission.name?.trim() || `Applicant ${submission.reference}`;
-	const phone = subject?.phone?.trim() || submission.phone?.trim() || null;
+
+	/**
+	 * The subject's own phone, and *only* theirs when they are not the applicant.
+	 *
+	 * `submitted_by_phone` belongs to whoever filled the form in. Falling back to
+	 * it for someone applying on another's behalf would be bad enough as stored
+	 * contact detail; it is worse than that, because the phone is the primary
+	 * match key below. A daughter applying for her mother, without a separate
+	 * number for her mother, would otherwise either link the mother's case to the
+	 * *daughter's* beneficiary record or create a new record carrying the
+	 * daughter's number — which the next case she files for anyone would then
+	 * match in turn. Every disbursement after that is recorded against the wrong
+	 * person, which is exactly what keying on the subject exists to prevent.
+	 */
+	const applyingForSelf = subject ? subject.applyingFor === 'self' : true;
+	const phone =
+		subject?.phone?.trim() || (applyingForSelf ? submission.phone?.trim() : null) || null;
 	const regionId = subject?.regionId ?? submission.regionId ?? null;
 
 	let beneficiaryId: number | null = null;

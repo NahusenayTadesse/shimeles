@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 import { db } from '$lib/server/db';
 import { formDefinitions, formFields } from '$lib/server/db/schema';
 import { requirePermission } from '$lib/server/permissions';
+import { flagField } from '$lib/server/crud';
 import { invalidateForms, loadForm } from '$lib/server/forms';
 import { audit } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
@@ -84,7 +85,7 @@ const fieldSchema = z.object({
 		'email',
 		'heading'
 	]),
-	isRequired: z.coerce.boolean().default(false),
+	isRequired: flagField(false),
 	showWhenFieldKey: z.string().trim().max(60).optional(),
 	showWhenValue: z.string().trim().max(100).optional(),
 	mapsTo: z.enum(['name', 'phone', 'email', 'region']).optional(),

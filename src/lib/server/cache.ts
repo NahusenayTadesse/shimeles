@@ -43,6 +43,20 @@ export async function cached<T>(
 	return promise;
 }
 
+/**
+ * Reads a key without populating it, returning `undefined` on a miss.
+ *
+ * For the caller that can only decide whether a value is cacheable *after* it
+ * has loaded it — `/files/[name]`, where a public asset is worth caching and a
+ * private case document must not be. `cached()` cannot express that, since it
+ * commits to storing whatever the loader returns.
+ */
+export async function peek<T>(key: string): Promise<T | undefined> {
+	const hit = store.get(key) as Entry<Promise<T> | T> | undefined;
+	if (!hit || hit.expires <= Date.now()) return undefined;
+	return (await hit.value) as T;
+}
+
 /** Drop one key, or every key sharing a prefix. Call after any content write. */
 export function invalidate(prefix?: string) {
 	if (!prefix) return store.clear();

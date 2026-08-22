@@ -5,12 +5,13 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import { Copy, CircleCheck, Package, Plus, Trash2, TriangleAlert } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
@@ -213,7 +214,16 @@
 		</Button>
 	</div>
 {:else}
-	<form method="post" action="?/giftInKind" use:enhance class="flex flex-col gap-5">
+	<!-- `enctype` is not optional here: the form carries a file input for the
+	     photographs, and without it SvelteKit warns (and in dev throws) that an
+	     enhanced submit and a native one will not behave the same. -->
+	<form
+		method="post"
+		action="?/giftInKind"
+		enctype="multipart/form-data"
+		use:enhance
+		class="flex flex-col gap-5"
+	>
 		<div class="flex items-center gap-2">
 			<Package class="size-5 text-primary" />
 			<h2 class="font-heading text-xl font-semibold">
@@ -276,30 +286,36 @@
 							{/if}
 						</div>
 
-						<div class="flex flex-col gap-2">
-							<Label for="description-{index}">Describe it</Label>
-							<Input
-								id="description-{index}"
-								bind:value={item.description}
-								placeholder="Children's winter coats"
-							/>
-						</div>
+						<InputComp
+							{errors}
+							bind:value={item.description}
+							name="description-{index}"
+							label="Describe it"
+							type="text"
+							placeholder="Children's winter coats"
+							labelClass=""
+						/>
 					</div>
 
 					<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-						<div class="flex flex-col gap-2">
-							<Label for="quantity-{index}">How many</Label>
-							<Input id="quantity-{index}" type="number" min="1" bind:value={item.quantity} />
-						</div>
-						<div class="flex flex-col gap-2">
-							<Label for="unit-{index}">Counted in</Label>
-							<Input
-								id="unit-{index}"
-								list="in-kind-units"
-								bind:value={item.unit}
-								placeholder="bags, boxes, kg…"
-							/>
-						</div>
+						<InputComp
+							{errors}
+							bind:value={item.quantity}
+							name="quantity-{index}"
+							label="How many"
+							type="number"
+							min="1"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={item.unit}
+							name="unit-{index}"
+							label="Counted in"
+							type="text"
+							placeholder="bags, boxes, kg…"
+							labelClass=""
+						/>
 						<div class="flex flex-col gap-2">
 							<Label for="condition-{index}">Condition</Label>
 							<Select.Root
@@ -374,19 +390,17 @@
 					<!-- Anything with a clock on it: food, medicine, formula. -->
 					{#if category?.requiresExpiry}
 						<div class="grid gap-3 sm:grid-cols-2">
-							<div class="flex flex-col gap-2">
-								<Label for="expiresOn-{index}">Use by</Label>
-								<Input id="expiresOn-{index}" type="date" bind:value={item.expiresOn} />
-							</div>
+							<InputComp
+								{errors}
+								bind:value={item.expiresOn}
+								name="expiresOn-{index}"
+								label="Use by"
+								type="date"
+								labelClass=""
+							/>
 							<div class="flex flex-col justify-end gap-2 pb-2">
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox bind:checked={item.needsRefrigeration} />
-									Needs to stay cold
-								</label>
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox bind:checked={item.isPerishable} />
-									Spoils quickly
-								</label>
+								<CheckboxField bind:checked={item.needsRefrigeration} label="Needs to stay cold" />
+								<CheckboxField bind:checked={item.isPerishable} label="Spoils quickly" />
 							</div>
 						</div>
 					{/if}
@@ -414,10 +428,15 @@
 								placeholder="If you know"
 							/>
 						</div>
-						<div class="flex flex-col gap-2">
-							<Label for="notes-{index}">Anything else about it?</Label>
-							<Input id="notes-{index}" bind:value={item.notes} placeholder="Optional" />
-						</div>
+						<InputComp
+							{errors}
+							bind:value={item.notes}
+							name="notes-{index}"
+							label="Anything else about it?"
+							type="text"
+							placeholder="Optional"
+							labelClass=""
+						/>
 					</div>
 				</div>
 			{/each}
@@ -510,44 +529,52 @@
 				<p class="text-sm font-medium">Where should we come?</p>
 
 				<div class="grid gap-2 sm:grid-cols-2">
-					<div class="flex flex-col gap-2">
-						<Label for="pickupContactName">Who will be there?</Label>
-						<Input
-							id="pickupContactName"
-							bind:value={$form.pickupContactName}
-							placeholder="If it is not you"
-						/>
-					</div>
-					<div class="flex flex-col gap-2">
-						<Label for="pickupContactPhone">Their phone</Label>
-						<Input id="pickupContactPhone" type="tel" bind:value={$form.pickupContactPhone} />
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.pickupContactName}
+						name="pickupContactName"
+						label="Who will be there?"
+						type="text"
+						placeholder="If it is not you"
+						labelClass=""
+					/>
+					<InputComp
+						{errors}
+						bind:value={$form.pickupContactPhone}
+						name="pickupContactPhone"
+						label="Their phone"
+						type="tel"
+						labelClass=""
+					/>
 				</div>
 
-				<div class="flex flex-col gap-2">
-					<Label for="pickupAddressLine">Address</Label>
-					<Input id="pickupAddressLine" bind:value={$form.pickupAddressLine} />
-					{#if $errors.pickupAddressLine}
-						<p class="text-sm text-destructive">{$errors.pickupAddressLine}</p>
-					{/if}
-				</div>
+				<InputComp
+					{errors}
+					bind:value={$form.pickupAddressLine}
+					name="pickupAddressLine"
+					label="Address"
+					type="text"
+					labelClass=""
+				/>
 
 				<div class="grid gap-2 sm:grid-cols-2">
-					<div class="flex flex-col gap-2">
-						<Label for="pickupCity">Town or sub-city</Label>
-						<Input id="pickupCity" bind:value={$form.pickupCity} />
-						{#if $errors.pickupCity}
-							<p class="text-sm text-destructive">{$errors.pickupCity}</p>
-						{/if}
-					</div>
-					<div class="flex flex-col gap-2">
-						<Label for="pickupLandmark">Nearest landmark</Label>
-						<Input
-							id="pickupLandmark"
-							bind:value={$form.pickupLandmark}
-							placeholder="Behind the Total station"
-						/>
-					</div>
+					<InputComp
+						{errors}
+						bind:value={$form.pickupCity}
+						name="pickupCity"
+						label="Town or sub-city"
+						type="text"
+						labelClass=""
+					/>
+					<InputComp
+						{errors}
+						bind:value={$form.pickupLandmark}
+						name="pickupLandmark"
+						label="Nearest landmark"
+						type="text"
+						placeholder="Behind the Total station"
+						labelClass=""
+					/>
 				</div>
 
 				{#if regions.length > 1}
@@ -570,15 +597,16 @@
 					</div>
 				{/if}
 
-				<div class="flex flex-col gap-2">
-					<Label for="accessNotes">Anything the driver should know?</Label>
-					<Textarea
-						id="accessNotes"
-						rows={2}
-						bind:value={$form.accessNotes}
-						placeholder="Third floor, no lift. Gate locked after six."
-					/>
-				</div>
+				<InputComp
+					{errors}
+					bind:value={$form.accessNotes}
+					name="accessNotes"
+					label="Anything the driver should know?"
+					type="textarea"
+					placeholder="Third floor, no lift. Gate locked after six."
+					rows={2}
+					labelClass=""
+				/>
 			</div>
 		{/if}
 
@@ -614,29 +642,31 @@
 				/>
 			</div>
 			<div class="flex flex-col justify-end gap-2 pb-2">
-				<label class="flex items-center gap-2 text-sm">
-					<Checkbox bind:checked={$form.requiresVehicle} />
-					A vehicle will be needed
-				</label>
-				<label class="flex items-center gap-2 text-sm">
-					<Checkbox bind:checked={$form.requiresHelpLoading} />
-					Help with lifting will be needed
-				</label>
+				<CheckboxField bind:checked={$form.requiresVehicle} label="A vehicle will be needed" />
+				<CheckboxField
+					bind:checked={$form.requiresHelpLoading}
+					label="Help with lifting will be needed"
+				/>
 			</div>
 		</div>
 
 		<div class="grid gap-3 sm:grid-cols-2">
-			<div class="flex flex-col gap-2">
-				<Label for="availableFrom">Ready from</Label>
-				<Input id="availableFrom" type="date" bind:value={$form.availableFrom} />
-			</div>
-			<div class="flex flex-col gap-2">
-				<Label for="availableUntil">And available until</Label>
-				<Input id="availableUntil" type="date" bind:value={$form.availableUntil} />
-				{#if $errors.availableUntil}
-					<p class="text-sm text-destructive">{$errors.availableUntil}</p>
-				{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.availableFrom}
+				name="availableFrom"
+				label="Ready from"
+				type="date"
+				labelClass=""
+			/>
+			<InputComp
+				{errors}
+				bind:value={$form.availableUntil}
+				name="availableUntil"
+				label="And available until"
+				type="date"
+				labelClass=""
+			/>
 		</div>
 
 		<Separator />
@@ -712,34 +742,45 @@
 				</Select.Root>
 			</div>
 
-			<div class="flex flex-col gap-2">
-				<Label for="in-kind-donorName">{s('donate.name', 'Your name')}</Label>
-				<Input id="in-kind-donorName" bind:value={$form.donorName} required />
-				{#if $errors.donorName}<p class="text-sm text-destructive">{$errors.donorName}</p>{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.donorName}
+				name="in-kind-donorName"
+				label={s('donate.name', 'Your name')}
+				type="text"
+				required
+				labelClass=""
+			/>
 		</div>
 
 		{#if isOrganisation}
-			<div class="flex flex-col gap-2">
-				<Label for="organisationName">Name of the organisation</Label>
-				<Input id="organisationName" bind:value={$form.organisationName} />
-				{#if $errors.organisationName}
-					<p class="text-sm text-destructive">{$errors.organisationName}</p>
-				{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.organisationName}
+				name="organisationName"
+				label="Name of the organisation"
+				type="text"
+				labelClass=""
+			/>
 		{/if}
 
 		<div class="grid gap-3 sm:grid-cols-2">
-			<div class="flex flex-col gap-2">
-				<Label for="in-kind-donorEmail">{s('donate.email', 'Email')}</Label>
-				<Input id="in-kind-donorEmail" type="email" bind:value={$form.donorEmail} />
-				{#if $errors.donorEmail}<p class="text-sm text-destructive">{$errors.donorEmail}</p>{/if}
-			</div>
-			<div class="flex flex-col gap-2">
-				<Label for="in-kind-donorPhone">{s('donate.phone', 'Phone')}</Label>
-				<Input id="in-kind-donorPhone" type="tel" bind:value={$form.donorPhone} />
-				{#if $errors.donorPhone}<p class="text-sm text-destructive">{$errors.donorPhone}</p>{/if}
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.donorEmail}
+				name="in-kind-donorEmail"
+				label={s('donate.email', 'Email')}
+				type="email"
+				labelClass=""
+			/>
+			<InputComp
+				{errors}
+				bind:value={$form.donorPhone}
+				name="in-kind-donorPhone"
+				label={s('donate.phone', 'Phone')}
+				type="tel"
+				labelClass=""
+			/>
 		</div>
 
 		<div class="grid gap-3 sm:grid-cols-2">
@@ -762,14 +803,15 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div class="flex flex-col gap-2">
-				<Label for="bestTimeToContact">Best time</Label>
-				<Input
-					id="bestTimeToContact"
-					bind:value={$form.bestTimeToContact}
-					placeholder="Afternoons, after 6pm…"
-				/>
-			</div>
+			<InputComp
+				{errors}
+				bind:value={$form.bestTimeToContact}
+				name="bestTimeToContact"
+				label="Best time"
+				type="text"
+				placeholder="Afternoons, after 6pm…"
+				labelClass=""
+			/>
 		</div>
 
 		<Separator />
@@ -799,10 +841,10 @@
 		</div>
 
 		<div class="flex flex-col gap-2">
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.hasRestrictedItems} />
-				Some of it is medicine, or equipment with rules attached
-			</label>
+			<CheckboxField
+				bind:checked={$form.hasRestrictedItems}
+				label="Some of it is medicine, or equipment with rules attached"
+			/>
 			{#if $form.hasRestrictedItems}
 				<Textarea
 					rows={2}
@@ -811,28 +853,26 @@
 				/>
 			{/if}
 
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.receiptRequested} />
-				Please send me a receipt
-			</label>
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.taxReceiptRequired} />
-				I need a receipt valid for tax
-			</label>
+			<CheckboxField bind:checked={$form.receiptRequested} label="Please send me a receipt" />
+			<CheckboxField
+				bind:checked={$form.taxReceiptRequired}
+				label="I need a receipt valid for tax"
+			/>
 			{#if $form.taxReceiptRequired}
-				<div class="flex flex-col gap-2">
-					<Label for="taxIdNumber">TIN</Label>
-					<Input id="taxIdNumber" bind:value={$form.taxIdNumber} />
-					{#if $errors.taxIdNumber}
-						<p class="text-sm text-destructive">{$errors.taxIdNumber}</p>
-					{/if}
-				</div>
+				<InputComp
+					{errors}
+					bind:value={$form.taxIdNumber}
+					name="taxIdNumber"
+					label="TIN"
+					type="text"
+					labelClass=""
+				/>
 			{/if}
 
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.isAnonymous} />
-				{s('donate.anonymous', 'Keep my gift anonymous')}
-			</label>
+			<CheckboxField
+				bind:checked={$form.isAnonymous}
+				label={s('donate.anonymous', 'Keep my gift anonymous')}
+			/>
 			{#if !$form.isAnonymous}
 				<div class="mt-2 flex flex-col gap-2">
 					<Label for="recognitionName">Name us to thank, if not your own</Label>
@@ -845,34 +885,41 @@
 			{/if}
 		</div>
 
-		<div class="flex flex-col gap-2">
-			<Label for="in-kind-message">{s('donate.message', 'A message, if you would like')}</Label>
-			<Textarea id="in-kind-message" rows={3} bind:value={$form.donorMessage} />
-		</div>
+		<InputComp
+			{errors}
+			bind:value={$form.donorMessage}
+			name="in-kind-message"
+			label={s('donate.message', 'A message, if you would like')}
+			type="textarea"
+			rows={3}
+			labelClass=""
+		/>
+
+		<InputComp
+			{errors}
+			bind:value={$form.heardAbout}
+			name="heardAbout"
+			label="How did you hear about us?"
+			type="text"
+			placeholder="Optional"
+			labelClass=""
+		/>
 
 		<div class="flex flex-col gap-2">
-			<Label for="heardAbout">How did you hear about us?</Label>
-			<Input id="heardAbout" bind:value={$form.heardAbout} placeholder="Optional" />
-		</div>
-
-		<div class="flex flex-col gap-2">
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.isDiaspora} />
-				{s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
-			</label>
-			<label class="flex items-center gap-2 text-sm">
-				<Checkbox bind:checked={$form.joinNewsletter} />
-				{s('donate.newsletter', 'Send me occasional updates')}
-			</label>
-			<label class="flex items-start gap-2 text-sm">
-				<Checkbox bind:checked={$form.consentToContact} class="mt-0.5" />
-				<span>
-					You may keep these details and contact me to arrange the handover.
-					{#if $errors.consentToContact}
-						<span class="block text-destructive">{$errors.consentToContact}</span>
-					{/if}
-				</span>
-			</label>
+			<CheckboxField
+				bind:checked={$form.isDiaspora}
+				label={s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
+			/>
+			<CheckboxField
+				bind:checked={$form.joinNewsletter}
+				label={s('donate.newsletter', 'Send me occasional updates')}
+			/>
+			<CheckboxField
+				{errors}
+				bind:checked={$form.consentToContact}
+				name="consentToContact"
+				label="You may keep these details and contact me to arrange the handover."
+			/>
 		</div>
 
 		<div class="hidden" aria-hidden="true">

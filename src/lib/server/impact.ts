@@ -8,7 +8,7 @@ import {
 	statusOptions
 } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
-import { settingNumber } from '$lib/server/settings';
+import { setting, settingNumber } from '$lib/server/settings';
 import { SUPPORTED_STAGES } from '$lib/server/workflow';
 
 /**
@@ -41,6 +41,27 @@ export type MetricKey = (typeof METRIC)[keyof typeof METRIC];
 /** The `site_settings` key that overrides each metric, per §3.1. */
 const OVERRIDE_KEY = (metric: MetricKey) => `impact.override_${metric}`;
 
+/**
+ * Which pillar feeds the two per-pillar counters.
+ *
+ * A setting rather than a literal, because `pillars.slug` is editable from
+ * Configuration and §0 says nothing a staff member might want to change is
+ * hardcoded. This used to be `slug.includes('youth')`, which failed in two
+ * directions: renaming `youth-education` to `education` silently published a
+ * zero on the homepage with no error anywhere, and a second pillar containing
+ * the fragment would have been picked up by whichever sorted first.
+ *
+ * The fallback is the seeded slug, so an installation that predates the setting
+ * keeps working without one.
+ */
+const PILLAR_METRIC_SOURCE: Record<string, { key: string; fallback: string }> = {
+	[METRIC.STUDENTS_SPONSORED]: {
+		key: 'impact.pillar_students_sponsored',
+		fallback: 'youth-education'
+	},
+	[METRIC.ELDERS_CARED_FOR]: { key: 'impact.pillar_elders_cared_for', fallback: 'elder-care' }
+};
+
 /* ==========================================================================
    Computation
    ========================================================================== */
@@ -72,11 +93,24 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 	const statusIds = await supportedStatusIds();
 	const supported = statusIds.length ? inArray(formSubmissions.statusId, statusIds) : sql`0 = 1`;
 
+	/**
+	 * Distinct people, not distinct applications: a family that came back three
+	 * times is one family supported.
+	 *
+	 * Keyed on the beneficiary where the case has been linked to one, and on the
+	 * case itself where it has not. `count(distinct beneficiary_id)` alone was
+	 * the obvious way to write "distinct people" and undercounts, because SQL
+	 * ignores NULLs in a DISTINCT count — so every supported case a caseworker
+	 * never pressed "link beneficiary" on contributed nothing at all to the
+	 * headline figure on the homepage. An unlinked case counts as one family,
+	 * which is the closest true statement available; the prefixes keep a
+	 * beneficiary id and a submission id from colliding as the same key.
+	 */
+	const distinctFamilies = sql<number>`count(distinct coalesce('b' || ${formSubmissions.submittedByBeneficiaryId}, 's' || ${formSubmissions.id}))`;
+
 	const [families, funds, openCases, byPillar] = await Promise.all([
-		// Distinct people, not distinct applications: a family that came back
-		// three times is one family supported.
 		db
-			.select({ value: countDistinct(formSubmissions.submittedByBeneficiaryId) })
+			.select({ value: distinctFamilies })
 			.from(formSubmissions)
 			.where(and(supported, isNull(formSubmissions.deletedAt))),
 
@@ -105,7 +139,7 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 			.select({
 				pillarId: formSubmissions.pillarId,
 				slug: pillars.slug,
-				value: countDistinct(formSubmissions.submittedByBeneficiaryId)
+				value: distinctFamilies
 			})
 			.from(formSubmissions)
 			.innerJoin(pillars, eq(pillars.id, formSubmissions.pillarId))
@@ -120,11 +154,31 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 		[METRIC.CASES_OPEN]: Number(openCases[0]?.value ?? 0)
 	};
 
-	const forPillar = (slugFragment: string) =>
-		Number(byPillar.find((row) => row.slug.includes(slugFragment))?.value ?? 0);
+	// The slugs that actually exist, to tell a misconfigured counter apart from a
+	// correctly-zero one. `byPillar` only carries pillars that have a supported
+	// case, so its silence means "none yet" far more often than it means "wrong
+	// slug" — warning on that would cry wolf on every fresh installation.
+	const livePillarSlugs = new Set(
+		(await db.select({ slug: pillars.slug }).from(pillars).where(isNull(pillars.deletedAt))).map(
+			(row) => row.slug
+		)
+	);
 
-	results[METRIC.STUDENTS_SPONSORED] = forPillar('youth');
-	results[METRIC.ELDERS_CARED_FOR] = forPillar('elder');
+	for (const [metric, source] of Object.entries(PILLAR_METRIC_SOURCE)) {
+		const slug = (await setting(source.key)).trim() || source.fallback;
+
+		// Loud only when the counter is pointed at a pillar that does not exist —
+		// which is what a renamed slug looks like, and what used to publish a zero
+		// on the homepage with nothing said anywhere.
+		if (!livePillarSlugs.has(slug)) {
+			console.warn(
+				`impact: no pillar has the slug "${slug}", so ${metric} will publish 0. ` +
+					`Set "${source.key}" in Configuration → Site settings to the right slug.`
+			);
+		}
+
+		results[metric] = Number(byPillar.find((row) => row.slug === slug)?.value ?? 0);
+	}
 
 	const rows = [
 		...Object.entries(results).map(([key, value]) => ({

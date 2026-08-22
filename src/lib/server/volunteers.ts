@@ -15,7 +15,7 @@ import {
 	volunteerSkills,
 	volunteerTimeSlots
 } from '$lib/server/db/schema';
-import { nextVolunteerReference } from '$lib/server/reference';
+import { nextVolunteerReference, withReference } from '$lib/server/reference';
 import { defaultStatus, recomputeSafeguarding } from '$lib/server/workflow';
 import { audit } from '$lib/server/audit';
 import { cached } from '$lib/server/cache';
@@ -445,10 +445,14 @@ export async function createVolunteerApplication(
 		}))
 		.filter((credential) => credential.professionId || credential.otherProfession?.trim());
 
-	const referenceNumber = nextVolunteerReference();
 	const now = new Date();
 
-	const applicationId = db.transaction((tx) => {
+	// Allocated inside the transaction that consumes it: the number is derived
+	// from `max(existing)`, so reading it outside leaves a window in which a
+	// second application can read the same maximum. See `withReference`.
+	const { id: applicationId, referenceNumber } = db.transaction((tx) => {
+		const referenceNumber = nextVolunteerReference();
+
 		const [application] = tx
 			.insert(volunteerApplications)
 			.values({
@@ -553,7 +557,7 @@ export async function createVolunteerApplication(
 				.run();
 		}
 
-		return id;
+		return { id, referenceNumber };
 	});
 
 	// Both are derived columns, and both are recomputed rather than written
@@ -653,32 +657,39 @@ export async function submitVolunteerApplication(
 		.limit(1);
 
 	const status = await defaultStatus('volunteer');
-	const referenceNumber = nextVolunteerReference();
 
 	// Only stored when the applicant said they are a professional. A volunteer
 	// who ticked "no" but typed something in a conditional field must not end up
 	// gated behind credential verification they never claimed.
 	const isProfessional = str('is_professional') === 'yes';
 
-	const [application] = await db
-		.insert(volunteerApplications)
-		.values({
-			referenceNumber,
-			fullName: str('full_name') ?? str('submittedByName') ?? 'Unnamed applicant',
-			email: str('email') ?? str('submittedByEmail'),
-			phone: str('phone') ?? str('submittedByPhone'),
-			regionId: defaultRegion?.id ?? null,
-			areasOfInterest,
-			skills: str('skills') ? [str('skills')!] : [],
-			availability: str('availability'),
-			isProfessional,
-			professionalCredentials: isProfessional ? str('professional_credentials') : null,
-			data: rest,
-			statusId: status?.id ?? null,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		})
-		.returning({ id: volunteerApplications.id });
+	// Reference and row commit together — see `withReference`.
+	const { id: applicationId, referenceNumber } = withReference(() => {
+		const referenceNumber = nextVolunteerReference();
+
+		const [application] = db
+			.insert(volunteerApplications)
+			.values({
+				referenceNumber,
+				fullName: str('full_name') ?? str('submittedByName') ?? 'Unnamed applicant',
+				email: str('email') ?? str('submittedByEmail'),
+				phone: str('phone') ?? str('submittedByPhone'),
+				regionId: defaultRegion?.id ?? null,
+				areasOfInterest,
+				skills: str('skills') ? [str('skills')!] : [],
+				availability: str('availability'),
+				isProfessional,
+				professionalCredentials: isProfessional ? str('professional_credentials') : null,
+				data: rest,
+				statusId: status?.id ?? null,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			})
+			.returning({ id: volunteerApplications.id })
+			.all();
+
+		return { id: application.id, referenceNumber };
+	});
 
 	// The pillar ids that could be resolved also become interest rows, so the
 	// staff screen and any "who is interested in youth education" query see
@@ -691,7 +702,7 @@ export async function submitVolunteerApplication(
 			.insert(volunteerInterests)
 			.values(
 				resolvedPillarIds.map((pillarId) => ({
-					volunteerApplicationId: application.id,
+					volunteerApplicationId: applicationId,
 					pillarId
 				}))
 			)
@@ -701,15 +712,15 @@ export async function submitVolunteerApplication(
 	// Sets `safeguarding_checklist_complete` correctly from the start — false
 	// for everyone, and false against the professional-only items too when the
 	// applicant claims credentials.
-	await recomputeSafeguarding(application.id);
+	await recomputeSafeguarding(applicationId);
 
 	audit({
 		event,
 		action: 'created',
 		entityType: 'volunteer_application',
-		entityId: application.id,
+		entityId: applicationId,
 		metadata: { reference: referenceNumber, isProfessional, legacyForm: true }
 	});
 
-	return { id: application.id, referenceNumber };
+	return { id: applicationId, referenceNumber };
 }

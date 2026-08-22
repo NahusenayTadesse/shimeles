@@ -17,7 +17,9 @@
 <form
 	method="post"
 	action="?/setRole"
-	use:enhance={() => async ({ update }) => await update({ reset: false })}
+	use:enhance={() =>
+		async ({ update }) =>
+			await update({ reset: false })}
 	class="flex items-center gap-2"
 >
 	<input type="hidden" name="userId" value={userId} />

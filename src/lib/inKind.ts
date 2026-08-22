@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { optionalEmailField, optionalNumberField } from '$lib/forms/fields';
+import { flagField, optionalEmailField, optionalNumberField } from '$lib/forms/fields';
 
 /**
  * The shape of an in-kind gift, shared by the three places that need it: the
@@ -254,9 +254,9 @@ export const inKindItemSchema = z.object({
 	gender: z.enum(ITEM_GENDERS).default('unisex'),
 	sizeRange: optionalText(120),
 	brandOrModel: optionalText(120),
-	isPerishable: z.coerce.boolean().default(false),
+	isPerishable: flagField(false),
 	expiresOn: optionalIsoDate,
-	needsRefrigeration: z.coerce.boolean().default(false),
+	needsRefrigeration: flagField(false),
 	/** Birr as typed; the server converts to santim. Blank stays blank. */
 	estimatedValue: optionalNumberField({ min: 0, max: 10_000_000 }),
 	notes: optionalText(500)
@@ -271,7 +271,7 @@ export const inKindSchema = z
 			.max(40, 'That is more lines than this form can take — please call us'),
 		valuationBasis: z.enum(VALUATION_BASES).default('donor_estimate'),
 		/** Medicines, powered equipment, anything with a rule attached. */
-		hasRestrictedItems: z.coerce.boolean().default(false),
+		hasRestrictedItems: flagField(false),
 		restrictedItemsNote: optionalText(500),
 
 		/* --- Where it should go ----------------------------------------------- */
@@ -292,8 +292,8 @@ export const inKindSchema = z
 		accessNotes: optionalText(500),
 		loadSize: z.enum(LOAD_SIZES).default('car_boot'),
 		estimatedWeightKg: optionalNumberField({ min: 0, max: 100_000, int: true }),
-		requiresVehicle: z.coerce.boolean().default(false),
-		requiresHelpLoading: z.coerce.boolean().default(false),
+		requiresVehicle: flagField(false),
+		requiresHelpLoading: flagField(false),
 		availableFrom: optionalIsoDate,
 		availableUntil: optionalIsoDate,
 
@@ -303,31 +303,32 @@ export const inKindSchema = z
 		donorPhone: optionalText(32),
 		donorType: z.enum(DONOR_TYPES).default('individual'),
 		organisationName: optionalText(200),
-		isDiaspora: z.coerce.boolean().default(false),
+		isDiaspora: flagField(false),
 		preferredContactChannel: z.enum(CONTACT_CHANNELS).default('phone'),
 		bestTimeToContact: optionalText(120),
 
 		/* --- Paperwork and recognition ------------------------------------------ */
-		receiptRequested: z.coerce.boolean().default(false),
-		taxReceiptRequired: z.coerce.boolean().default(false),
+		receiptRequested: flagField(false),
+		taxReceiptRequired: flagField(false),
 		taxIdNumber: optionalText(64),
-		isAnonymous: z.coerce.boolean().default(false),
+		isAnonymous: flagField(false),
 		recognitionName: optionalText(150),
 		donorMessage: optionalText(1000),
 		heardAbout: optionalText(200),
-		joinNewsletter: z.coerce.boolean().default(false),
+		joinNewsletter: flagField(false),
 
 		/**
 		 * The one hard requirement beyond the goods themselves. An offer we may
 		 * not reply to is not an offer, and the address and phone number on this
 		 * form are not ours to keep without it.
 		 */
-		consentToContact: z.coerce
-			.boolean()
-			.refine((value) => value === true, 'We need your permission to contact you about this'),
+		consentToContact: flagField(false).refine(
+			(value) => value === true,
+			'We need your permission to contact you about this'
+		),
 
 		/** Honeypot — see the note in `$lib/server/forms`. */
-		website: z.string().max(0).optional().or(z.literal(''))
+		website: z.string().max(200).optional().or(z.literal(''))
 	})
 	/** Somewhere to reply. Either channel will do; neither will not. */
 	.refine((data) => Boolean(data.donorPhone?.trim()) || Boolean(data.donorEmail?.trim()), {

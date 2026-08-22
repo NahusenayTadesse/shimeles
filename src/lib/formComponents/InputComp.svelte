@@ -11,24 +11,85 @@
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { CircleAlert } from '@lucide/svelte';
 
+	/**
+	 * One labelled form control, with its error message.
+	 *
+	 * The value is bound directly (`bind:value`) rather than read out of a
+	 * Superforms store by name. That is what lets the same component serve the
+	 * dashboard's generated screens, which bind `$form[key]`, and the public
+	 * forms, whose repeated sections bind a loop variable — `item.description`
+	 * inside `{#each $form.items as item}` is not reachable as `$form[name]`, and
+	 * hard-wiring the store was the reason `/apply`, `/volunteer`, `/donate`,
+	 * `/contact` and the in-kind form each hand-rolled every field instead.
+	 *
+	 * `form` is still accepted, but only `type="file"` uses it: `FileUpload`
+	 * mirrors the selection through `fileProxy` and needs the store itself.
+	 */
 	let {
 		label,
-		form,
+		/** Only for `type="file"`. Every other control binds `value`. */
+		form = undefined,
 		name,
-		errors,
+		value = $bindable(),
+		/** The Superforms errors store; messages are looked up by `name`. */
+		errors = undefined,
+		/**
+		 * Messages for this field, when they cannot be looked up by name — a
+		 * nested path such as `$errors.items?.[i]?.quantity`.
+		 */
+		fieldErrors: explicitErrors = undefined,
 		type,
 		required = false,
 		max = '',
 		min = '',
+		maxlength = undefined,
+		step = 'any',
 		placeholder = '',
+		autocomplete = undefined,
 		rows = 5,
 		items = [],
 		oldDays = true,
 		year = false,
 		futureDays = false,
 		image = '',
-		className = ''
+		className = '',
+		/** Help text under the control, for a question that needs a sentence. */
+		hint = '',
+		/**
+		 * The dashboard's field names are short and lower-case, so they read
+		 * better title-cased; a public form's labels are written as sentences and
+		 * must not be. Defaults to the dashboard's behaviour so the 28 generated
+		 * screens are unchanged.
+		 */
+		labelClass = 'capitalize',
+		/** Falls back to `name`, so the label points at the control it labels. */
+		id = undefined,
+		/**
+		 * Draws the asterisk without setting the HTML `required` attribute.
+		 *
+		 * The two are deliberately separate. `/apply` marks its few genuinely
+		 * needed questions with an asterisk but does not let the browser block
+		 * the submit — §3.3 makes the form low-barrier, and someone in the middle
+		 * of a crisis being refused by their own browser is exactly what that
+		 * rule exists to prevent. The server decides what is required.
+		 */
+		showRequired = false,
+		...rest
 	} = $props();
+
+	const controlId = $derived(id ?? name);
+
+	/**
+	 * `for` only points at controls a label can actually be associated with.
+	 *
+	 * The date, select, combobox, multi-checkbox and file branches all render a
+	 * button or a composite widget rather than an `<input id=…>`, so a `for`
+	 * pointing at them resolves to nothing — which is worse than no `for` at
+	 * all, because a screen reader announces the control as unlabelled either
+	 * way and a validator reports a broken reference on top.
+	 */
+	const LABELABLE = ['text', 'email', 'tel', 'password', 'number', 'url', 'search', 'textarea'];
+	const labelFor = $derived(LABELABLE.includes(type) ? controlId : undefined);
 
 	function flattenErrors(err: unknown): string[] {
 		if (!err) return [];
@@ -42,64 +103,89 @@
 		return [String(err)];
 	}
 
-	let fieldErrors = $derived(flattenErrors($errors[name]));
+	const fieldErrors = $derived(
+		explicitErrors !== undefined
+			? flattenErrors(explicitErrors)
+			: errors
+				? flattenErrors($errors[name])
+				: []
+	);
 </script>
 
 <div class="flex w-full max-w-full flex-col justify-start gap-2 p-1">
-	<Label for={name} class="capitalize">{label}</Label>
+	{#if label}
+		<Label for={labelFor} class={labelClass}>
+			{label}{#if showRequired}<span class="ml-0.5 text-destructive">*</span>{/if}
+		</Label>
+	{/if}
+
 	{#if type === 'textarea'}
-		<Textarea class={className} {name} bind:value={$form[name]} {required} {rows} {placeholder} />
+		<Textarea
+			class={className}
+			id={controlId}
+			{name}
+			bind:value
+			{required}
+			{rows}
+			{maxlength}
+			{placeholder}
+			{...rest}
+		/>
 	{:else if type === 'richtext'}
 		<!-- Body copy staff author themselves. Stored as HTML and rendered through
 		     `.prose-block`, which hands back the list markers and heading sizes
 		     Tailwind's reset strips. -->
-		<RichTextEditor bind:value={$form[name]} placeholder={placeholder || 'Write here…'} />
-		<input type="hidden" {name} bind:value={$form[name]} />
+		<RichTextEditor bind:value placeholder={placeholder || 'Write here…'} />
+		<input type="hidden" {name} bind:value />
 	{:else if type === 'file'}
 		<FileUpload {name} {form} {image} {placeholder} />
 	{:else if type === 'select'}
-		<SelectComp {name} bind:value={$form[name]} {items} />
+		<SelectComp {name} bind:value {items} />
 	{:else if type === 'date'}
-		<DatePicker2 bind:data={$form[name]} {oldDays} {year} {futureDays} />
-		<input type="hidden" {name} bind:value={$form[name]} />
+		<DatePicker2 bind:data={value} {oldDays} {year} {futureDays} />
+		<input type="hidden" {name} bind:value />
 	{:else if type === 'combo'}
-		<ComboboxComp {name} bind:value={$form[name]} {items} {required} />
+		<ComboboxComp {name} bind:value {items} {required} />
 	{:else if type === 'checkbox'}
-		<CheckboxComp {items} bind:checkedValues={$form[name]} />
-		<input type="hidden" {name} bind:value={$form[name]} />
+		<CheckboxComp {items} bind:checkedValues={value} />
+		<input type="hidden" {name} bind:value />
 	{:else if type === 'checkboxSingle'}
 		<div class="flex items-center gap-2">
-			<Checkbox class={className} bind:checked={$form[name]} />
-			<Label for={name} class="capitalize">{placeholder}</Label>
-			<input type="hidden" {name} bind:value={$form[name]} />
+			<Checkbox id={controlId} class={className} bind:checked={value} />
+			<Label for={controlId} class={labelClass}>{placeholder}</Label>
+			<!-- `String(value)`, and read by `flagField` on the server: an unticked
+			     box posts the *string* "false", which `z.coerce.boolean()` turns
+			     into `true`. See the note in `$lib/forms/fields`. -->
+			<input type="hidden" {name} value={String(value ?? false)} />
 		</div>
 	{:else}
 		<Input
 			class={className}
+			id={controlId}
 			{type}
 			{name}
-			step="any"
-			bind:value={$form[name]}
+			{step}
+			bind:value
 			{max}
 			{min}
+			{maxlength}
 			{placeholder}
+			{autocomplete}
 			{required}
+			{...rest}
 		/>
 	{/if}
 
-	<!-- {#if $errors[name]}
-		{#if $errors[name]._errors}
-			{#each $errors[name]._errors as error}
-				<p class="flex items-center gap-2 text-red-500"><CircleAlert /> {error}</p>
-			{/each}
-		{:else}
-			<p class="text-red-500">{$errors[name]}</p>
-		{/if}
-	{/if} -->
+	{#if hint}
+		<p class="text-sm text-muted-foreground">{hint}</p>
+	{/if}
 
 	{#if fieldErrors.length}
 		{#each fieldErrors as error (error)}
-			<p class="flex items-center gap-2 text-red-500"><CircleAlert /> {error}</p>
+			<p class="flex items-center gap-2 text-sm text-destructive">
+				<CircleAlert class="size-4 shrink-0" />
+				{error}
+			</p>
 		{/each}
 	{/if}
 </div>

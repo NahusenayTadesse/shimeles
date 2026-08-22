@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { count } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod/v4';
@@ -29,7 +29,12 @@ export const load: PageServerLoad = async (event) => {
 	const [{ total }] = await db.select({ total: count() }).from(user);
 	if (total === 0) throw redirect(302, '/setup');
 
-	return { form: await superValidate(zod4(loginSchema)) };
+	return {
+		form: await superValidate(zod4(loginSchema)),
+		// Set by `requireUser` when it signs a suspended account out. Signing in
+		// again will not help, so say why rather than leaving them to guess.
+		suspended: event.url.searchParams.has('suspended')
+	};
 };
 
 export const actions: Actions = {
@@ -54,11 +59,33 @@ export const actions: Actions = {
 			);
 		}
 
-		audit({ event, action: 'login', entityType: 'user', metadata: { email: form.data.email } });
+		// Resolved explicitly: `event.locals` was populated before this action ran
+		// and still holds no user, so without this the audit row for a sign-in
+		// names nobody.
+		const [signedIn] = await db
+			.select({ id: user.id })
+			.from(user)
+			.where(eq(user.email, form.data.email))
+			.limit(1);
 
-		const redirectTo = event.url.searchParams.get('redirectTo');
+		audit({
+			event,
+			action: 'login',
+			entityType: 'user',
+			entityId: signedIn?.id ?? null,
+			userId: signedIn?.id ?? null,
+			metadata: { email: form.data.email }
+		});
+
 		// Only same-origin paths — an open redirect on a login form is a
 		// ready-made phishing step.
-		throw redirect(302, redirectTo?.startsWith('/') ? redirectTo : '/dashboard');
+		//
+		// `startsWith('/')` is not enough on its own: `//evil.com` and `/\evil.com`
+		// both start with a slash and both are resolved by browsers as an absolute
+		// URL to another host, so the second character has to be excluded too.
+		const redirectTo = event.url.searchParams.get('redirectTo');
+		const isSameOrigin = Boolean(redirectTo && /^\/(?![/\\])/.test(redirectTo));
+
+		throw redirect(302, isSameOrigin ? redirectTo! : '/dashboard');
 	}
 };

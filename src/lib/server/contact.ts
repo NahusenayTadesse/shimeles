@@ -11,7 +11,7 @@ import {
 	pillars,
 	regions
 } from '$lib/server/db/schema';
-import { nextContactReference } from '$lib/server/reference';
+import { nextContactReference, withReference } from '$lib/server/reference';
 import { defaultStatus } from '$lib/server/workflow';
 import { sendEmail } from '$lib/server/email';
 import { setting } from '$lib/server/settings';
@@ -172,29 +172,36 @@ export async function createContactMessage(
 			.limit(1)
 	]);
 
-	const referenceNumber = nextContactReference();
 	const email = input.email?.trim().toLowerCase() || null;
 
-	const [created] = await db
-		.insert(contactMessages)
-		.values({
-			referenceNumber,
-			subjectId: subject?.id ?? null,
-			fullName: input.fullName,
-			email,
-			phone: input.phone,
-			organization: input.organization,
-			message: input.message,
-			preferredChannel: input.preferredChannel,
-			regionId: defaultRegion[0]?.id ?? null,
-			source: 'web_form',
-			statusId: status?.id ?? null,
-			assignedToId: subject?.defaultAssigneeId ?? null,
-			joinNewsletter: input.joinNewsletter,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		})
-		.returning({ id: contactMessages.id });
+	// Reference and row commit together — see `withReference`.
+	const { id: messageId, referenceNumber } = withReference(() => {
+		const referenceNumber = nextContactReference();
+
+		const [created] = db
+			.insert(contactMessages)
+			.values({
+				referenceNumber,
+				subjectId: subject?.id ?? null,
+				fullName: input.fullName,
+				email,
+				phone: input.phone,
+				organization: input.organization,
+				message: input.message,
+				preferredChannel: input.preferredChannel,
+				regionId: defaultRegion[0]?.id ?? null,
+				source: 'web_form',
+				statusId: status?.id ?? null,
+				assignedToId: subject?.defaultAssigneeId ?? null,
+				joinNewsletter: input.joinNewsletter,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			})
+			.returning({ id: contactMessages.id })
+			.all();
+
+		return { id: created.id, referenceNumber };
+	});
 
 	// Opt-in only, and only when there is an address to subscribe. A sender who
 	// did not tick the box has not joined anything by writing to us.
@@ -216,11 +223,11 @@ export async function createContactMessage(
 		event,
 		action: 'created',
 		entityType: 'contact_message',
-		entityId: created.id,
+		entityId: messageId,
 		metadata: { reference: referenceNumber, subject: subject?.name ?? null }
 	});
 
-	return { id: created.id, referenceNumber };
+	return { id: messageId, referenceNumber };
 }
 
 /**
@@ -337,7 +344,14 @@ export async function addContactReply(
 
 	// Stamped once and never moved: "how long did we take" is measured against
 	// the first reply, not the most recent one.
-	if (!input.isInternal && !message.firstRespondedAt) {
+	//
+	// A reply that was meant to be emailed and could not be sent does not count.
+	// It is on file, and staff can see they wrote it, but the sender has not
+	// heard from us — marking the message answered would drop it out of the
+	// awaiting-reply queue and quietly flatter the response-time figure with a
+	// reply nobody received. A logged phone call or an in-person conversation
+	// still stamps: nothing was supposed to be sent, so nothing failed.
+	if (!input.isInternal && !message.firstRespondedAt && (emailed || !shouldEmail)) {
 		await db
 			.update(contactMessages)
 			.set({ firstRespondedAt: new Date(), updatedAt: new Date() })
