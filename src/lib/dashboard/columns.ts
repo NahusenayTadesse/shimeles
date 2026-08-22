@@ -1,4 +1,5 @@
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
+import RowSelectCell from './row-select-cell.svelte';
 import DataTableSort from '$lib/components/Table/data-table-sort.svelte';
 import BigText from '$lib/components/Table/bigText.svelte';
 import ImageViewer from '$lib/components/Table/image-viewer.svelte';
@@ -121,3 +122,27 @@ export const deleteColumn = (data: any, nameKey = 'name') => ({
 			name: row.original[nameKey] ?? ''
 		})
 });
+
+/**
+ * A selection column, for the screens that offer an action on many rows.
+ *
+ * Kept out of `indexColumn` and opted into per screen: ticking boxes only
+ * earns its space where something can then be done with the selection.
+ */
+export const selectColumn = {
+	id: 'select',
+	header: ({ table }: any) =>
+		renderComponent(RowSelectCell, {
+			checked: table.getIsAllPageRowsSelected(),
+			indeterminate: table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(),
+			label: 'Select every row on this page',
+			onCheckedChange: (value: boolean) => table.toggleAllPageRowsSelected(value)
+		}),
+	cell: ({ row }: any) =>
+		renderComponent(RowSelectCell, {
+			checked: row.getIsSelected(),
+			label: 'Select this row',
+			onCheckedChange: (value: boolean) => row.toggleSelected(value)
+		}),
+	enableSorting: false
+};

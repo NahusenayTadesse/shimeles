@@ -157,7 +157,20 @@
 	}
 </script>
 
-{#if canExport}
+{#if !canExport}
+	<!-- Disabled rather than removed. Someone who exported a list last week and
+	     finds the control simply gone concludes the feature broke; a button that
+	     says why points them at the person who can grant it. -->
+	<Button
+		variant="outline"
+		class="ml-auto"
+		disabled
+		title="Exporting needs the data-export permission. An administrator can grant it under Configuration → Users."
+	>
+		<Download class="size-5" />
+		<span class="sr-only">Export (needs the data-export permission)</span>
+	</Button>
+{:else}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}

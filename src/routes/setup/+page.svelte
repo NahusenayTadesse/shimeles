@@ -30,15 +30,24 @@
 		<div class="mb-6 flex flex-col gap-1">
 			<h1 class="font-heading text-2xl font-semibold">Create the first administrator</h1>
 			<p class="text-sm text-muted-foreground">
-				This page closes itself as soon as one account exists.
+				A one-time screen. It closes itself the moment one account exists, and cannot be used to
+				sign anyone else up afterwards.
 			</p>
 		</div>
 
+		<!-- This is the one unauthenticated page in the system that creates an
+		     account, which is exactly the thing the app otherwise refuses to
+		     offer — so it says so, rather than looking like an ordinary signup. -->
 		<Alert.Root class="mb-6">
 			<ShieldCheck class="size-4" />
 			<Alert.Description>
 				This account gets full access, including site settings, the form builder and user
 				management. Use a password you do not use anywhere else.
+				<span class="mt-2 block">
+					If you reached this page by accident, the Foundation's system is already set up and this
+					screen would have been closed — close the tab and ask an administrator for an account
+					instead.
+				</span>
 			</Alert.Description>
 		</Alert.Root>
 

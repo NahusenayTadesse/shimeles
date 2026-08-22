@@ -1,3 +1,4 @@
+import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, isNull, notInArray, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -14,8 +15,8 @@ import {
 import { searchFilter } from '$lib/server/query';
 import { pillarScope, requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
-import { auditList } from '$lib/server/audit';
-import type { PageServerLoad } from './$types';
+import { audit, auditList } from '$lib/server/audit';
+import type { Actions, PageServerLoad } from './$types';
 
 /**
  * The case list and workflow board.
@@ -174,4 +175,63 @@ export const load: PageServerLoad = async (event) => {
 		needOptions,
 		filters: { search, statusId, pillarId, needId, mine, untriaged: unassignedPillar }
 	};
+};
+
+export const actions: Actions = {
+	/**
+	 * Assign a reviewer to everything ticked on the board.
+	 *
+	 * After an intake round there are thirty new applications and one person
+	 * who will read them; doing that one case at a time is thirty page loads.
+	 * The table already tracked row selection and nothing used it.
+	 *
+	 * Scope is enforced on the update itself rather than by trusting the ids
+	 * that arrive: `pillarScope` goes into the WHERE clause, so a caseworker
+	 * who posts an id from another programme updates no rows. Each case that
+	 * does change gets its own audit row, exactly as the single-case action
+	 * writes one — a bulk edit is not less accountable for being bulk.
+	 */
+	assignSelected: async (event) => {
+		const access = await requirePermission(event, 'submissions.assign');
+
+		const formData = await event.request.formData();
+		const reviewerId = String(formData.get('reviewerId') ?? '') || null;
+		const ids = String(formData.get('ids') ?? '')
+			.split(',')
+			.map((value) => Number(value.trim()))
+			.filter((value) => Number.isInteger(value) && value > 0);
+
+		if (!ids.length) return fail(400, { message: 'Nothing was selected.' });
+
+		const scope = pillarScope(access, formSubmissions.pillarId);
+
+		const updated = await db
+			.update(formSubmissions)
+			.set({ assignedReviewerId: reviewerId, updatedAt: new Date() })
+			.where(
+				and(
+					inArray(formSubmissions.id, ids),
+					isNull(formSubmissions.deletedAt),
+					...(scope ? [scope] : [])
+				)
+			)
+			.returning({ id: formSubmissions.id });
+
+		for (const row of updated) {
+			audit({
+				event,
+				action: 'assigned',
+				entityType: 'form_submission',
+				entityId: row.id,
+				metadata: { reviewerId, bulk: true }
+			});
+		}
+
+		return {
+			ok: true,
+			assigned: updated.length,
+			// Says so plainly when scope silently dropped some of the selection.
+			skipped: ids.length - updated.length
+		};
+	}
 };

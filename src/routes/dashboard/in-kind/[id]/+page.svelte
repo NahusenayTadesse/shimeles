@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import ActionNote from '$lib/dashboard/action-note.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
@@ -49,11 +50,18 @@
 
 	const o = $derived(data.offer);
 
+	/** The last outcome, kept on screen after the toast has gone. */
+	let lastAction = $state<{ message: string; at: number } | null>(null);
+
 	$effect(() => {
 		if (form?.error) {
 			toast.error(form.error);
 		} else if (form?.ok) {
 			toast.success(form.emailed ? 'Saved — the donor has been told.' : 'Saved');
+			lastAction = {
+				message: form.emailed ? 'Saved — the donor has been told.' : 'Saved.',
+				at: Date.now()
+			};
 			if (form.notifyFailed) {
 				toast.error('Saved, but the email did not go out. Please ring them instead.');
 			}
@@ -124,6 +132,12 @@
 </script>
 
 <svelte:head><title>{o.reference} · Gifts in kind</title></svelte:head>
+
+{#if lastAction}
+	<div class="mx-auto mb-3 w-full">
+		<ActionNote message={lastAction.message} at={lastAction.at} />
+	</div>
+{/if}
 
 <div class="flex flex-col gap-4">
 	<a

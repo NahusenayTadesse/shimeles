@@ -262,12 +262,37 @@
 					Keep this reference. It is how we find your application when you call.
 				</p>
 			{/if}
-			{#if data.settings?.['contact.phone_1']}
-				<p class="text-sm">
-					<Phone class="mr-1 inline size-4" />
-					{data.settings['contact.phone_1']}
-				</p>
-			{/if}
+			<!-- What happens next.
+
+			     There is no route where an applicant can look their reference up —
+			     deliberately, since a reference number alone is a weak credential
+			     and a status portal built on one would let anyone who guesses a
+			     number read case detail. But "we will be in touch" with no way to
+			     check is hard on someone waiting, so the least this page can do is
+			     say what the wait looks like and who to ask. -->
+			<div class="mt-2 w-full max-w-prose rounded-lg border bg-muted/40 p-5 text-left">
+				<h3 class="font-heading text-sm font-semibold">What happens next</h3>
+				<ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm text-muted-foreground">
+					<li>A caseworker reads your application — usually within a few working days.</li>
+					<li>
+						We may call you to ask about anything that was not clear, so please keep the number you
+						gave us switched on.
+					</li>
+					<li>
+						We will tell you either way. If we cannot help with something, we will say what else is
+						available.
+					</li>
+				</ol>
+				{#if data.settings?.['contact.phone_1']}
+					<p class="mt-4 text-sm">
+						To ask about it before then, call
+						<a class="font-medium underline" href="tel:{data.settings['contact.phone_1']}">
+							<Phone class="mr-1 inline size-4" />{data.settings['contact.phone_1']}
+						</a>
+						and quote your reference.
+					</p>
+				{/if}
+			</div>
 		</Card.Root>
 	{:else}
 		{#if contentBlocks.length}
@@ -284,6 +309,15 @@
 
 		<!-- Said before anything is asked, because someone who cannot write
 		     English should not have to read half a form to find that out. -->
+		<!-- The asterisk means two things unless we say so: starred questions are
+		     not HTML-`required` (§3.3 keeps the form low-barrier), so the browser
+		     will not stop the submit but the server will refuse it. Saying which
+		     is which up front costs a sentence. -->
+		<p class="mb-6 text-sm text-muted-foreground">
+			We can work with gaps — answer what you can. The questions marked
+			<span class="text-destructive">*</span> are the few we do need before anyone can look at your application.
+		</p>
+
 		<Card.Root class="mb-6 border-primary/40 bg-primary/5 p-5">
 			<div class="flex items-start gap-3">
 				<LanguagesIcon class="mt-0.5 size-5 shrink-0 text-primary" />

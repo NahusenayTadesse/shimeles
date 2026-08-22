@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import ActionNote from '$lib/dashboard/action-note.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -24,13 +25,31 @@
 	/** Which donation's match dialog is open. */
 	let matching = $state<number | null>(null);
 
+	/**
+	 * The last outcome, kept on screen after the toast has gone.
+	 *
+	 * Reconciliation is the case that needs it: confirming a gift changes the
+	 * public total, and "did that go through?" should be answerable by looking
+	 * at the screen rather than by remembering a notification that faded.
+	 */
+	let lastAction = $state<{ message: string; at: number } | null>(null);
+
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
 		else if (form?.reconciled) {
 			toast.success('Gift confirmed — it now counts toward the public total.');
+			lastAction = {
+				message: 'Gift confirmed — it now counts toward the public total.',
+				at: Date.now()
+			};
 			matching = null;
-		} else if (form?.receiptSent) toast.success('Receipt sent.');
-		else if (form?.ok) toast.success('Saved');
+		} else if (form?.receiptSent) {
+			toast.success('Receipt sent.');
+			lastAction = { message: 'Receipt sent to the donor.', at: Date.now() };
+		} else if (form?.ok) {
+			toast.success('Saved');
+			lastAction = { message: 'Saved.', at: Date.now() };
+		}
 	});
 
 	const statusTabs = [
@@ -109,6 +128,12 @@
 </script>
 
 <svelte:head><title>Donations · Dashboard</title></svelte:head>
+
+{#if lastAction}
+	<div class="mx-auto mb-3 w-full">
+		<ActionNote message={lastAction.message} at={lastAction.at} />
+	</div>
+{/if}
 
 <div class="flex flex-col gap-4">
 	<div>

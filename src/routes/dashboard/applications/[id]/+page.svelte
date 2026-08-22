@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import ActionNote from '$lib/dashboard/action-note.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
@@ -52,9 +53,15 @@
 		data.needs.reduce((sum, need) => sum + (need.estimatedAmount ?? 0), 0)
 	);
 
+	/** The last outcome, kept on screen after the toast has gone (§11). */
+	let lastAction = $state<{ message: string; at: number } | null>(null);
+
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
-		else if (form?.ok) toast.success('Saved');
+		else if (form?.ok) {
+			toast.success('Saved');
+			lastAction = { message: 'Saved.', at: Date.now() };
+		}
 	});
 
 	let statusId = $state<string>('');
@@ -115,6 +122,12 @@
 </script>
 
 <svelte:head><title>{s.reference} · Dashboard</title></svelte:head>
+
+{#if lastAction}
+	<div class="mx-auto mb-3 w-full">
+		<ActionNote message={lastAction.message} at={lastAction.at} />
+	</div>
+{/if}
 
 <div class="flex flex-col gap-4">
 	<a

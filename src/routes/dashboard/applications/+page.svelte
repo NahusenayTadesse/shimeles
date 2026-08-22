@@ -8,9 +8,11 @@
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import OpenLinkCell from '$lib/dashboard/open-link-cell.svelte';
 	import ApplicationNameCell from './application-name-cell.svelte';
-	import { indexColumn } from '$lib/dashboard/columns';
+	import { indexColumn, selectColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
-	import { Columns3, Inbox, Table2 } from '@lucide/svelte';
+	import { Columns3, Inbox, Table2, UserCheck } from '@lucide/svelte';
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import { formatDateShort } from '$lib/dates';
 
@@ -22,6 +24,11 @@
 	 * renaming a status in the dashboard reorders nothing and breaks nothing.
 	 */
 	let view = $state<'board' | 'table'>('board');
+
+	/** Rows ticked in the table view, for the bulk assign bar. */
+	let selectedRows = $state<{ id: number }[]>([]);
+	let bulkReviewer = $state('');
+	let assigning = $state(false);
 	let search = $state(data.filters.search);
 
 	const needItems = $derived([
@@ -65,7 +72,10 @@
 		)
 	);
 
-	const tableColumns = [
+	const tableColumns = $derived([
+		// Only the table view offers bulk assignment; the board is one card at a
+		// time by design.
+		...(data.access?.permissions?.includes('submissions.assign') ? [selectColumn] : []),
 		indexColumn,
 		{
 			id: 'reference',
@@ -112,7 +122,7 @@
 			cell: ({ row }: any) =>
 				renderComponent(OpenLinkCell, { href: `/dashboard/applications/${row.original.id}` })
 		}
-	];
+	]);
 </script>
 
 <svelte:head><title>Applications · Dashboard</title></svelte:head>
@@ -264,12 +274,65 @@
 		</ScrollArea>
 	{:else}
 		{#key data.rows}
+			{#if selectedRows.length}
+				<!-- After an intake round this is thirty cases and one reviewer;
+				     doing it one at a time was thirty page loads. -->
+				<form
+					method="post"
+					action="?/assignSelected"
+					class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3"
+					use:enhance={() => {
+						assigning = true;
+						return async ({ result, update }) => {
+							assigning = false;
+							if (result.type === 'success') {
+								const { assigned = 0, skipped = 0 } = (result.data ?? {}) as Record<string, number>;
+								toast.success(
+									`Assigned ${assigned} application${assigned === 1 ? '' : 's'}` +
+										(skipped
+											? `. ${skipped} were outside your programmes and were left alone.`
+											: '.')
+								);
+								selectedRows = [];
+								bulkReviewer = '';
+							} else if (result.type === 'failure') {
+								toast.error(String(result.data?.message ?? 'That did not work.'));
+							}
+							await update({ reset: false });
+						};
+					}}
+				>
+					<UserCheck class="size-4 text-primary" />
+					<span class="text-sm font-medium">
+						{selectedRows.length} selected
+					</span>
+					<input type="hidden" name="ids" value={selectedRows.map((row) => row.id).join(',')} />
+					<div class="min-w-56">
+						<SelectComp
+							name="reviewerId"
+							bind:value={bulkReviewer}
+							items={[
+								{ value: '', name: 'Nobody — clear the reviewer' },
+								...data.reviewers.map((reviewer: { id: string; name: string }) => ({
+									value: reviewer.id,
+									name: reviewer.name
+								}))
+							]}
+						/>
+					</div>
+					<Button type="submit" size="sm" disabled={assigning}>
+						{assigning ? 'Assigning…' : 'Assign'}
+					</Button>
+				</form>
+			{/if}
+
 			<DataTable
 				columns={tableColumns}
 				data={data.rows}
 				search={false}
 				fileName="Applications"
 				caseScoped
+				bind:selected={selectedRows}
 				emptyMessage="Applications arrive from the public /apply form. Nothing has come in that matches this view."
 			/>
 		{/key}
