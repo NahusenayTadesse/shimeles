@@ -10,20 +10,19 @@ export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'sqlite' }),
 	emailAndPassword: { enabled: true },
-	/**
-	 * Twelve hours, refreshed each day it is used.
+	/*
+	 * Session length is Better Auth's default — seven days — on purpose.
 	 *
-	 * Better Auth's default is seven days, which is a long time for a session
-	 * on a system holding medical and mental-health case notes — often on a
-	 * shared office machine that nobody signs out of. Twelve hours means a
-	 * session does not outlive the working day it was created in, while
-	 * `updateAge` keeps someone who is actually using the dashboard from being
-	 * thrown out mid-task.
+	 * Shortening it is a decision for the Foundation, not for us: staff sign in
+	 * on office machines all day, and being logged out mid-afternoon is a real
+	 * cost against a real benefit. Kept here, commented, so it is one
+	 * uncomment away if the client asks for a tighter window:
+	 *
+	 * session: {
+	 * 	expiresIn: 60 * 60 * 12,   // twelve hours
+	 * 	updateAge: 60 * 60 * 24    // refreshed on a day's use
+	 * },
 	 */
-	session: {
-		expiresIn: 60 * 60 * 12,
-		updateAge: 60 * 60 * 24
-	},
 	plugins: [
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]

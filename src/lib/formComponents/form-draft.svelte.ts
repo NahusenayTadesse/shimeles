@@ -14,10 +14,12 @@ import { browser } from '$app/environment';
  *    the person has to accept. A returning user on a shared phone finding a
  *    form pre-filled with someone else's household and medical detail is worse
  *    than the loss this is meant to prevent.
- * 2. **Expire quickly, and be deletable.** A draft older than the TTL is
- *    dropped on sight, and "Start again" wipes it immediately. `/apply` in
- *    particular holds the kind of detail that should not sit in a browser for
- *    a week because someone once started an application on a library computer.
+ * 2. **Always deletable.** "Start again" wipes the draft on the spot, and a
+ *    successful submit clears it. There is no expiry: someone gathering the
+ *    documents an application asks for may be days away from finishing, and a
+ *    draft that quietly deleted itself in the meantime would be the very loss
+ *    this exists to prevent. The banner says the draft is on this device, and
+ *    the person decides when it goes.
  *
  * Files are never part of a draft — a `File` cannot be serialised, and
  * silently dropping an attachment someone believed was saved would be its own
@@ -25,9 +27,6 @@ import { browser } from '$app/environment';
  */
 
 const PREFIX = 'saf:draft:';
-
-/** Two days. Long enough to finish tomorrow, short enough not to linger. */
-const TTL_MS = 2 * 24 * 60 * 60 * 1000;
 
 interface Stored {
 	savedAt: number;
@@ -40,11 +39,9 @@ function read(key: string): Stored | null {
 		const raw = localStorage.getItem(PREFIX + key);
 		if (!raw) return null;
 		const parsed = JSON.parse(raw) as Stored;
-		if (!parsed?.savedAt || Date.now() - parsed.savedAt > TTL_MS) {
-			localStorage.removeItem(PREFIX + key);
-			return null;
-		}
-		return parsed;
+		// A draft is kept until the person says otherwise; only an unreadable
+		// one is discarded here.
+		return parsed?.savedAt ? parsed : null;
 	} catch {
 		// A quota error, private-mode restriction or corrupt entry must never
 		// take the form down with it.

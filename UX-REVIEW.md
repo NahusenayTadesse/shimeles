@@ -10,7 +10,9 @@ of judgement rather than a defect, it says so.
 >
 > 1. Leave-guard restored on `/apply`, `/volunteer` and the in-kind form, and
 >    (1b) drafts saved to the device behind an explicit "continue or start
->    again" banner, two-day expiry, never restored silently.
+>    again" banner, never restored silently. Drafts do not expire — someone
+>    gathering documents may be days from finishing — and are cleared by
+>    "Start again" or by a successful submit.
 > 2. A failed submit now focuses the first invalid field; summary rows link to
 >    their controls (`$lib/formComponents/form-errors.ts`).
 > 3. `src/routes/+error.svelte` and `src/routes/dashboard/+error.svelte`.
@@ -26,7 +28,9 @@ of judgement rather than a defect, it says so.
 >    under each entity's read permission, pillar scope and the audit log.
 > 10. Option 1: the confirmation says what happens next and who to call.
 > 11. Inline confirmations alongside the toasts on the three screens that
->     needed them; 12-hour rolling sessions; the asterisk explained on
+>     needed them; session length left at Better Auth's default, with the
+>     tighter window kept commented in `auth.ts` for the client to decide;
+>     the asterisk explained on
 >     `/apply`; the export control disabled-with-a-reason rather than hidden;
 >     `/setup` says it is a one-time screen; bulk reviewer assignment on the
 >     applications table.
