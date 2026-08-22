@@ -21,7 +21,7 @@
 	<title>What people say · {siteName}</title>
 	<meta
 		name="description"
-		content="In their own words — the families, elders, students and volunteers the Foundation works alongside."
+		content="In their own words: the families, elders, students and volunteers the Foundation works alongside."
 	/>
 </svelte:head>
 

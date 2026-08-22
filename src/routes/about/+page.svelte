@@ -157,7 +157,7 @@
 				<h3 class="font-heading text-xl font-semibold">Our Mission</h3>
 				<p class="whitespace-pre-line text-muted-foreground">
 					{content?.missionText ||
-						'To stand with families in Ethiopia through medical hardship, old age, mental strain and the cost of education — with practical help, and with presence.'}
+						'To stand with families in Ethiopia through medical hardship, old age, mental strain and the cost of education, with practical help and with presence.'}
 				</p>
 			</div>
 			<div

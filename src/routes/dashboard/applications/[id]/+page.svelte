@@ -13,6 +13,7 @@
 	import { assetUrl } from '$lib/assets';
 	import { formatMoney } from '$lib/money';
 	import { formatDateTime } from '$lib/dates';
+	import { genderLabel } from '$lib/gender';
 	import {
 		ArrowLeft,
 		FileText,
@@ -101,7 +102,7 @@
 	 */
 	function display(field: (typeof data.fields)[number]): string {
 		const value = (s.data ?? {})[field.fieldKey];
-		if (value == null || value === '') return '—';
+		if (value == null || value === '') return '-';
 
 		if (field.fieldType === 'select' || field.fieldType === 'multiselect') {
 			const options = field.options ?? [];
@@ -187,7 +188,7 @@
 						<h2 class="font-heading text-lg font-semibold">Who needs help</h2>
 						<Badge variant={subject.applyingFor === 'other' ? 'default' : 'secondary'}>
 							{subject.applyingFor === 'other'
-								? `Applied for by ${s.name ?? 'someone else'}${subject.relationship ? ` — ${subject.relationship}` : ''}`
+								? `Applied for by ${s.name ?? 'someone else'}${subject.relationship ? `, ${subject.relationship}` : ''}`
 								: 'Applying for themselves'}
 						</Badge>
 					</div>
@@ -206,7 +207,7 @@
 					<dl class="grid gap-4 sm:grid-cols-2">
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Name</dt>
-							<dd class="text-sm">{subject.fullName ?? '—'}</dd>
+							<dd class="text-sm">{subject.fullName ?? '-'}</dd>
 						</div>
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Age</dt>
@@ -216,13 +217,13 @@
 								{:else if subject.approximateAge}
 									about {subject.approximateAge}
 								{:else}
-									—
+									-
 								{/if}
 							</dd>
 						</div>
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Gender</dt>
-							<dd class="text-sm capitalize">{subject.gender}</dd>
+							<dd class="text-sm">{genderLabel(subject.gender)}</dd>
 						</div>
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Their phone</dt>
@@ -230,7 +231,7 @@
 								{#if subject.phone}
 									<a href={`tel:${subject.phone}`} class="hover:text-primary">{subject.phone}</a>
 								{:else}
-									—
+									-
 								{/if}
 							</dd>
 						</div>
@@ -239,13 +240,13 @@
 							<dd class="text-sm">
 								{[subject.addressLine, subject.city, subject.regionName]
 									.filter(Boolean)
-									.join(', ') || '—'}
+									.join(', ') || '-'}
 							</dd>
 						</div>
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Household</dt>
 							<dd class="text-sm">
-								{subject.householdSize ?? '—'} people{subject.dependantsCount !== null
+								{subject.householdSize ?? '-'} people{subject.dependantsCount !== null
 									? `, ${subject.dependantsCount} dependants`
 									: ''}
 							</dd>
@@ -253,7 +254,7 @@
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Monthly income</dt>
 							<dd class="text-sm">
-								{subject.monthlyIncome !== null ? formatMoney(subject.monthlyIncome, 'ETB') : '—'}
+								{subject.monthlyIncome !== null ? formatMoney(subject.monthlyIncome, 'ETB') : '-'}
 								{#if subject.incomeSource}
 									<span class="text-muted-foreground">· {subject.incomeSource}</span>
 								{/if}
@@ -292,12 +293,12 @@
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">
 								Best time to call
 							</dt>
-							<dd class="text-sm">{subject.bestTimeToContact ?? '—'}</dd>
+							<dd class="text-sm">{subject.bestTimeToContact ?? '-'}</dd>
 						</div>
 						<div>
 							<dt class="text-xs tracking-wide text-muted-foreground uppercase">Someone else</dt>
 							<dd class="text-sm">
-								{subject.alternateContactName ?? '—'}
+								{subject.alternateContactName ?? '-'}
 								{#if subject.alternateContactPhone}
 									· <a href={`tel:${subject.alternateContactPhone}`} class="hover:text-primary">
 										{subject.alternateContactPhone}
@@ -312,7 +313,7 @@
 									{subject.languageNativeName ?? subject.languageName}
 									<span class="text-muted-foreground">({subject.languageName})</span>
 								{:else}
-									—
+									-
 								{/if}
 							</dd>
 						</div>
@@ -560,9 +561,9 @@
 					<p class="mb-3 text-sm text-muted-foreground">
 						{#if data.subject}
 							Creates or finds the record for
-							<strong>{data.subject.fullName ?? 'the person named above'}</strong> — the person being
-							helped, not whoever filled the form in. Matches on phone number, then on name and date of
-							birth.
+							<strong>{data.subject.fullName ?? 'the person named above'}</strong>, the person being
+							helped, not whoever filled the form in. Matches on phone number, then on name and date
+							of birth.
 						{:else}
 							Not yet linked to a person. Linking matches on phone number and creates a record if
 							this is someone new.

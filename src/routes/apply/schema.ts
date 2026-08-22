@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { flagField, optionalEmailField, optionalNumberField } from '$lib/forms/fields';
+import { PERSON_GENDERS } from '$lib/gender';
 
 /**
  * The assistance application.
@@ -86,7 +87,7 @@ export const applySchema = z
 		subjectName: optional(150),
 		subjectDateOfBirth: isoDate,
 		subjectApproximateAge: optionalNumber(0, 120),
-		subjectGender: z.enum(['female', 'male', 'other', 'undisclosed']).default('undisclosed'),
+		subjectGender: z.enum(PERSON_GENDERS).default('prefer_not_to_say'),
 		subjectPhone: optional(32),
 		city: optional(120),
 		addressLine: optional(240),

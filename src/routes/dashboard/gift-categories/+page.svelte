@@ -72,7 +72,7 @@
 			row.requiresTransport ? 'transport' : null
 		]
 			.filter(Boolean)
-			.join(', ') || '—';
+			.join(', ') || '-';
 
 	const columns = $derived([
 		indexColumn,
@@ -98,7 +98,7 @@
 
 <ContentPage
 	title="Gift categories"
-	description="What somebody can offer on the donate page, and the questions each kind of thing brings with it — clothing asks for sizes, food asks for a use-by date, furniture warns that collecting it needs a vehicle. Pausing a category leaves it listed with its note showing, which stops somebody driving across the city with a load we cannot store."
+	description="What somebody can offer on the donate page, and the questions each kind of thing brings with it: clothing asks for sizes, food asks for a use-by date, furniture warns that collecting it needs a vehicle. Pausing a category leaves it listed with its note showing, which stops somebody driving across the city with a load we cannot store."
 	addTitle="Add gift category"
 	addForm={data.addForm}
 	{fields}

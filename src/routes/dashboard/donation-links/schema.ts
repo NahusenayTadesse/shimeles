@@ -40,7 +40,7 @@ export const addSchema = z
 	})
 	.refine((data) => !data.isPaypal || isUsablePaypalUrl(data.url), {
 		message:
-			'That PayPal link has no campaign id. Paste the full link PayPal gave you — it looks like https://www.paypal.com/donate?campaign_id=XXXXXXXX',
+			'That PayPal link has no campaign id. Paste the full link PayPal gave you. It looks like https://www.paypal.com/donate?campaign_id=XXXXXXXX',
 		path: ['url']
 	});
 
@@ -64,6 +64,6 @@ export const editSchema = z
 	})
 	.refine((data) => !data.isPaypal || isUsablePaypalUrl(data.url), {
 		message:
-			'That PayPal link has no campaign id. Paste the full link PayPal gave you — it looks like https://www.paypal.com/donate?campaign_id=XXXXXXXX',
+			'That PayPal link has no campaign id. Paste the full link PayPal gave you. It looks like https://www.paypal.com/donate?campaign_id=XXXXXXXX',
 		path: ['url']
 	});

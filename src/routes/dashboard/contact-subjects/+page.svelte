@@ -78,7 +78,7 @@
 			accessorKey: 'targetResponseHours',
 			header: 'Target',
 			cell: ({ row }: any) =>
-				row.original.targetResponseHours ? `${row.original.targetResponseHours}h` : '—'
+				row.original.targetResponseHours ? `${row.original.targetResponseHours}h` : '-'
 		},
 		column('sortOrder', 'Order'),
 		editColumn({ data: data.editForm, fields, title: 'Edit enquiry topic', keys }),
@@ -88,7 +88,7 @@
 
 <ContentPage
 	title="Enquiry topics"
-	description="What someone can say their message is about, and where it goes when they do. Each topic carries its own notification list, queue and response target — so redirecting press enquiries to the communications lead is an edit here rather than a code change."
+	description="What someone can say their message is about, and where it goes when they do. Each topic carries its own notification list, queue and response target, so redirecting press enquiries to the communications lead is an edit here rather than a code change."
 	addTitle="Add topic"
 	addForm={data.addForm}
 	{fields}

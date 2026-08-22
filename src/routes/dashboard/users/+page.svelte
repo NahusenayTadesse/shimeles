@@ -107,7 +107,7 @@
 	<Alert.Root>
 		<Info class="size-4" />
 		<Alert.Description>
-			Roles and what each role can do are set in code, not here — that is an access-control decision
+			Roles and what each role can do are set in code, not here. That is an access-control decision
 			rather than a content one. This screen decides who holds which role.
 		</Alert.Description>
 	</Alert.Root>
@@ -206,8 +206,8 @@
 				<Separator />
 
 				<p class="text-xs text-muted-foreground">
-					Leaving every box unticked means this person sees no case files at all — which is the
-					right default for a new account, and not a bug.
+					Leaving every box unticked means this person sees no case files at all, which is the right
+					default for a new account, and not a bug.
 				</p>
 
 				<Button type="submit">Save access</Button>

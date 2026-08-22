@@ -35,7 +35,7 @@
 		},
 		{
 			name: 'isPaypal',
-			label: 'This is a PayPal link — show a PayPal donate button',
+			label: 'This is a PayPal link, show a PayPal donate button',
 			type: 'select',
 			items: yesNo
 		},
@@ -113,7 +113,7 @@
 
 	<ContentPage
 		title="Donation links"
-		description="Outside payment platforms offered on the Donate page. For PayPal, paste the link they gave you — the campaign id is read out of it and the button is drawn in the site's own style, so there is no HTML to copy."
+		description="Outside payment platforms offered on the Donate page. For PayPal, paste the link they gave you. The campaign id is read out of it and the button is drawn in the site's own style, so there is no HTML to copy."
 		addTitle="Add donation link"
 		addForm={data.addForm}
 		{fields}

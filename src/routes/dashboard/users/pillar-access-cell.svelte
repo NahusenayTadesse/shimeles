@@ -26,7 +26,7 @@
 				{pillarOptions.find((p) => p.id === pillarId)?.name ?? pillarId}
 			</Badge>
 		{:else}
-			<Badge variant="destructive">None — sees no cases</Badge>
+			<Badge variant="destructive">None (sees no cases)</Badge>
 		{/each}
 	</button>
 {:else}

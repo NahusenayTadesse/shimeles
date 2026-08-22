@@ -41,7 +41,7 @@ export async function notifyNewSubmission(slug: string, result: SubmitResult): P
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
-	const subject = `New ${definition.name} — ${result.referenceNumber}`;
+	const subject = `New ${definition.name}: ${result.referenceNumber}`;
 	const body = [
 		`A new submission has arrived through the ${definition.name}.`,
 		'',
@@ -85,7 +85,7 @@ export async function notifyNewVolunteer(result: SubmitResult): Promise<void> {
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
-	const subject = `New volunteer application — ${result.referenceNumber}`;
+	const subject = `New volunteer application: ${result.referenceNumber}`;
 	const body = [
 		'Someone has offered to volunteer.',
 		'',
@@ -132,7 +132,7 @@ export async function notifyNewInKindOffer(offer: {
 		.filter(Boolean)
 		.join('\n');
 
-	await sendEmail(to, `New offer of goods — ${offer.referenceCode}`, escapeHtml(body));
+	await sendEmail(to, `New offer of goods: ${offer.referenceCode}`, escapeHtml(body));
 }
 
 /** Reminder for a standing pledge that has come due (§3.5). */

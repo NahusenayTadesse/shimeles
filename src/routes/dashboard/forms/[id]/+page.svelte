@@ -47,7 +47,7 @@
 	];
 
 	const mapsToOptions = [
-		{ value: '', name: '— just an answer —' },
+		{ value: '', name: 'Just an answer' },
 		{ value: 'name', name: "The applicant's name" },
 		{ value: 'phone', name: 'Their phone number' },
 		{ value: 'email', name: 'Their email address' },
@@ -99,7 +99,7 @@
 		<div>
 			<h1 class="font-heading text-2xl font-bold">{data.definition.name}</h1>
 			<p class="mt-1 text-sm text-muted-foreground">
-				Changes here take effect on the public form immediately — there is nothing to publish.
+				Changes here take effect on the public form immediately. There is nothing to publish.
 			</p>
 		</div>
 		<a
@@ -117,7 +117,7 @@
 			<Alert.Title>This is a low-barrier form</Alert.Title>
 			<Alert.Description>
 				Contact fields and file uploads on this form are never required, whatever you set below.
-				That is enforced when the form is validated, not just displayed — so the promise this form
+				That is enforced when the form is validated, not just displayed, so the promise this form
 				makes to the people using it cannot be broken by accident.
 			</Alert.Description>
 		</Alert.Root>
@@ -220,7 +220,7 @@
 
 			<p class="mt-4 text-xs text-muted-foreground">
 				Removing a question hides it from the form. Answers people already gave to it are kept on
-				their case files — deleting a question must not erase what somebody told us.
+				their case files. Deleting a question must not erase what somebody told us.
 			</p>
 		</Card.Root>
 

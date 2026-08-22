@@ -34,7 +34,7 @@
 			type: 'select',
 			items: stages,
 			required: true,
-			placeholder: 'Controls workflow rules — pick the closest match'
+			placeholder: 'Controls workflow rules, pick the closest match'
 		},
 		{ name: 'label', label: 'Label shown to staff', required: true },
 		{ name: 'color', label: 'Badge colour', type: 'select', items: statusColorItems },
@@ -73,7 +73,7 @@
 
 <ContentPage
 	title="Workflow statuses"
-	description="Rename a status, recolour it, or reorder it freely — records store the status, not its label, so nothing breaks. The underlying stage is what workflow rules key off, including the safeguarding gate, so change it only if you know what depends on it."
+	description="Rename a status, recolour it, or reorder it freely. Records store the status, not its label, so nothing breaks. The underlying stage is what workflow rules key off, including the safeguarding gate, so change it only if you know what depends on it."
 	addTitle="Add status"
 	addForm={data.addForm}
 	{fields}

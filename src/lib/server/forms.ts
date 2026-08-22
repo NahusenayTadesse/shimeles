@@ -1,7 +1,4 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import { z } from 'zod/v4';
-import { emailField, flagField, optionalEmailField } from '$lib/forms/fields';
-import { MAX_UPLOAD_BYTES } from '$lib/server/upload';
 import { db } from '$lib/server/db';
 import { formDefinitions, formFields, pillars } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
@@ -12,6 +9,22 @@ import type {
 	RenderField,
 	RenderForm
 } from '$lib/forms/types';
+
+/**
+ * Schema generation moved to `$lib/forms/schema`, which touches no database and
+ * so can be imported by the renderer and tested against a real `FormData`
+ * without standing up SQLite. It is re-exported here because every existing
+ * caller imports it from this module, and because "the form engine" is one idea
+ * even though half of it no longer needs the server.
+ */
+export {
+	buildSchema,
+	isFieldVisible,
+	normaliseFormData,
+	ACCEPTED_UPLOAD_TYPES,
+	MAX_UPLOAD_BYTES,
+	type SubmissionSchema
+} from '$lib/forms/schema';
 
 /**
  * The dynamic form engine.
@@ -178,228 +191,3 @@ function isRequired(stored: boolean, type: FieldType, isLowBarrier: boolean): bo
 	if (isLowBarrier && NEVER_REQUIRED_WHEN_LOW_BARRIER.includes(type)) return false;
 	return stored;
 }
-
-/* ==========================================================================
-   Schema generation
-   ========================================================================== */
-
-/**
- * Ceilings for the fields a form builder does *not* let an admin size.
- *
- * A `maxLength` typed into the dashboard bounds a text or textarea field, but
- * nothing in the builder describes how long a select value or a multi-select
- * list may be — so those get a fixed cap here rather than none at all. Without
- * one, any dynamic form is an open text box with a validator in front of it.
- */
-const MAX_SHORT_TEXT = 500;
-const MAX_LONG_TEXT = 5000;
-const MAX_CHOICES = 100;
-
-/** Phone numbers as people actually write them in Ethiopia: 09…, +2519…, 9…. */
-const PHONE_PATTERN = /^\+?[0-9\s\-()]{7,20}$/;
-
-/**
- * Builds the Zod schema for one field.
- *
- * Optional fields accept the empty string rather than only `undefined`,
- * because an untouched HTML input posts `''` — insisting on `undefined` here
- * is the classic way a dynamic form ends up rejecting a blank optional field.
- */
-function fieldSchema(field: RenderField): z.ZodTypeAny {
-	const v = field.validation ?? {};
-	const required = field.required;
-
-	const optionalText = <T extends z.ZodTypeAny>(schema: T) =>
-		required ? schema : schema.optional().or(z.literal(''));
-
-	switch (field.type) {
-		case 'heading':
-			// Not an input; contributes nothing to the payload.
-			return z.any().optional();
-
-		case 'number': {
-			let schema = z.coerce.number({ message: `${field.label} must be a number` });
-			if (v.min != null) schema = schema.min(v.min, `${field.label} must be at least ${v.min}`);
-			if (v.max != null) schema = schema.max(v.max, `${field.label} must be at most ${v.max}`);
-			return required ? schema : schema.optional().or(z.literal('').transform(() => undefined));
-		}
-
-		case 'checkbox':
-			// A required checkbox means "must be ticked" — a consent box.
-			//
-			// `flagField`, never `z.coerce.boolean()`: the renderer mirrors the box
-			// into a hidden input (`InputComp.svelte`, `checkboxSingle`), so an
-			// unticked box posts the string `"false"` — which coercion turns into
-			// `true`, storing the opposite of what was ticked and letting a direct
-			// POST of `consent=false` satisfy the `.refine` below.
-			return required
-				? flagField(false).refine((value) => value === true, `${field.label} is required`)
-				: flagField(false);
-
-		case 'date': {
-			const schema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `${field.label} must be a valid date`);
-			return optionalText(schema);
-		}
-
-		case 'email': {
-			const schema = emailField(`${field.label} must be a valid email address`);
-			return optionalText(schema);
-		}
-
-		case 'phone': {
-			const schema = z
-				.string()
-				.max(20, `${field.label} must be a valid phone number`)
-				.regex(PHONE_PATTERN, `${field.label} must be a valid phone number`);
-			return optionalText(schema);
-		}
-
-		case 'select': {
-			const values = field.options.map((option) => option.value);
-			// A select whose options were never filled in degrades to free text,
-			// so it needs the same ceiling every other text field gets.
-			if (values.length === 0) return optionalText(z.string().max(MAX_SHORT_TEXT));
-			const schema = z.enum(values as [string, ...string[]], {
-				message: `Choose an option for ${field.label}`
-			});
-			return required ? schema : schema.optional().or(z.literal(''));
-		}
-
-		case 'multiselect': {
-			const values = field.options.map((option) => option.value);
-			const allowed = new Set(values);
-
-			/**
-			 * A multi-select arrives as an array from a JSON post and as a
-			 * comma-joined string from a plain multipart form. Accepting both keeps
-			 * this schema usable from the public form (multipart, because it may
-			 * also carry a file) and from the dashboard alike.
-			 */
-			const normalise = z
-				.union([
-					z.array(z.string().max(MAX_SHORT_TEXT)).max(MAX_CHOICES),
-					z.string().max(MAX_SHORT_TEXT * MAX_CHOICES),
-					z.undefined()
-				])
-				.transform((value) => {
-					if (value == null) return [] as string[];
-					const list = Array.isArray(value) ? value : value.split(',');
-					return list
-						.map((item) => item.trim())
-						.filter(Boolean)
-						.slice(0, MAX_CHOICES);
-				})
-				.refine(
-					(list) => values.length === 0 || list.every((item) => allowed.has(item)),
-					`Choose a valid option for ${field.label}`
-				);
-
-			return required
-				? normalise.refine((list) => list.length > 0, `Choose at least one ${field.label}`)
-				: normalise;
-		}
-
-		case 'file_upload': {
-			// Superforms hands over a File; an untouched file input yields a
-			// zero-byte one, which is why size rather than presence is the test.
-			const schema = z
-				.instanceof(File, { message: `${field.label} is required` })
-				.refine((file) => file.size > 0, `${field.label} is required`)
-				.refine((file) => file.size <= MAX_UPLOAD_BYTES, `${field.label} must be under 10 MB`)
-				.refine(
-					(file) => ACCEPTED_UPLOAD_TYPES.includes(file.type),
-					`${field.label} must be a PDF or an image`
-				);
-			return required ? schema : schema.optional();
-		}
-
-		case 'textarea':
-		case 'text':
-		default: {
-			let schema = z.string().trim();
-			if (required) schema = schema.min(1, `${field.label} is required`);
-			if (v.minLength != null) {
-				schema = schema.min(
-					v.minLength,
-					`${field.label} must be at least ${v.minLength} characters`
-				);
-			}
-			// Clamped, not just defaulted: `maxLength` comes from the dashboard, and
-			// a coordinator who types 1000000 into it should not be able to turn a
-			// public field into an unbounded one.
-			const ceiling = field.type === 'textarea' ? MAX_LONG_TEXT : MAX_SHORT_TEXT;
-			schema = schema.max(Math.min(v.maxLength ?? ceiling, ceiling), `${field.label} is too long`);
-			if (v.pattern) {
-				try {
-					schema = schema.regex(
-						new RegExp(v.pattern),
-						v.patternMessage ?? `${field.label} is not in the expected format`
-					);
-				} catch {
-					// A malformed pattern typed into the dashboard must not 500 the
-					// public form; it just stops constraining that field.
-					console.warn(`Invalid regex on field "${field.key}": ${v.pattern}`);
-				}
-			}
-			return optionalText(schema);
-		}
-	}
-}
-
-/** The storage layer owns the ceiling; re-exported so schemas read one name. */
-export { MAX_UPLOAD_BYTES } from '$lib/server/upload';
-
-export const ACCEPTED_UPLOAD_TYPES = [
-	'application/pdf',
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/avif',
-	'image/heic'
-];
-
-/**
- * The full Zod schema for a form: its dynamic fields, plus the fixed contact
- * columns every submission carries and an anti-spam honeypot.
- *
- * Contact details are optional at the schema level in every case — the form
- * can require them through a mapped field, and a low-barrier form must be able
- * to accept a submission with nothing but a description.
- */
-export function buildSchema(form: RenderForm) {
-	const shape: Record<string, z.ZodTypeAny> = {};
-	for (const field of form.fields) {
-		if (field.type === 'heading') continue;
-		shape[field.key] = fieldSchema(field);
-	}
-
-	return z.object({
-		...shape,
-		submittedByName: z.string().trim().max(150).optional().or(z.literal('')),
-		submittedByPhone: z.string().trim().max(32).optional().or(z.literal('')),
-		submittedByEmail: optionalEmailField(),
-		/**
-		 * Honeypot. Bots fill every input they find; a human never sees this one,
-		 * so any value at all means the submission is discarded silently.
-		 */
-		website: z.string().max(200).optional().or(z.literal(''))
-	});
-}
-
-export type SubmissionSchema = ReturnType<typeof buildSchema>;
-
-/* ==========================================================================
-   Conditional fields
-   ========================================================================== */
-
-/**
- * Whether a conditional field should be visible given the current answers.
- * Used on the server to strip hidden answers before storage, and mirrored on
- * the client to hide the input — the server copy is the authoritative one.
- */
-export const isFieldVisible = (field: RenderField, values: Record<string, unknown>): boolean => {
-	if (!field.showWhen) return true;
-	const actual = values[field.showWhen.key];
-	if (Array.isArray(actual)) return actual.map(String).includes(field.showWhen.value);
-	return String(actual ?? '') === field.showWhen.value;
-};

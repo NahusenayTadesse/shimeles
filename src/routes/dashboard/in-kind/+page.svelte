@@ -60,7 +60,7 @@
 		)
 	);
 
-	const fmt = (value: Date | string | null) => formatDate(value, '—');
+	const fmt = (value: Date | string | null) => formatDate(value, '-');
 
 	const donorLabel = (row: (typeof data.rows)[number]) =>
 		row.isAnonymous ? 'Anonymous' : (row.organisationName ?? row.donorName);
@@ -151,7 +151,7 @@
 		<h1 class="font-heading text-2xl font-bold">Gifts in kind</h1>
 		<p class="mt-1 max-w-3xl text-sm text-muted-foreground">
 			Clothes, food, equipment and donated time offered through the website. Every offer here is
-			somebody holding on to something until we call — decide first, then book the collection. An
+			somebody holding on to something until we call. Decide first, then book the collection. An
 			estimated value is the donor's own guess and is never counted as money raised.
 		</p>
 	</div>
@@ -228,7 +228,7 @@
 			<p class="text-sm text-muted-foreground">
 				Nothing here.
 				{#if data.filters.status === 'open'}
-					Every offer has been answered — which is the state this queue is meant to be in.
+					Every offer has been answered, which is the state this queue is meant to be in.
 				{:else}
 					No offers match this filter.
 				{/if}

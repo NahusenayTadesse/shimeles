@@ -48,7 +48,7 @@ export const contactSchema = z
 			 */
 			.max(
 				MAX_CONTACT_MESSAGE,
-				`Keep this under ${MAX_CONTACT_MESSAGE} characters — we will follow up by email`
+				`Keep this under ${MAX_CONTACT_MESSAGE} characters; we will follow up by email`
 			),
 
 		preferredChannel: z.enum(['email', 'phone', 'either']).default('either'),

@@ -94,7 +94,7 @@
 		{
 			id: 'pillarName',
 			header: 'Programme',
-			cell: ({ row }: any) => row.original.pillarName ?? '—'
+			cell: ({ row }: any) => row.original.pillarName ?? '-'
 		},
 		{
 			id: 'status',
@@ -312,7 +312,7 @@
 							name="reviewerId"
 							bind:value={bulkReviewer}
 							items={[
-								{ value: '', name: 'Nobody — clear the reviewer' },
+								{ value: '', name: 'Nobody (clear the reviewer)' },
 								...data.reviewers.map((reviewer: { id: string; name: string }) => ({
 									value: reviewer.id,
 									name: reviewer.name

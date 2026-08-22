@@ -75,7 +75,7 @@
 							label: row.original.credentialsVerified ? 'Verified' : 'Unverified',
 							variant: row.original.credentialsVerified ? 'outline' : 'destructive'
 						})
-					: '—'
+					: '-'
 		},
 		{
 			id: 'createdAt',
@@ -98,8 +98,8 @@
 	<div>
 		<h1 class="font-heading text-2xl font-bold">Volunteers</h1>
 		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-			Every volunteer application. Approval is blocked — on the server, not just in this interface —
-			until the safeguarding checklist is complete.
+			Every volunteer application. Approval is blocked, on the server and not just in this
+			interface, until the safeguarding checklist is complete.
 		</p>
 	</div>
 

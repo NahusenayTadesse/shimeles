@@ -246,7 +246,7 @@
 						{#if channel === 'email'}
 							{canEmail
 								? `Sending emails ${m.email} and records the reply here.`
-								: 'This sender left no email address — record how you reached them instead.'}
+								: 'This sender left no email address. Record how you reached them instead.'}
 						{:else}
 							Recorded as a reply that happened {CHANNEL_LABELS[channel]}; nothing is emailed.
 						{/if}

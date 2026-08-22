@@ -108,7 +108,7 @@
 			<h1 class="font-heading text-2xl font-bold">Blog</h1>
 			<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
 				Programme updates, field notes and donor stories. This screen holds a post's title, cover
-				and category — use 'Write &amp; photos' to write the article itself and add its gallery.
+				and category. Use 'Write &amp; photos' to write the article itself and add its gallery.
 			</p>
 		</div>
 		<CrudDialog title="Add post" data={data.addForm} action="?/add" {fields} />

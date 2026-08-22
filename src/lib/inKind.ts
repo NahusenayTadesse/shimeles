@@ -185,7 +185,7 @@ export const GENDER_LABELS: Record<string, string> = {
 };
 
 export const LOAD_SIZE_LABELS: Record<string, string> = {
-	handheld: 'A bag or two — one person can carry it',
+	handheld: 'A bag or two, one person can carry it',
 	car_boot: 'Fills a car boot',
 	pickup_truck: 'Needs a pickup',
 	small_truck: 'Needs a small truck',
@@ -268,7 +268,7 @@ export const inKindSchema = z
 		items: z
 			.array(inKindItemSchema)
 			.min(1, 'Add at least one thing you would like to give')
-			.max(40, 'That is more lines than this form can take — please call us'),
+			.max(40, 'That is more lines than this form can take. Please call us'),
 		valuationBasis: z.enum(VALUATION_BASES).default('donor_estimate'),
 		/** Medicines, powered equipment, anything with a rule attached. */
 		hasRestrictedItems: flagField(false),

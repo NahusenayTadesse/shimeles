@@ -209,7 +209,7 @@
 			these platforms confirm the gift themselves.
 		-->
 		<p class="text-xs text-muted-foreground">
-			These take you to the platform to complete your gift. They will send you their own receipt —
+			These take you to the platform to complete your gift. They will send you their own receipt, so
 			you will not need a reference number from us.
 		</p>
 	</section>

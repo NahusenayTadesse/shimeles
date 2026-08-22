@@ -29,7 +29,7 @@
 
 <ContentPage
 	title="Need groups"
-	description="The headings the apply form's list is broken into. A kind of help whose group is removed still appears, under 'Something else' — nothing a person can ask for disappears because of a tidy-up here."
+	description="The headings the apply form's list is broken into. A kind of help whose group is removed still appears, under 'Something else', so nothing a person can ask for disappears because of a tidy-up here."
 	addTitle="Add need group"
 	addForm={data.addForm}
 	{fields}

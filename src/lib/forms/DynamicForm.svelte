@@ -2,7 +2,6 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import Errors from '$lib/formComponents/Errors.svelte';
@@ -35,8 +34,8 @@
 	const t = (key: string, fallback: string) => labels[key] ?? fallback;
 
 	// Left on the default multipart `dataType`, not `json`: these forms carry
-	// file uploads, and the schema accepts a comma-joined multi-select so the
-	// two requirements do not conflict.
+	// file uploads. A multi-answer question posts one field per ticked box, which
+	// multipart handles natively — see `CheckboxComp`.
 	const { form, errors, enhance, delayed, message, allErrors } = superForm(data, {
 		resetForm: true,
 		taintedMessage: null
@@ -72,6 +71,9 @@
 				return 'date';
 			case 'select':
 				return 'select';
+			// A group of tick boxes. `CheckboxComp` posts one hidden input per
+			// ticked value under the field's key, which is what the schema's
+			// `z.array()` reads with `getAll()`.
 			case 'multiselect':
 				return 'checkbox';
 			case 'checkbox':
@@ -118,7 +120,7 @@
 			<CircleCheck class="size-8" />
 		</div>
 		<h2 class="font-heading text-2xl font-semibold">
-			{t('form.thank_you', 'Thank you — we have your request')}
+			{t('form.thank_you', 'Thank you, we have your request')}
 		</h2>
 		{#if definition.successMessage}
 			<p class="max-w-prose text-muted-foreground">{definition.successMessage}</p>
@@ -193,22 +195,60 @@
 					{#if field.hint}
 						<p class="text-sm text-muted-foreground">{field.hint}</p>
 					{/if}
-					<Separator />
 				</div>
 			{:else if visible(field)}
+				{@const single = field.type === 'checkbox'}
 				<div class="flex flex-col gap-1">
+					<!--
+						No `required` attribute, on purpose — `showRequired` draws the
+						asterisk without it. The two are deliberately separate everywhere
+						else on this site (see `InputComp`): `/apply` marks the questions it
+						needs and still lets the submit through, because §3.3's low-barrier
+						rule exists precisely so that someone in the middle of a crisis is
+						not refused by their own browser. This renderer was the one place
+						setting the attribute, which meant the browser blocked the submit
+						with its own untranslated bubble on the first empty box — and every
+						message the schema generates for a missing answer was unreachable.
+						It also only ever fired for the native inputs, so a required
+						dropdown or a required set of tick boxes was never caught this way
+						at all.
+
+						`labelClass="normal-case"` matters more than it looks. The dashboard's
+						field names are short and lower-case, so `InputComp` title-cases
+						labels by default — which turned questions a staff member wrote as
+						sentences into "What Is The Medical Situation?" and made every public
+						form read like a form letter. It also beats the `uppercase` the base
+						`Label` carries, so what an applicant sees is exactly what was typed
+						into the builder.
+					-->
 					<InputComp
 						{form}
 						{errors}
 						bind:value={$form[field.key]}
-						label={field.required ? `${field.label} *` : field.label}
+						{...single
+							? // A single checkbox is the one field whose question belongs
+								// *beside* the box rather than above it. Rendered above, the
+								// text was drawn by a `<Label>` with no `for` — pointing at
+								// nothing, because the branch that draws the box gives the
+								// box its own id — so a consent question could not be ticked
+								// by clicking its own words, which is how most people tick a
+								// box. Passing it as the placeholder puts it in the label the
+								// box is actually associated with.
+								{ label: '', placeholder: field.required ? `${field.label} *` : field.label }
+							: {
+									label: field.label,
+									// A dropdown with no placeholder of its own falls back to
+									// the field's key ("Select Referred_by"), so give it words.
+									placeholder: field.placeholder ?? (field.type === 'select' ? 'Choose one…' : '')
+								}}
+						showRequired={!single && field.required}
 						name={field.key}
 						type={inputType(field)}
-						required={field.required}
-						placeholder={field.placeholder ?? ''}
 						items={items(field)}
 						rows={6}
 						oldDays={true}
+						labelClass="normal-case"
+						triggerClass="normal-case"
 					/>
 					{#if field.hint}
 						<p class="px-1 text-xs text-muted-foreground">{field.hint}</p>
@@ -217,7 +257,7 @@
 			{/if}
 		{/each}
 
-		<Separator class="my-2" />
+		<div class="my-1" aria-hidden="true"></div>
 
 		<!-- The fixed contact block. Always optional at the schema level so a
 		     low-barrier form can be submitted anonymously; a form that genuinely

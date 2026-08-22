@@ -14,7 +14,7 @@
 </script>
 
 {#if !isPaypal}
-	<span class="text-xs text-muted-foreground">—</span>
+	<span class="text-xs text-muted-foreground">-</span>
 {:else if target}
 	<span class="font-mono text-xs">{target.value}</span>
 {:else}

@@ -157,7 +157,7 @@
 		<div>
 			<h1 class="font-heading text-2xl font-bold">{data.page.title}</h1>
 			<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-				The body of this page, as blocks in the order they appear. Nothing here lives in the code —
+				The body of this page, as blocks in the order they appear. Nothing here lives in the code,
 				rewrite a paragraph, drop a section, reorder the lot.
 			</p>
 		</div>
@@ -273,8 +273,8 @@
 					<SelectComp name="blockType" items={blockTypes} bind:value={blockType} />
 					{#if AUTOMATIC.includes(blockType)}
 						<p class="text-xs text-muted-foreground">
-							This block draws its content from the relevant table automatically — there is nothing
-							to write here. Adding a pillar or a payment account updates it.
+							This block draws its content from the relevant table automatically, so there is
+							nothing to write here. Adding a pillar or a payment account updates it.
 						</p>
 					{/if}
 				</div>
@@ -439,7 +439,7 @@
 
 								<p class="w-full text-xs text-muted-foreground">
 									{#if isMoneyMetric(stat.metric)}
-										Shown as currency — the figure is stored in santim and formatted as birr.
+										Shown as currency. The figure is stored in santim and formatted as birr.
 									{:else}
 										The number is computed from the records; only the wording is yours.
 									{/if}
@@ -520,7 +520,7 @@
 						</div>
 					</div>
 					<p class="text-xs text-muted-foreground">
-						Leave the link blank on the page that carries the full tribute — it only makes sense
+						Leave the link blank on the page that carries the full tribute. It only makes sense
 						where this is a shorter excerpt pointing elsewhere, such as the homepage.
 					</p>
 				{/if}

@@ -20,6 +20,15 @@
 		id = 'form-errors'
 	}: { allErrors: { path?: unknown; messages?: string[] }[]; id?: string } = $props();
 
+	/**
+	 * A field can fail more than one way at once, and `messages` is an array.
+	 * Interpolating it directly let Svelte join it with a bare comma, so two
+	 * problems on one field arrived as a single run-on sentence with no space
+	 * after the comma. Joined as sentences instead.
+	 */
+	const join = (messages: string[] | undefined) =>
+		(messages ?? []).map((message) => message.replace(/\s*$/, '')).join(' · ');
+
 	function jump(event: MouseEvent, path: unknown) {
 		const target = fieldId(path);
 		if (!target) return;
@@ -54,10 +63,10 @@
 							class="underline underline-offset-2 hover:no-underline"
 							onclick={(event) => jump(event, error.path)}
 						>
-							{error.messages}
+							{join(error.messages)}
 						</a>
 					{:else}
-						<span>{error.messages}</span>
+						<span>{join(error.messages)}</span>
 					{/if}
 				</li>
 			{/each}

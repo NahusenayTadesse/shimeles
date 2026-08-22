@@ -73,7 +73,7 @@
 		<h1 class="font-heading text-2xl font-bold">Newsletter</h1>
 		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
 			Everyone who has opted in, and where they opted in from. There is no way to add someone here
-			on purpose — an address nobody opted in is not a subscriber. Use Export to get the list for
+			on purpose: an address nobody opted in is not a subscriber. Use Export to get the list for
 			your mail tool.
 		</p>
 	</div>

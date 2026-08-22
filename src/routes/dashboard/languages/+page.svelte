@@ -12,7 +12,7 @@
 		{
 			name: 'nativeName',
 			label: 'Its own name',
-			placeholder: 'Afaan Oromoo — this is what the applicant sees'
+			placeholder: 'Afaan Oromoo, this is what the applicant sees'
 		},
 		{ name: 'isActive', label: 'Offered on the apply form', type: 'select', items: yesNo },
 		{ name: 'sortOrder', label: 'Display order', type: 'number' }
@@ -33,7 +33,7 @@
 
 <ContentPage
 	title="Languages"
-	description="What an applicant can say they have written in. This is not the site's language — the site is English-only in v1 — it is how a case written in Afaan Oromo reaches somebody who reads Afaan Oromo. Adding a language here offers it on the apply form immediately."
+	description="What an applicant can say they have written in. This is not the site's language (the site is English-only in v1). It is how a case written in Afaan Oromo reaches somebody who reads Afaan Oromo. Adding a language here offers it on the apply form immediately."
 	addTitle="Add language"
 	addForm={data.addForm}
 	{fields}

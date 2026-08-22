@@ -5,7 +5,6 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
@@ -233,8 +232,7 @@
 		<h2 class="font-heading text-2xl font-semibold">Thank you</h2>
 		<p class="text-muted-foreground">
 			We have your offer of <strong>{confirmation.summary}</strong>. Someone will call to confirm
-			what we are able to take and to arrange the handover — please hold on to everything until
-			then.
+			what we are able to take and to arrange the handover. Please hold on to everything until then.
 		</p>
 		<button
 			type="button"
@@ -319,7 +317,7 @@
 								<Select.Content>
 									{#each categories as option (option.id)}
 										<Select.Item value={String(option.id)} disabled={!option.isAcceptingNow}>
-											{option.name}{option.isAcceptingNow ? '' : ' — paused'}
+											{option.name}{option.isAcceptingNow ? '' : ' (paused)'}
 										</Select.Item>
 									{/each}
 								</Select.Content>
@@ -506,7 +504,7 @@
 					<p class="mb-1 text-xs font-medium">Worth knowing before you pack:</p>
 					<ul class="ml-4 list-disc text-xs text-muted-foreground">
 						{#each acceptanceNotes as note (note.name)}
-							<li>{note.name} — {note.note}</li>
+							<li>{note.name}: {note.note}</li>
 						{/each}
 					</ul>
 				</div>
@@ -536,8 +534,6 @@
 				</div>
 			{/if}
 		</div>
-
-		<Separator />
 
 		<!-- ==================== Getting hold of it ==================== -->
 		<div class="flex flex-col gap-2">
@@ -712,8 +708,6 @@
 			/>
 		</div>
 
-		<Separator />
-
 		<!-- Designation. Same programmes as a cash gift, from the database. -->
 		<div class="flex flex-col gap-2">
 			<Label>{s('donate.designation', 'Where should it go?')}</Label>
@@ -761,8 +755,6 @@
 				{/each}
 			</div>
 		</div>
-
-		<Separator />
 
 		<!-- ==================== Who is giving ==================== -->
 		<div class="grid gap-3 md:grid-cols-2">
@@ -856,8 +848,6 @@
 				labelClass=""
 			/>
 		</div>
-
-		<Separator />
 
 		<!-- ==================== Paperwork ==================== -->
 		<div class="flex flex-col gap-2">

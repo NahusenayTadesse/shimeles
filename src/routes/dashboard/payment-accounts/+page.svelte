@@ -54,7 +54,7 @@
 
 <ContentPage
 	title="Payment accounts"
-	description="The account details a donor is shown and asked to transfer to. Card and PayPal credentials are not here — those live in environment variables by design."
+	description="The account details a donor is shown and asked to transfer to. Card and PayPal credentials are not here. Those live in environment variables by design."
 	addTitle="Add account"
 	addForm={data.addForm}
 	{fields}

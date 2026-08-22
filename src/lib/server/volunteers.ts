@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import type { PersonGender } from '$lib/gender';
 import {
 	pillars,
 	regions,
@@ -255,7 +256,7 @@ export async function recomputeCredentials(applicationId: number): Promise<void>
 			const parts = [name];
 			if (row.licenseNumber) parts.push(`licence ${row.licenseNumber}`);
 			if (row.licensingBody) parts.push(row.licensingBody);
-			return `${parts.join(' — ')} (${row.status})`;
+			return `${parts.join(', ')} (${row.status})`;
 		})
 		.join('\n');
 
@@ -307,7 +308,7 @@ export type VolunteerSubmission = {
 	city: string | null;
 	regionId: number | null;
 	dateOfBirth: string | null;
-	gender: 'female' | 'male' | 'other' | 'prefer_not_to_say' | null;
+	gender: PersonGender | null;
 	occupation: string | null;
 	organisationName: string | null;
 	country: string | null;

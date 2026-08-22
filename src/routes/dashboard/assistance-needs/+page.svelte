@@ -68,7 +68,7 @@
 
 <ContentPage
 	title="Kinds of help"
-	description="What someone can tick on the apply form. Each one can name the programme it routes to, so an applicant never has to know which of the four owns their problem — and because these are rows, 'how many families asked for school fees this term' is a question the applications list can answer."
+	description="What someone can tick on the apply form. Each one can name the programme it routes to, so an applicant never has to know which of the four owns their problem. And because these are rows, 'how many families asked for school fees this term' is a question the applications list can answer."
 	addTitle="Add kind of help"
 	addForm={data.addForm}
 	{fields}

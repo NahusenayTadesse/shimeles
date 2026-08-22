@@ -22,7 +22,7 @@
 			<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
 				The two photo sets on the homepage: the hero collage behind the headline, and the gallery
 				section further down the page. The headline, subheadline and buttons are edited under
-				<a href="/dashboard/settings" class="underline">Site settings → Homepage</a> — this screen is
+				<a href="/dashboard/settings" class="underline">Site settings → Homepage</a>. This screen is
 				only the photos.
 			</p>
 		</div>

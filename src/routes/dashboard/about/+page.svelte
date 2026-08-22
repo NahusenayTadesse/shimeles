@@ -46,7 +46,7 @@
 		<div>
 			<h1 class="font-heading text-2xl font-bold">About page</h1>
 			<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-				The story, the mission and vision, and the In Memoriam tribute and gallery — everything on
+				The story, the mission and vision, and the In Memoriam tribute and gallery: everything on
 				<code>/about</code> a program manager might need to rewrite. The layout itself lives in code,
 				not here.
 			</p>
@@ -141,9 +141,9 @@
 				</div>
 			</div>
 			<p class="text-sm text-muted-foreground">
-				The large tribute photo and text at the bottom of the About page — not the small version on
+				The large tribute photo and text at the bottom of the About page, not the small version on
 				the homepage, which is a regular content block (Pages &amp; content → About was, before this
-				screen — see Pages &amp; content for other pages). The photo is shared; the toggle above
+				screen; see Pages &amp; content for other pages). The photo is shared; the toggle above
 				switches which language's words you are editing, and both are saved together.
 			</p>
 

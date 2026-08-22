@@ -13,10 +13,10 @@
 	];
 
 	const pageItems = [
-		{ value: '', name: '— none (use a URL instead) —' },
+		{ value: '', name: 'None (use a URL instead)' },
 		...toItems(data.pageOptions, 'title')
 	];
-	const parentItems = [{ value: '', name: '— top level —' }, ...toItems(data.navOptions, 'label')];
+	const parentItems = [{ value: '', name: 'Top level' }, ...toItems(data.navOptions, 'label')];
 
 	const fields: CrudField[] = [
 		{ name: 'label', label: 'Label (English)', required: true },

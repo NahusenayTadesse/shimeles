@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { emailField, flagField, optionalEmailField, optionalFlagField } from '$lib/forms/fields';
+import { PERSON_GENDERS } from '$lib/gender';
 
 /**
  * The volunteer application form.
@@ -79,7 +80,7 @@ export const volunteerSchema = z
 		 */
 		country: optional(100),
 		dateOfBirth: isoDate,
-		gender: z.enum(['female', 'male', 'other', 'prefer_not_to_say']).nullable().default(null),
+		gender: z.enum(PERSON_GENDERS).nullable().default(null),
 		occupation: optional(150),
 		/** An employer, university or association volunteering on their behalf. */
 		organisationName: optional(200),

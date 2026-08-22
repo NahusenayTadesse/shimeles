@@ -27,8 +27,8 @@
 	<div class="min-w-48 flex-1">
 		<p class="text-sm font-semibold">We saved what you had typed</p>
 		<p class="text-sm text-muted-foreground">
-			This device has an unfinished form from {formatRelative(savedAt)}. Continue it, or start again
-			— starting again deletes it from this device.
+			This device has an unfinished form from {formatRelative(savedAt)}. Continue it, or start
+			again. Starting again deletes it from this device.
 		</p>
 	</div>
 	<div class="flex gap-2">

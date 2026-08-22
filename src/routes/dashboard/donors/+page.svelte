@@ -8,7 +8,7 @@
 
 	let { data } = $props();
 
-	const fmt = (value: Date | string | null) => formatDate(value, '—');
+	const fmt = (value: Date | string | null) => formatDate(value, '-');
 
 	const columns = [
 		indexColumn,
@@ -17,13 +17,13 @@
 			id: 'organisationName',
 			header: 'Organisation',
 			enableSorting: false,
-			cell: ({ row }: any) => row.original.organisationName ?? '—'
+			cell: ({ row }: any) => row.original.organisationName ?? '-'
 		},
 		{
 			id: 'contact',
 			header: 'Contact',
 			enableSorting: false,
-			cell: ({ row }: any) => row.original.email ?? row.original.phone ?? '—'
+			cell: ({ row }: any) => row.original.email ?? row.original.phone ?? '-'
 		},
 		{
 			id: 'lifetime',
@@ -58,8 +58,8 @@
 	<div>
 		<h1 class="font-heading text-2xl font-bold">Donors</h1>
 		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-			Lifetime totals count confirmed gifts only, and are recomputed when a gift is reconciled —
-			they cannot be edited by hand, so they always agree with the ledger.
+			Lifetime totals count confirmed gifts only, and are recomputed when a gift is reconciled, they
+			cannot be edited by hand, so they always agree with the ledger.
 		</p>
 	</div>
 

@@ -40,7 +40,7 @@
 
 <ContentPage
 	title="Safeguarding checklist"
-	description="Every active check must be completed before a volunteer can be approved — the approve action refuses on the server, not just in the interface. Adding a check here re-opens the gate on volunteers already approved against the shorter list."
+	description="Every active check must be completed before a volunteer can be approved. The approve action refuses on the server, not just in the interface. Adding a check here re-opens the gate on volunteers already approved against the shorter list."
 	addTitle="Add check"
 	addForm={data.addForm}
 	{fields}

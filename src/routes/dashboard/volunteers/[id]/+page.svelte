@@ -222,7 +222,7 @@
 
 				<p class="mt-4 text-xs text-muted-foreground">
 					Adding a check on the checklist configuration screen re-opens this gate for volunteers who
-					were approved against a shorter list — deliberately so.
+					were approved against a shorter list, deliberately so.
 				</p>
 			</Card.Root>
 
@@ -257,7 +257,7 @@
 						</div>
 					{:else}
 						<p class="text-sm text-muted-foreground">
-							No catalogue skills — this application predates the structured form.
+							No catalogue skills. This application predates the structured form.
 						</p>
 					{/each}
 
@@ -288,7 +288,7 @@
 					<dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
 						<div>
 							<dt class="text-xs text-muted-foreground">Hours a week</dt>
-							<dd>{a.hoursPerWeek ?? '—'}</dd>
+							<dd>{a.hoursPerWeek ?? '-'}</dd>
 						</div>
 						<div>
 							<dt class="text-xs text-muted-foreground">Commitment</dt>
@@ -296,7 +296,7 @@
 						</div>
 						<div>
 							<dt class="text-xs text-muted-foreground">Can start</dt>
-							<dd>{a.availableFrom ?? '—'}</dd>
+							<dd>{a.availableFrom ?? '-'}</dd>
 						</div>
 					</dl>
 
@@ -318,7 +318,7 @@
 
 					<p class="mb-4 text-xs text-muted-foreground">
 						Verify each licence with its issuing body. The application's overall credential status
-						is derived from these — every one must be verified before approval or placement.
+						is derived from these, so every one must be verified before approval or placement.
 					</p>
 
 					<div class="flex flex-col gap-3">
@@ -343,20 +343,20 @@
 								<dl class="grid gap-2 text-sm sm:grid-cols-2">
 									<div>
 										<dt class="text-xs text-muted-foreground">Licence number</dt>
-										<dd class="font-mono">{credential.licenseNumber ?? '—'}</dd>
+										<dd class="font-mono">{credential.licenseNumber ?? '-'}</dd>
 									</div>
 									<div>
 										<dt class="text-xs text-muted-foreground">Issued by</dt>
-										<dd>{credential.licensingBody ?? '—'}</dd>
+										<dd>{credential.licensingBody ?? '-'}</dd>
 									</div>
 									<div>
 										<dt class="text-xs text-muted-foreground">Specialisation</dt>
-										<dd>{credential.specialization ?? '—'}</dd>
+										<dd>{credential.specialization ?? '-'}</dd>
 									</div>
 									<div>
 										<dt class="text-xs text-muted-foreground">Valid</dt>
 										<dd>
-											{credential.issuedOn ?? '—'}{credential.expiresOn
+											{credential.issuedOn ?? '-'}{credential.expiresOn
 												? ` → ${credential.expiresOn}`
 												: ''}
 											{#if isExpired(credential.expiresOn)}
@@ -373,7 +373,7 @@
 										{CREDENTIAL_LABELS[credential.verificationStatus]} by
 										{credential.verifiedByName ?? 'a coordinator'} on {fmt(credential.verifiedAt)}
 										{#if credential.verificationNote}
-											— {credential.verificationNote}
+											{credential.verificationNote}
 										{/if}
 									</p>
 								{/if}
@@ -474,7 +474,7 @@
 									Contacted by {reference.contactedByName ?? 'a coordinator'} on
 									{fmt(reference.contactedAt)}
 									{#if reference.responseNote}
-										— {reference.responseNote}
+										{reference.responseNote}
 									{/if}
 								</p>
 							{/if}
@@ -508,7 +508,7 @@
 						</div>
 					{:else}
 						<p class="text-sm text-muted-foreground">
-							No reference records — this application predates the structured form.
+							No reference records. This application predates the structured form.
 						</p>
 					{/each}
 				</div>
@@ -529,12 +529,12 @@
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Lives in</dt>
 						<dd class="mt-1 text-sm">
-							{a.city ?? '—'}{a.country ? ` · ${a.country}` : ''}
+							{a.city ?? '-'}{a.country ? ` · ${a.country}` : ''}
 						</dd>
 					</div>
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Occupation</dt>
-						<dd class="mt-1 text-sm">{a.occupation ?? '—'}</dd>
+						<dd class="mt-1 text-sm">{a.occupation ?? '-'}</dd>
 					</div>
 					{#if a.organisationName}
 						<div>
@@ -546,11 +546,11 @@
 					{/if}
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Date of birth</dt>
-						<dd class="mt-1 text-sm">{a.dateOfBirth ?? '—'}</dd>
+						<dd class="mt-1 text-sm">{a.dateOfBirth ?? '-'}</dd>
 					</div>
 					<div>
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Heard about us</dt>
-						<dd class="mt-1 text-sm">{a.heardAbout ?? '—'}</dd>
+						<dd class="mt-1 text-sm">{a.heardAbout ?? '-'}</dd>
 					</div>
 					<div class="sm:col-span-2">
 						<dt class="text-xs tracking-wide text-muted-foreground uppercase">Emergency contact</dt>
@@ -562,7 +562,7 @@
 								{/if}
 								· {a.emergencyContactPhone ?? 'no number'}
 							{:else}
-								—
+								-
 							{/if}
 						</dd>
 					</div>
@@ -608,7 +608,7 @@
 							<dd class="mt-1 text-sm">
 								{#if a.hasPriorConviction}
 									<Badge variant="secondary" class="mb-1">Disclosed</Badge>
-									<p class="whitespace-pre-wrap">{a.priorConvictionDetail ?? '—'}</p>
+									<p class="whitespace-pre-wrap">{a.priorConvictionDetail ?? '-'}</p>
 								{:else}
 									None declared
 								{/if}
@@ -638,7 +638,7 @@
 						<p class="font-medium">{placement.pillarName ?? 'General'}</p>
 						<p class="text-muted-foreground">{placement.roleDescription}</p>
 						<p class="mt-1 text-xs text-muted-foreground">
-							From {placement.startedAt ?? '—'}{placement.endedAt ? ` to ${placement.endedAt}` : ''}
+							From {placement.startedAt ?? '-'}{placement.endedAt ? ` to ${placement.endedAt}` : ''}
 						</p>
 					</div>
 				{:else}
@@ -664,7 +664,7 @@
 					</form>
 				{:else}
 					<p class="text-xs text-muted-foreground">
-						Placement unlocks once safeguarding is complete — that is the point at which a volunteer
+						Placement unlocks once safeguarding is complete. That is the point at which a volunteer
 						would meet a beneficiary.
 					</p>
 				{/if}
@@ -718,7 +718,7 @@
 						</span>
 					{:else}
 						<span class="text-muted-foreground">
-							{satisfactoryCount} / {data.references.length || '—'}
+							{satisfactoryCount} / {data.references.length || '-'}
 						</span>
 					{/if}
 				</div>
@@ -756,7 +756,7 @@
 							</span>
 						{:else}
 							<span class="text-muted-foreground">
-								{verifiedCount} / {data.credentials.length || '—'}
+								{verifiedCount} / {data.credentials.length || '-'}
 							</span>
 						{/if}
 					</div>

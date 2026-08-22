@@ -1,6 +1,9 @@
 import { relations } from 'drizzle-orm';
 import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { secureFields, publicFields, timestampMs, nowMs, user } from './auth.schema';
+// Relative, not `$lib`: drizzle-kit loads this file outside Vite, where the
+// alias does not resolve.
+import { PERSON_GENDERS } from '../../gender';
 
 export * from './auth.schema';
 
@@ -953,9 +956,7 @@ export const applicationSubjects = sqliteTable(
 		dateOfBirth: text('date_of_birth'),
 		/** Used when a birth date is unknown, which is common. */
 		approximateAge: integer('approximate_age'),
-		gender: text('gender', { enum: ['female', 'male', 'other', 'undisclosed'] })
-			.default('undisclosed')
-			.notNull(),
+		gender: text('gender', { enum: PERSON_GENDERS }).default('prefer_not_to_say').notNull(),
 		phone: text('phone'),
 		city: text('city'),
 		addressLine: text('address_line'),
@@ -1076,9 +1077,7 @@ export const beneficiaries = sqliteTable(
 		householdId: integer('household_id').references(() => households.id, { onDelete: 'set null' }),
 		regionId: integer('region_id').references(() => regions.id, { onDelete: 'set null' }),
 		dateOfBirth: text('date_of_birth'),
-		gender: text('gender', { enum: ['female', 'male', 'other', 'undisclosed'] })
-			.default('undisclosed')
-			.notNull(),
+		gender: text('gender', { enum: PERSON_GENDERS }).default('prefer_not_to_say').notNull(),
 		preferredLanguage: text('preferred_language', { enum: ['en', 'am'] })
 			.default('en')
 			.notNull(),
@@ -1834,7 +1833,7 @@ export const volunteerApplications = sqliteTable(
 		/* --- Who they are ------------------------------------------------- */
 
 		dateOfBirth: text('date_of_birth'),
-		gender: text('gender', { enum: ['female', 'male', 'other', 'prefer_not_to_say'] }),
+		gender: text('gender', { enum: PERSON_GENDERS }),
 		occupation: text('occupation'),
 		/**
 		 * The employer, university or association volunteering on this person's

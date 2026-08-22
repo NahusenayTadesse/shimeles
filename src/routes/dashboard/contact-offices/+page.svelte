@@ -46,7 +46,7 @@
 		{
 			accessorKey: 'isPrimary',
 			header: 'Main',
-			cell: ({ row }: any) => (row.original.isPrimary ? 'Yes' : '—')
+			cell: ({ row }: any) => (row.original.isPrimary ? 'Yes' : '-')
 		},
 		column('sortOrder', 'Order'),
 		editColumn({ data: data.editForm, fields, title: 'Edit office', keys }),
@@ -56,7 +56,7 @@
 
 <ContentPage
 	title="Offices"
-	description="The addresses shown beside the contact form. Adding a second office when the Foundation expands is a row here — the contact.* site settings stay as the fallback for a site that has not added any."
+	description="The addresses shown beside the contact form. Adding a second office when the Foundation expands is a row here. The contact.* site settings stay as the fallback for a site that has not added any."
 	addTitle="Add office"
 	addForm={data.addForm}
 	{fields}

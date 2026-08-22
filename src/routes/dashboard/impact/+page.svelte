@@ -62,8 +62,8 @@
 			<Info class="size-4" />
 			<Alert.Title>Some figures are being overridden</Alert.Title>
 			<Alert.Description>
-				{data.overrideLabels.join(', ')} — the public site shows the manually entered value instead of
-				the computed one. Clear the setting to go back to the live count.
+				{data.overrideLabels.join(', ')}. The public site shows the manually entered value instead
+				of the computed one. Clear the setting to go back to the live count.
 			</Alert.Description>
 		</Alert.Root>
 	{/if}
@@ -160,16 +160,16 @@
 		<h2 class="mb-2 font-heading text-base font-semibold">How these are worked out</h2>
 		<ul class="flex flex-col gap-1 text-sm text-muted-foreground">
 			<li>
-				<strong>Families supported</strong> — distinct people with at least one case that reached "receiving
-				support" or "closed". A family that came back three times counts once.
+				<strong>Families supported</strong>: distinct people with at least one case that reached
+				"receiving support" or "closed". A family that came back three times counts once.
 			</li>
 			<li>
-				<strong>Students sponsored</strong> and <strong>elders cared for</strong> — the same count, narrowed
-				to the Youth & Education and Elder Care programmes.
+				<strong>Students sponsored</strong> and <strong>elders cared for</strong>: the same count,
+				narrowed to the Youth & Education and Elder Care programmes.
 			</li>
 			<li>
-				<strong>Raised</strong> — confirmed donations only. A pledge sitting in the reconciliation queue
-				is not money and is not counted.
+				<strong>Raised</strong>: confirmed donations only. A pledge sitting in the reconciliation
+				queue is not money and is not counted.
 			</li>
 		</ul>
 	</Card.Root>

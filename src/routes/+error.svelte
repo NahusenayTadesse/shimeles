@@ -26,7 +26,7 @@
 	const explanation = $derived(
 		isNotFound
 			? 'The link may be old, or the page may have moved. Nothing you did caused this.'
-			: 'This is our fault, not yours. Please try again in a moment — and if you were part-way through a form, do not close the tab.'
+			: 'This is our fault, not yours. Please try again in a moment, and if you were part-way through a form, do not close the tab.'
 	);
 </script>
 

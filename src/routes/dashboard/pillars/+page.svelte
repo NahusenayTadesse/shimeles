@@ -73,7 +73,7 @@
 
 <ContentPage
 	title="Pillars"
-	description="The programmes the Foundation runs. Each pillar drives its own page, its own application form and its own donation designation — adding one here adds all three."
+	description="The programmes the Foundation runs. Each pillar drives its own page, its own application form and its own donation designation. Adding one here adds all three."
 	addTitle="Add pillar"
 	addForm={data.addForm}
 	{fields}

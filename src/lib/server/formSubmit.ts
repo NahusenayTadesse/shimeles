@@ -1,7 +1,7 @@
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import type { RequestEvent } from '@sveltejs/kit';
-import { buildSchema, formStatusContext, loadForm } from '$lib/server/forms';
+import { buildSchema, formStatusContext, loadForm, normaliseFormData } from '$lib/server/forms';
 import { submitForm } from '$lib/server/submissions';
 import { submitVolunteerApplication } from '$lib/server/volunteers';
 import { notifyNewSubmission, notifyNewVolunteer } from '$lib/server/notify';
@@ -23,7 +23,16 @@ export async function handleFormSubmission(
 	const definition = await loadForm(slug);
 	if (!definition) return null;
 
-	const form = await superValidate(body, zod4(buildSchema(definition)));
+	// Read once, then correct the wire format before validating: repeated
+	// checkbox fields, a legacy comma-joined selection and an option retired
+	// since the page was rendered all become one clean array here. See
+	// `normaliseFormData` — the multiselect schema deliberately cannot do this
+	// itself.
+	const posted = body instanceof FormData ? body : await body.formData();
+	const form = await superValidate(
+		normaliseFormData(definition, posted),
+		zod4(buildSchema(definition))
+	);
 
 	if (!form.valid) {
 		return message(

@@ -48,7 +48,7 @@
 
 <ContentPage
 	title="Pages"
-	description="Every public page. This screen controls the page itself — its address, title and search description. Use 'Edit blocks' to change what is actually on it."
+	description="Every public page. This screen controls the page itself: its address, title and search description. Use 'Edit blocks' to change what is actually on it."
 	addTitle="Add page"
 	addForm={data.addForm}
 	{fields}

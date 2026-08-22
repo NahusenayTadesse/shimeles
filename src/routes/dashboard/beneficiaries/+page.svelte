@@ -11,20 +11,11 @@
 	import RowLink from '$lib/dashboard/row-link.svelte';
 	import { toItems } from '$lib/dashboard/options';
 	import type { CrudField } from '$lib/components/Table/crud-dialog.svelte';
+	import { PERSON_GENDER_OPTIONS } from '$lib/gender';
 
 	let { data } = $props();
 
-	const genders = [
-		{ value: 'undisclosed', name: 'Not disclosed' },
-		{ value: 'female', name: 'Female' },
-		{ value: 'male', name: 'Male' },
-		{ value: 'other', name: 'Other' }
-	];
-
-	const householdItems = [
-		{ value: '', name: '— none —' },
-		...toItems(data.householdOptions, 'label')
-	];
+	const householdItems = [{ value: '', name: 'None' }, ...toItems(data.householdOptions, 'label')];
 
 	const fields: CrudField[] = [
 		{ name: 'fullName', label: 'Full name', required: true },
@@ -33,7 +24,7 @@
 		{ name: 'householdId', label: 'Household', type: 'combo', items: householdItems },
 		{ name: 'regionId', label: 'Region', type: 'select', items: toItems(data.regionOptions) },
 		{ name: 'dateOfBirth', label: 'Date of birth', type: 'date' },
-		{ name: 'gender', label: 'Gender', type: 'select', items: genders },
+		{ name: 'gender', label: 'Gender', type: 'select', items: PERSON_GENDER_OPTIONS },
 		{ name: 'notes', label: 'Internal notes', type: 'textarea', rows: 5 }
 	];
 

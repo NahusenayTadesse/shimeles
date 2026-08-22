@@ -45,7 +45,7 @@
 				management. Use a password you do not use anywhere else.
 				<span class="mt-2 block">
 					If you reached this page by accident, the Foundation's system is already set up and this
-					screen would have been closed — close the tab and ask an administrator for an account
+					screen would have been closed. Close the tab and ask an administrator for an account
 					instead.
 				</span>
 			</Alert.Description>

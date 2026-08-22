@@ -44,7 +44,7 @@ export const listColumn = (key: string, name: string) => ({
 	accessorKey: key,
 	header: name,
 	cell: ({ row }: any) =>
-		renderComponent(BigText, { text: (row.original[key] ?? []).join(', ') || '—' })
+		renderComponent(BigText, { text: (row.original[key] ?? []).join(', ') || '-' })
 });
 
 /** Thumbnail that opens the full image. */

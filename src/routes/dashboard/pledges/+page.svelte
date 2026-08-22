@@ -12,7 +12,7 @@
 
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
-		else if (form?.reference) toast.success(`Reminder sent — reference ${form.reference}`);
+		else if (form?.reference) toast.success(`Reminder sent, reference ${form.reference}`);
 		else if (form?.ok) toast.success('Saved');
 	});
 
@@ -28,7 +28,7 @@
 			header: 'Donor',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
-					primary: row.original.donorName ?? '—',
+					primary: row.original.donorName ?? '-',
 					secondary: row.original.donorEmail ?? row.original.donorPhone
 				})
 		},
@@ -49,7 +49,7 @@
 			cell: ({ row }: any) => {
 				const due = isDue(row.original.nextReminderDate) && row.original.status === 'active';
 				return renderComponent(TwoLineCell, {
-					primary: row.original.nextReminderDate ?? '—',
+					primary: row.original.nextReminderDate ?? '-',
 					secondary: due ? 'Due' : null
 				});
 			}

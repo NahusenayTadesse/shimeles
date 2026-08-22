@@ -14,7 +14,7 @@
 
 	const totalReceived = $derived(data.payments.reduce((sum, row) => sum + row.amount, 0));
 
-	const fmt = (value: Date | string | null) => formatDate(value, '—');
+	const fmt = (value: Date | string | null) => formatDate(value, '-');
 </script>
 
 <svelte:head><title>{b.fullName} · Beneficiaries</title></svelte:head>

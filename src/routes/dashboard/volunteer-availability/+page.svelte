@@ -42,7 +42,7 @@
 	const dayName = (day: number | null) =>
 		day === null || day === undefined
 			? 'Any day'
-			: (days.find((item) => item.value === String(day))?.name ?? '—');
+			: (days.find((item) => item.value === String(day))?.name ?? '-');
 
 	const columns = [
 		indexColumn,
@@ -58,7 +58,7 @@
 			cell: ({ row }: any) =>
 				row.original.startTime && row.original.endTime
 					? `${row.original.startTime}–${row.original.endTime}`
-					: '—'
+					: '-'
 		},
 		column('sortOrder', 'Order'),
 		editColumn({ data: data.editForm, fields, title: 'Edit time slot', keys }),

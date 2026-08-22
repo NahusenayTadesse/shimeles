@@ -260,7 +260,7 @@ export async function notifyNewContactMessage(
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
-	const subjectLine = `New enquiry${subject?.name ? ` — ${subject.name}` : ''} — ${result.referenceNumber}`;
+	const subjectLine = `New enquiry${subject?.name ? `, ${subject.name}` : ''}: ${result.referenceNumber}`;
 	const body = [
 		'A new message has arrived through the contact form.',
 		'',

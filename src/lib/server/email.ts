@@ -28,7 +28,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 	if (!env.SMTP_HOST) {
 		// A development machine with no SMTP configured should log rather than
 		// throw: a broken mail server must not break a form submission.
-		console.info(`[email skipped — no SMTP_HOST] to=${to} subject=${subject}`);
+		console.info(`[email skipped: no SMTP_HOST] to=${to} subject=${subject}`);
 		return;
 	}
 
@@ -58,7 +58,7 @@ const shell = (heading: string, body: string) => `
 
 /** Acknowledges an assistance application to the person who made it. */
 export const applicantAcknowledgementTemplate = (name: string, reference: string) => ({
-	subject: `We have your request — ${reference}`,
+	subject: `We have your request: ${reference}`,
 	html: shell(
 		'We have your request',
 		`<p>Dear ${name},</p>
@@ -74,13 +74,13 @@ export const donationPledgeTemplate = (
 	referenceCode: string,
 	accountLines: string[]
 ) => ({
-	subject: `Thank you — your gift reference is ${referenceCode}`,
+	subject: `Thank you. Your gift reference is ${referenceCode}`,
 	html: shell(
 		'Thank you for your gift',
 		`<p>Dear ${name},</p>
 		 <p>Thank you for pledging <strong>${amountLabel}</strong>.</p>
 		 <p>To complete it, make your transfer to the account below and
-		 <strong>include ${referenceCode} as the reference</strong> — that is how we
+		 <strong>include ${referenceCode} as the reference</strong>. That is how we
 		 match your gift to your name.</p>
 		 <div style="background: #faf7f2; border-radius: 8px; padding: 16px; margin: 16px 0;">
 			${accountLines.map((line) => `<div>${line}</div>`).join('')}
@@ -96,7 +96,7 @@ export const donationReceiptTemplate = (
 	referenceCode: string,
 	designation: string
 ) => ({
-	subject: `Your gift has been received — ${referenceCode}`,
+	subject: `Your gift has been received: ${referenceCode}`,
 	html: shell(
 		'Your gift has been received',
 		`<p>Dear ${name},</p>
@@ -114,12 +114,12 @@ export const donationReceiptTemplate = (
  * promises a phone call, which is a promise the Foundation can keep.
  */
 export const inKindOfferTemplate = (name: string, referenceCode: string, summary: string) => ({
-	subject: `Thank you for your offer — ${referenceCode}`,
+	subject: `Thank you for your offer: ${referenceCode}`,
 	html: shell(
 		'Thank you for your offer',
 		`<p>Dear ${name},</p>
 		 <p>We have your offer of <strong>${summary}</strong>. Its reference is
-		 <strong>${referenceCode}</strong> — please quote it when you contact us.</p>
+		 <strong>${referenceCode}</strong>. Please quote it when you contact us.</p>
 		 <p>Someone from the team will call to confirm what we are able to take and to
 		 arrange the handover. Please hold on to the items until then.</p>`
 	)
@@ -147,26 +147,26 @@ export const inKindDecisionTemplate = (input: {
 	const bodies: Record<typeof input.outcome, { heading: string; subject: string; body: string }> = {
 		accepted: {
 			heading: 'We would be glad to take it',
-			subject: `We can take your gift — ${input.referenceCode}`,
+			subject: `We can take your gift: ${input.referenceCode}`,
 			body: `<p>Thank you for offering <strong>${input.summary}</strong>. We would be glad to
 			 take it, and will be in touch to arrange when.</p>`
 		},
 		declined: {
 			heading: 'About your offer',
-			subject: `About your offer — ${input.referenceCode}`,
+			subject: `About your offer: ${input.referenceCode}`,
 			body: `<p>Thank you for offering <strong>${input.summary}</strong>, and for thinking of
 			 us. We are not able to take this one.</p>`
 		},
 		scheduled: {
 			heading: 'Your handover is booked',
-			subject: `Your handover is booked${date ? ` for ${date}` : ''} — ${input.referenceCode}`,
+			subject: `Your handover is booked${date ? ` for ${date}` : ''}: ${input.referenceCode}`,
 			body: `<p>Thank you for offering <strong>${input.summary}</strong>. We have booked the
 			 handover for <strong>${date ?? 'the agreed day'}</strong>.</p>`
 		},
 		received: {
 			heading: 'Your gift has arrived',
-			subject: `Your gift has been received — ${input.referenceCode}`,
-			body: `<p>We have taken in <strong>${input.summary}</strong>. Thank you — it is now with
+			subject: `Your gift has been received: ${input.referenceCode}`,
+			body: `<p>We have taken in <strong>${input.summary}</strong>. Thank you. It is now with
 			 the team who will pass it on.</p>`
 		}
 	};
@@ -191,7 +191,7 @@ export const inKindDecisionTemplate = (input: {
 
 /** Tells a volunteer applicant their form arrived and what happens next. */
 export const volunteerAcknowledgementTemplate = (name: string, reference: string) => ({
-	subject: `Thank you for offering to volunteer — ${reference}`,
+	subject: `Thank you for offering to volunteer: ${reference}`,
 	html: shell(
 		'Thank you for offering to help',
 		`<p>Dear ${name},</p>

@@ -76,7 +76,7 @@
 
 				{#if role.slug === 'program_staff'}
 					<p class="mt-4 border-t pt-3 text-xs text-muted-foreground">
-						Scoped further by programme assignment — a program staff member sees only the programmes
+						Scoped further by programme assignment: a program staff member sees only the programmes
 						ticked for them on the Users screen, and none by default.
 					</p>
 				{/if}

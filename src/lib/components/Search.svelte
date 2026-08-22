@@ -143,7 +143,7 @@
 					{#if searching}
 						Searching…
 					{:else if term.trim().length > 0 && term.trim().length < 3}
-						Keep typing — three characters or more.
+						Keep typing, three characters or more.
 					{:else}
 						Nothing matches that.
 					{/if}

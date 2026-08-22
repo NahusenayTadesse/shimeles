@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { flagField, optionalIdField, optionalText } from '$lib/server/crud';
+import { PERSON_GENDERS } from '$lib/gender';
 
 /**
  * A beneficiary.
@@ -16,7 +17,7 @@ export const addSchema = z.object({
 	householdId: optionalIdField,
 	regionId: optionalIdField,
 	dateOfBirth: optionalText(10),
-	gender: z.enum(['female', 'male', 'other', 'undisclosed']).default('undisclosed'),
+	gender: z.enum(PERSON_GENDERS).default('prefer_not_to_say'),
 	notes: optionalText(5000),
 	isActive: flagField(true)
 });

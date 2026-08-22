@@ -74,6 +74,8 @@
 		 * rule exists to prevent. The server decides what is required.
 		 */
 		showRequired = false,
+		/** Passed through to a `select`'s trigger — see `SelectComp`. */
+		triggerClass = 'capitalize',
 		...rest
 	} = $props();
 
@@ -152,23 +154,36 @@
 	{:else if type === 'file'}
 		<FileUpload {name} {form} {image} {placeholder} />
 	{:else if type === 'select'}
-		<SelectComp {name} bind:value {items} />
+		<SelectComp {name} bind:value {items} {placeholder} {triggerClass} />
 	{:else if type === 'date'}
 		<DatePicker2 bind:data={value} {oldDays} year={yearDropdown} {futureDays} />
 		<input type="hidden" {name} bind:value />
 	{:else if type === 'combo'}
 		<ComboboxComp {name} bind:value {items} {required} />
 	{:else if type === 'checkbox'}
-		<CheckboxComp {items} bind:checkedValues={value} />
-		<input type="hidden" {name} bind:value />
+		<!-- `CheckboxComp` owns the posting: one hidden input per ticked value,
+		     all under `name`. It used to be given no name and mirrored through a
+		     single joined hidden input here, which is what made a multi-answer
+		     question arrive as one comma-separated string. -->
+		<CheckboxComp {name} {items} bind:checkedValues={value} />
 	{:else if type === 'checkboxSingle'}
 		<div class="flex items-center gap-2">
-			<Checkbox id={controlId} class={className} bind:checked={value} />
+			<!-- Controlled rather than `bind:checked`, because `bind:` on a value
+			     that starts out `undefined` is a hard error in Svelte 5
+			     (`props_invalid_value`) — and a generated form whose consent box has
+			     no default crashed the whole page on render because of it. Coercing
+			     here means an absent value simply reads as unticked. -->
+			<Checkbox
+				id={controlId}
+				class={className}
+				checked={value === true}
+				onCheckedChange={(ticked) => (value = ticked === true)}
+			/>
 			<Label for={controlId} class={labelClass}>{placeholder}</Label>
 			<!-- `String(value)`, and read by `flagField` on the server: an unticked
 			     box posts the *string* "false", which `z.coerce.boolean()` turns
 			     into `true`. See the note in `$lib/forms/fields`. -->
-			<input type="hidden" {name} value={String(value ?? false)} />
+			<input type="hidden" {name} value={String(value === true)} />
 		</div>
 	{:else}
 		<Input

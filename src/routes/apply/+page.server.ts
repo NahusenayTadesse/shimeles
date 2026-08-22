@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			subjectName: '',
 			subjectDateOfBirth: '',
 			subjectApproximateAge: null,
-			subjectGender: 'undisclosed',
+			subjectGender: 'prefer_not_to_say',
 			subjectPhone: '',
 			city: '',
 			addressLine: '',

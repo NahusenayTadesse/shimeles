@@ -200,7 +200,7 @@ export const TERMS_AND_CONDITIONS_BODY =
 	'<p>Volunteer placements that involve contact with children, elders, or other people in vulnerable circumstances are subject to safeguarding checks. Completing a form does not constitute a placement, and we may decline or end a placement where safeguarding requirements are not met.</p>' +
 	'<p>You agree that the information you submit is accurate and complete to the best of your knowledge, and that you have the right to share any information you provide about another person.</p>' +
 	'<h2>5. Intellectual Property</h2>' +
-	'<p>Unless stated otherwise, the content of the Website — including text, graphics, logos, photographs, video, and the arrangement of the site — belongs to the Foundation or is used with permission, and is protected by applicable intellectual-property laws.</p>' +
+	'<p>Unless stated otherwise, the content of the Website, including text, graphics, logos, photographs, video, and the arrangement of the site, belongs to the Foundation or is used with permission, and is protected by applicable intellectual-property laws.</p>' +
 	'<p>You may view, download, and print material from the Website for personal, non-commercial use, provided you do not remove any attribution.</p>' +
 	'<p>You may not reproduce, republish, distribute, or use Website content for commercial purposes, or in a way that suggests endorsement or affiliation, without our prior written permission.</p>' +
 	'<p>The Foundation’s name and logo may not be used without permission.</p>' +

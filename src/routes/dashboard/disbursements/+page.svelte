@@ -19,7 +19,7 @@
 		{ value: 'designated', name: 'Designated giving' }
 	];
 
-	const none = { value: '', name: '— none —' };
+	const none = { value: '', name: 'None' };
 
 	const fields: CrudField[] = [
 		{ name: 'paidTo', label: 'Paid to', required: true, placeholder: 'Tikur Anbessa Hospital' },
@@ -86,7 +86,7 @@
 
 <ContentPage
 	title="Disbursements"
-	description="Where the money actually went — the hospital, the school, the supplier, and the date. This is what turns 'we helped 40 families' into something a donor can check."
+	description="Where the money actually went: the hospital, the school, the supplier, and the date. This is what turns 'we helped 40 families' into something a donor can check."
 	addTitle="Record a disbursement"
 	addForm={data.addForm}
 	{fields}

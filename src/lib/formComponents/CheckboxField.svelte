@@ -27,6 +27,8 @@
 		 * hidden mirror is wanted — only the multipart forms need one.
 		 */
 		name = undefined,
+		/** Overrides the generated id the label points at. */
+		id = undefined,
 		checked = $bindable(false),
 		label = '',
 		hint = '',
@@ -38,6 +40,7 @@
 		children = undefined
 	}: {
 		name?: string;
+		id?: string;
 		checked?: boolean;
 		label?: string;
 		hint?: string;
@@ -50,6 +53,15 @@
 	} = $props();
 
 	const shown = $derived(invert ? !checked : checked);
+
+	/**
+	 * Something for the label's `for` to point at. `name` when there is one, so
+	 * the id is stable and readable; otherwise a generated one, because the
+	 * JSON-posted forms give their controls no name at all and a label pointing
+	 * at nothing is exactly the bug above.
+	 */
+	const generated = $props.id();
+	const controlId = $derived(id ?? name ?? generated);
 
 	function flattenErrors(err: unknown): string[] {
 		if (!err) return [];
@@ -71,20 +83,36 @@
 </script>
 
 <div class="flex flex-col gap-1 {className}">
-	<label class="flex items-start gap-3">
+	<!--
+		The label sits *beside* the box with a `for`, rather than wrapping it.
+
+		It used to wrap, and that quietly broke the most important control on the
+		site. `<Checkbox>` renders a `<button role="checkbox">`, and a `<label>`
+		that merely wraps a button does not forward clicks to it the way it does
+		for a native input — so the words next to every consent box on `/apply`,
+		`/donate` and `/contact` were dead, and the only way to give consent was to
+		hit the box itself, about 18 pixels square. Most people tick a box by
+		clicking its words.
+
+		A `for`/`id` pair does forward the click, because a `<button>` is a
+		labelable element. Not both: wrapping *and* `for` would toggle twice when
+		the box itself is clicked.
+	-->
+	<div class="flex items-start gap-3">
 		<Checkbox
+			id={controlId}
 			checked={shown}
 			{disabled}
 			onCheckedChange={(next) => (checked = invert ? next !== true : next === true)}
 			class="mt-0.5"
 		/>
-		<span class="min-w-0 text-sm">
+		<label for={controlId} class="min-w-0 cursor-pointer text-sm">
 			{#if children}{@render children()}{:else}{label}{/if}
 			{#if hint}
 				<span class="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
 			{/if}
-		</span>
-	</label>
+		</label>
+	</div>
 
 	{#if name}
 		<!-- The value the server actually reads. `String(...)` on purpose: see above. -->

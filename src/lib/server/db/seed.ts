@@ -49,9 +49,9 @@ const now = () => new Date();
  * `seedPages`, as a `memoriam` content block).
  */
 const ABOUT_MEMORIAM_BODY =
-	'<p>With deep respect and heartfelt remembrance, we honor the life of our beloved Shimeles Abera — a man whose legacy is defined by integrity, humility, and an unwavering commitment to others.</p>' +
+	'<p>With deep respect and heartfelt remembrance, we honor the life of our beloved Shimeles Abera, a man whose legacy is defined by integrity, humility, and an unwavering commitment to others.</p>' +
 	'<p>Shimeles lived a life guided by strong moral principles and genuine compassion. He was known for his calm strength, respectful nature, and the sincerity with which he treated every individual. His presence brought comfort, his words carried wisdom, and his actions reflected a life devoted to service and humanity.</p>' +
-	'<p>While his passing brought profound sorrow, his life remains a lasting source of inspiration. The values he embodied — kindness, integrity, and service — continue to live on in the many lives he touched.</p>' +
+	'<p>While his passing brought profound sorrow, his life remains a lasting source of inspiration. The values he embodied, kindness, integrity, and service, continue to live on in the many lives he touched.</p>' +
 	'<p>His legacy will continue forever through the Shimeles Abera Foundation, ensuring that his vision, values, and compassion endure for generations to come.</p>' +
 	'<p>We remember Shimeles with profound gratitude and admiration. His life stands as a testament to the power of character and the lasting impact of a life well lived.</p>' +
 	'<p><em>May his soul rest in eternal peace.</em></p>';
@@ -59,7 +59,7 @@ const ABOUT_MEMORIAM_BODY =
 const ABOUT_STORY_BODY =
 	'<p>This foundation carries the name of Shimeles Abera, and it was built by the people who knew him.</p>' +
 	'<p>It is not a large organisation. It is a group of people in Addis Ababa who decided that the gap between what a family needs on their worst day and what they can actually reach is a gap somebody should stand in.</p>' +
-	'<h2>How we work</h2><p>Someone applies, or someone tells us about a neighbour. We look at it properly. If we can help, we help — and we record where the money went, down to the hospital and the date, because a nonprofit that cannot show that has not earned the next gift.</p>';
+	'<h2>How we work</h2><p>Someone applies, or someone tells us about a neighbour. We look at it properly. If we can help, we help, and we record where the money went, down to the hospital and the date, because a nonprofit that cannot show that has not earned the next gift.</p>';
 
 /* ==========================================================================
    Roles & permissions
@@ -523,7 +523,7 @@ const PILLARS = [
 		name: 'Elder Care & Assistance',
 		summary: 'Direct care, dignity, and company for elders who would otherwise be alone.',
 		description:
-			'<p>Our elders raised the people who are now raising Ethiopia. Too many of them spend their last years isolated — physically able enough to be overlooked, and alone enough that nobody notices when they are not.</p><p>We provide direct assistance with the practical things, and just as importantly we keep showing up. Isolation is a condition, and company is a treatment for it.</p>',
+			'<p>Our elders raised the people who are now raising Ethiopia. Too many of them spend their last years isolated: physically able enough to be overlooked, and alone enough that nobody notices when they are not.</p><p>We provide direct assistance with the practical things, and just as importantly we keep showing up. Isolation is a condition, and company is a treatment for it.</p>',
 		icon: 'Users',
 		color: 'olive',
 		referencePrefix: 'ELD'
@@ -716,7 +716,7 @@ async function seedForms() {
 					label: 'Supporting documents',
 					fieldType: 'heading' as const,
 					isRequired: false,
-					hint: 'These help us move faster, but send what you have — we will not turn you away for a missing paper.'
+					hint: 'These help us move faster, but send what you have. We will not turn you away for a missing paper.'
 				},
 				{
 					fieldKey: 'medical_letter',
@@ -842,7 +842,7 @@ async function seedForms() {
 						{ value: 'email', label: 'Email' },
 						{
 							value: 'no_contact',
-							label: 'Please do not contact me — I just wanted to write this down'
+							label: 'Please do not contact me. I just wanted to write this down'
 						}
 					]
 				},
@@ -1011,7 +1011,7 @@ async function seedForms() {
 				},
 				{
 					fieldKey: 'references',
-					label: 'Two references — name, relationship, and how to reach them',
+					label: 'Two references: name, relationship, and how to reach them',
 					fieldType: 'textarea' as const,
 					isRequired: true,
 					validation: { minLength: 20, maxLength: 1500 }
@@ -1065,7 +1065,7 @@ async function seedForms() {
 				{
 					fieldKey: 'message',
 					label: 'Your message',
-					hint: 'A sentence or two is plenty — we will reply and take it from there.',
+					hint: 'A sentence or two is plenty. We will reply and take it from there.',
 					fieldType: 'textarea' as const,
 					isRequired: true,
 					// Matches `MAX_CONTACT_MESSAGE` on the hand-written `/contact`
@@ -1099,7 +1099,7 @@ async function seedForms() {
 					title: form.title,
 					introText: form.introText,
 					successMessage:
-						'We have your request. Someone will look at it and be in touch — keep your reference number.',
+						'We have your request. Someone will look at it and be in touch. Please keep your reference number.',
 					requiresDocuments: form.requiresDocuments,
 					isLowBarrier: form.isLowBarrier,
 					referencePrefix: form.referencePrefix,
@@ -1218,7 +1218,7 @@ async function seedPages() {
 			slug: 'apply',
 			title: 'Apply for support',
 			metaDescription:
-				'Ask for help — for yourself, or for someone you are looking out for. Write in whatever language you are comfortable in.',
+				'Ask for help, for yourself or for someone you are looking out for. Write in whatever language you are comfortable in.',
 			sortOrder: 3
 		},
 		{
@@ -1265,7 +1265,7 @@ async function seedPages() {
 	 * stopped being block-driven.
 	 */
 	const HOME_MEMORIAM_BODY =
-		'<p>Every programme on this site carries forward the life of the man whose name the Foundation bears — a life marked by integrity, humility, and quiet service to others.</p>' +
+		'<p>Every programme on this site carries forward the life of the man whose name the Foundation bears: a life marked by integrity, humility, and quiet service to others.</p>' +
 		'<p><em>May his soul rest in eternal peace.</em></p>';
 
 	/**
@@ -1376,7 +1376,7 @@ async function seedPages() {
 			page: 'donate',
 			blockType: 'rich_text',
 			content: {
-				body: '<p>You can give once, or commit to a monthly gift. You can send it where it is needed most, or name the programme it should go to.</p><p>Bank transfers in Ethiopia cannot be charged automatically, so a monthly gift here means we send you a reminder and you make the transfer — a promise rather than a direct debit.</p>'
+				body: '<p>You can give once, or commit to a monthly gift. You can send it where it is needed most, or name the programme it should go to.</p><p>Bank transfers in Ethiopia cannot be charged automatically, so a monthly gift here means we send you a reminder and you make the transfer. It is a promise rather than a direct debit.</p>'
 			}
 		},
 		{ page: 'donate', blockType: 'donation_details', heading: 'Where to send it', content: {} },
@@ -1385,7 +1385,7 @@ async function seedPages() {
 			blockType: 'rich_text',
 			content: {
 				body:
-					'<p>If you need help, or you are asking on behalf of someone who does, this is the form. It takes about ten minutes and most of it is optional — tell us what you know and we will ask the rest when we speak.</p>' +
+					'<p>If you need help, or you are asking on behalf of someone who does, this is the form. It takes about ten minutes and most of it is optional. Tell us what you know and we will ask the rest when we speak.</p>' +
 					'<p>Asking costs you nothing and is not a commitment. We read every application, and we will tell you either way.</p>'
 			}
 		},
@@ -1408,7 +1408,7 @@ async function seedPages() {
 			page: 'contact',
 			blockType: 'rich_text',
 			content: {
-				body: '<p>If this is about an application you have already made, please quote your reference number — it is the fastest way for us to find you.</p>'
+				body: '<p>If this is about an application you have already made, please quote your reference number. It is the fastest way for us to find you.</p>'
 			}
 		},
 		{
@@ -1854,8 +1854,8 @@ async function seedVolunteerCatalog() {
 		{ slug: 'health-education', name: 'Health awareness sessions', category: 'health' },
 
 		// Education
-		{ slug: 'tutoring-primary', name: 'Tutoring — primary', category: 'education' },
-		{ slug: 'tutoring-secondary', name: 'Tutoring — secondary', category: 'education' },
+		{ slug: 'tutoring-primary', name: 'Tutoring, primary', category: 'education' },
+		{ slug: 'tutoring-secondary', name: 'Tutoring, secondary', category: 'education' },
 		{ slug: 'exam-preparation', name: 'Exam preparation', category: 'education' },
 		{ slug: 'mentoring', name: 'Mentoring a young person', category: 'education' },
 		{ slug: 'literacy', name: 'Adult literacy', category: 'education' },
@@ -2041,7 +2041,7 @@ async function seedVolunteerCatalog() {
 	}
 
 	console.log(
-		`✓ volunteer catalogue — ${skills.length} skills, ${slots.length} time slots, ${professions.length} professions`
+		`✓ volunteer catalogue: ${skills.length} skills, ${slots.length} time slots, ${professions.length} professions`
 	);
 }
 
@@ -2162,7 +2162,7 @@ async function seedApply() {
 		},
 		{
 			slug: 'medical-equipment',
-			name: 'Equipment — a wheelchair, crutches, glasses',
+			name: 'Equipment: a wheelchair, crutches, glasses',
 			category: 'health',
 			pillar: 'medical-hardship'
 		},
@@ -2288,7 +2288,7 @@ async function seedApply() {
 			title: 'Apply for support',
 			introText: 'For yourself, or for someone you are looking out for.',
 			successMessage:
-				'We have your application. Someone will read it and be in touch — keep your reference number.',
+				'We have your application. Someone will read it and be in touch. Please keep your reference number.',
 			requiresDocuments: false,
 			isLowBarrier: true,
 			referencePrefix: 'APP',
@@ -2297,7 +2297,7 @@ async function seedApply() {
 		})
 		.onConflictDoNothing({ target: schema.formDefinitions.slug });
 
-	console.log(`✓ apply — ${languageRows.length} languages, ${needs.length} kinds of help`);
+	console.log(`✓ apply: ${languageRows.length} languages, ${needs.length} kinds of help`);
 }
 
 /* ==========================================================================
@@ -2339,7 +2339,7 @@ async function seedInKindCategories() {
 			description: 'Coats, jumpers, trousers, dresses, school-age and adult.',
 			defaultUnit: 'bags',
 			requiresSizing: true,
-			acceptanceNote: 'Clean and wearable, please — anything torn or stained we cannot pass on.'
+			acceptanceNote: 'Clean and wearable, please. Anything torn or stained we cannot pass on.'
 		},
 		{
 			slug: 'shoes',
@@ -2370,7 +2370,7 @@ async function seedInKindCategories() {
 		},
 		{
 			slug: 'dry-food',
-			name: 'Food — dry and packaged',
+			name: 'Food, dry and packaged',
 			icon: 'Wheat',
 			description: 'Teff, rice, oil, pulses, tinned and packaged food.',
 			defaultUnit: 'sacks',
@@ -2379,13 +2379,13 @@ async function seedInKindCategories() {
 		},
 		{
 			slug: 'fresh-food',
-			name: 'Food — fresh and prepared',
+			name: 'Food, fresh and prepared',
 			icon: 'Apple',
 			description: 'Vegetables, fruit, dairy, cooked meals for an event.',
 			defaultUnit: 'kg',
 			requiresExpiry: true,
 			acceptanceNote:
-				'Collected the same day and distributed immediately — tell us when it is ready.'
+				'Collected the same day and distributed immediately. Tell us when it is ready.'
 		},
 		{
 			slug: 'hygiene',
@@ -2434,7 +2434,7 @@ async function seedInKindCategories() {
 			description: 'Chairs, tables, desks, shelving, wardrobes.',
 			defaultUnit: 'items',
 			requiresTransport: true,
-			acceptanceNote: 'We collect furniture ourselves — tell us about stairs and access.'
+			acceptanceNote: 'We collect furniture ourselves. Tell us about stairs and access.'
 		},
 		{
 			slug: 'appliances',
@@ -2486,7 +2486,7 @@ async function seedInKindCategories() {
 			icon: 'ToyBrick',
 			defaultUnit: 'boxes',
 			acceptanceNote:
-				'Complete sets, please — a puzzle with pieces missing disappoints a child twice.'
+				'Complete sets, please. A puzzle with pieces missing disappoints a child twice.'
 		},
 		{
 			slug: 'building-materials',
@@ -2591,7 +2591,7 @@ async function seedInKindCategories() {
 			.onConflictDoNothing({ target: schema.inKindCategories.slug });
 	}
 
-	console.log(`✓ in-kind — ${categories.length} kinds of gift`);
+	console.log(`✓ in-kind: ${categories.length} kinds of gift`);
 }
 
 /* ==========================================================================
@@ -2761,7 +2761,7 @@ async function seedContact() {
 			);
 	}
 
-	console.log(`✓ contact — ${subjects.length} enquiry topics, 1 office`);
+	console.log(`✓ contact: ${subjects.length} enquiry topics, 1 office`);
 }
 
 /* ==========================================================================
@@ -2778,7 +2778,7 @@ async function seedTranslations() {
 		{ key: 'form.programme', en: 'Programme', group: 'form' },
 		{
 			key: 'form.thank_you',
-			en: 'Thank you — we have your request',
+			en: 'Thank you, we have your request',
 			group: 'form'
 		},
 		{ key: 'form.your_reference', en: 'Your reference number', group: 'form' },
@@ -2805,7 +2805,7 @@ async function seedTranslations() {
 		{ key: 'donate.monthly', en: 'Monthly', group: 'donate' },
 		{
 			key: 'donate.monthly_note',
-			en: 'We will remind you each month — bank transfers in Ethiopia cannot be charged automatically.',
+			en: 'We will remind you each month. Bank transfers in Ethiopia cannot be charged automatically.',
 			group: 'donate'
 		},
 		{ key: 'donate.amount', en: 'Amount', group: 'donate' },
@@ -3133,7 +3133,7 @@ async function seedAboutPage() {
 			heroImage: 'image2.webp',
 			storyBody: ABOUT_STORY_BODY,
 			missionText:
-				'To stand with families in Ethiopia through medical hardship, old age, mental strain and the cost of education — with practical help, and with presence.',
+				'To stand with families in Ethiopia through medical hardship, old age, mental strain and the cost of education, with practical help and with presence.',
 			visionText:
 				'An Ethiopia where a medical emergency does not bankrupt a family, an elder is not alone, asking for help with your mental health costs nothing socially, and a bright child stays in school regardless of what their family earns.',
 			memoriamName: 'Shimeles Abera',
@@ -3235,10 +3235,10 @@ async function seedBlog() {
 			body:
 				'<p>The referral letter is usually the first thing we see. It is a single sheet, often folded into quarters, and it names a procedure and a hospital and nothing about how any of it will be paid for.</p>' +
 				'<h2>The line items</h2>' +
-				'<p>On the case we closed in July, the total came to 41,200 birr. Of that, 28,000 was the procedure itself, 7,400 was four nights on the ward, 3,600 was medication for the eight weeks afterwards, and 2,200 was transport — the family lives two hours outside the city, and someone had to be with her.</p>' +
+				'<p>On the case we closed in July, the total came to 41,200 birr. Of that, 28,000 was the procedure itself, 7,400 was four nights on the ward, 3,600 was medication for the eight weeks afterwards, and 2,200 was transport, because the family lives two hours outside the city, and someone had to be with her.</p>' +
 				'<p>That last line is the one people are surprised by. It is also the one that quietly decides whether a family follows through on a treatment plan or gives up on it halfway.</p>' +
 				'<h2>Why we publish it</h2>' +
-				'<p>We pay the hospital directly and we keep the receipt. A nonprofit that says <strong>“we helped a family”</strong> is making a claim. One that can say “we paid this hospital this amount on this date for this case” is showing its work — and that is what earns the next gift.</p>' +
+				'<p>We pay the hospital directly and we keep the receipt. A nonprofit that says <strong>“we helped a family”</strong> is making a claim. One that can say “we paid this hospital this amount on this date for this case” is showing its work, and that is what earns the next gift.</p>' +
 				'<blockquote>Every disbursement in our records names the supplier, the amount and the date. None of it is aggregated away.</blockquote>',
 			gallery: ['image8.webp', 'image9.webp', 'image10.webp']
 		},
@@ -3271,7 +3271,7 @@ async function seedBlog() {
 			daysAgo: 27,
 			body:
 				'<p>Meron was seventeen when she stopped going to school, and the reason was arithmetic rather than anything else. Her mother sells vegetables. The school fees, the uniform and the exercise books came to slightly more than the household could carry, and Meron was the one who noticed first and stopped asking.</p>' +
-				'<p>She was out for two years. The thing she says about those two years is not that they were hard — she is matter-of-fact about hard — but that she thought the decision was permanent, because everyone she knew who had left had stayed left.</p>' +
+				'<p>She was out for two years. The thing she says about those two years is not that they were hard, because she is matter-of-fact about hard, but that she thought the decision was permanent, because everyone she knew who had left had stayed left.</p>' +
 				'<h2>Going back</h2>' +
 				'<p>The youth education pillar covers fees, uniform and materials for a full academic year at a time, renewable. It is deliberately not a one-off grant: a child who returns for a term and drops out again is worse off than one who never returned, because now they know exactly what they are missing.</p>' +
 				'<p>Meron sat her exams last month. She wants to study accounting, on the grounds that she has been doing the family’s books since she was twelve and may as well be paid for it.</p>',
@@ -3308,7 +3308,7 @@ async function seedBlog() {
 				'<h2>The shape of the day</h2>' +
 				'<p>Fourteen volunteers, arriving at seven. Two on the list at the door, four carrying, four handing out, two on the vehicle, two floating. Everyone knows which they are before they arrive, because the alternative is fourteen people standing in a room at seven in the morning deciding.</p>' +
 				'<h2>What we ask of a volunteer</h2>' +
-				'<ul><li>Safeguarding clearance before any placement that involves children or elders — no exceptions, and no “we will sort it out afterwards”.</li><li>A commitment to a shift pattern rather than to individual days, because the families on the other end need the same faces.</li><li>Turning up. Which sounds obvious and is the whole thing.</li></ul>' +
+				'<ul><li>Safeguarding clearance before any placement that involves children or elders. No exceptions, and no “we will sort it out afterwards”.</li><li>A commitment to a shift pattern rather than to individual days, because the families on the other end need the same faces.</li><li>Turning up. Which sounds obvious and is the whole thing.</li></ul>' +
 				'<p>If that sounds like something you have a Saturday for, the volunteer form is on this site.</p>',
 			gallery: ['image17.webp', 'image20.webp']
 		},
@@ -3324,9 +3324,9 @@ async function seedBlog() {
 			body:
 				'<p>Every application that reaches us gets read. Not every one gets funded, and the honest reason is that the money runs out before the need does.</p>' +
 				'<h2>The process</h2>' +
-				'<ol><li>An application arrives — through this site, through a partner clinic, or because a neighbour told us.</li><li>A caseworker verifies the circumstances. This means a conversation and, where there is one, a document: a referral letter, a school fee notice, a diagnosis.</li><li>The case goes to a review with the pillar lead, who decides on the amount and the schedule.</li><li>We pay the supplier directly and record it.</li></ol>' +
+				'<ol><li>An application arrives, through this site, through a partner clinic, or because a neighbour told us.</li><li>A caseworker verifies the circumstances. This means a conversation and, where there is one, a document: a referral letter, a school fee notice, a diagnosis.</li><li>The case goes to a review with the pillar lead, who decides on the amount and the schedule.</li><li>We pay the supplier directly and record it.</li></ol>' +
 				'<h2>What we weigh</h2>' +
-				'<p>Urgency, first — a treatment with a date on it outranks one without. Then whether our help is decisive: 40,000 birr that completes a treatment plan does more than 40,000 birr against a bill of half a million. Then household circumstances, which is where a caseworker’s judgement does real work and where we accept that judgement is not the same as a formula.</p>' +
+				'<p>Urgency, first: a treatment with a date on it outranks one without. Then whether our help is decisive: 40,000 birr that completes a treatment plan does more than 40,000 birr against a bill of half a million. Then household circumstances, which is where a caseworker’s judgement does real work and where we accept that judgement is not the same as a formula.</p>' +
 				'<p>If we cannot fund a case, we say so, and we say why. A silent no is the worst thing an organisation like this can do to a family that has already had to ask.</p>',
 			gallery: ['image3.webp', 'image4.webp', 'image5.webp']
 		}
@@ -3423,7 +3423,7 @@ async function seedTestimonials() {
 				'They paid the hospital directly and showed me the receipt. Nobody had ever handed me a piece of paper like that before.',
 			body:
 				'<p>My daughter needed a procedure we could not pay for. I had the referral letter for three weeks before I found anyone who would even read it.</p>' +
-				'<p>What I remember is not the money. It is that someone sat down and went through it with me, line by line, and then told me exactly what would happen next — and then that is what happened.</p>',
+				'<p>What I remember is not the money. It is that someone sat down and went through it with me, line by line, and then told me exactly what would happen next, and then that is what happened.</p>',
 			pillar: 'medical-hardship',
 			photo: 'image7.webp',
 			featured: true,
@@ -3434,7 +3434,7 @@ async function seedTestimonials() {
 			name: 'Ato Bekele',
 			role: 'Elder, Gullele',
 			quote:
-				'Thursday afternoon is the part of my week I count towards. Not the food parcel — the company.',
+				'Thursday afternoon is the part of my week I count towards. Not the food parcel, the company.',
 			pillar: 'elder-care',
 			photo: 'image21.webp',
 			featured: true,

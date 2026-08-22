@@ -89,8 +89,8 @@
 		{#if isForbidden}
 			<p class="mt-6 border-t border-border pt-4 text-sm text-muted-foreground">
 				If you need this for your work, an administrator can grant it under
-				<span class="font-medium text-foreground">Configuration → Users</span> — either a programme assignment
-				or the specific permission.
+				<span class="font-medium text-foreground">Configuration → Users</span>. Either a programme
+				assignment or the specific permission.
 			</p>
 		{/if}
 	</div>

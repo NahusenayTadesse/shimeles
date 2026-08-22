@@ -8,6 +8,11 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { files } from '$lib/server/db/schema';
 import { invalidateStatCache } from '$lib/server/fileCache';
+// Declared in a module neither side owns: the schema generator applies the same
+// ceiling in a schema the browser also builds, and it cannot import this file.
+import { MAX_UPLOAD_BYTES } from '$lib/forms/uploads';
+
+export { MAX_UPLOAD_BYTES };
 
 /**
  * File storage.
@@ -25,13 +30,6 @@ import { invalidateStatCache } from '$lib/server/fileCache';
  */
 
 const FILES_DIR = env.FILES_DIR ?? '.tempFiles';
-
-/**
- * The ceiling for anything written to disk, matching the per-field limit the
- * dynamic form applies. Declared here rather than imported from
- * `$lib/server/forms` so the storage layer does not depend on the form engine.
- */
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 if (!fs.existsSync(FILES_DIR)) fs.mkdirSync(FILES_DIR, { recursive: true });
 

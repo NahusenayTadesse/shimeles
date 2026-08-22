@@ -57,9 +57,9 @@
 		if (form?.error) {
 			toast.error(form.error);
 		} else if (form?.ok) {
-			toast.success(form.emailed ? 'Saved — the donor has been told.' : 'Saved');
+			toast.success(form.emailed ? 'Saved. The donor has been told.' : 'Saved');
 			lastAction = {
-				message: form.emailed ? 'Saved — the donor has been told.' : 'Saved.',
+				message: form.emailed ? 'Saved. The donor has been told.' : 'Saved.',
 				at: Date.now()
 			};
 			if (form.notifyFailed) {
@@ -93,9 +93,9 @@
 		other: 'Other'
 	};
 
-	const fmt = (value: Date | string | null) => formatDate(value, '—');
+	const fmt = (value: Date | string | null) => formatDate(value, '-');
 
-	const fmtDay = (value: Date | string | null) => formatDayLong(value, '—');
+	const fmtDay = (value: Date | string | null) => formatDayLong(value, '-');
 
 	const today = new Date().toISOString().slice(0, 10);
 
@@ -177,7 +177,7 @@
 			<TriangleAlert class="size-4" />
 			<Alert.Title>The donor flagged restricted items</Alert.Title>
 			<Alert.Description>
-				{o.restrictedItemsNote ?? 'No detail given — ask before accepting.'}
+				{o.restrictedItemsNote ?? 'No detail given. Ask before accepting.'}
 				<span class="mt-1 block">
 					Medicine and powered equipment carry rules. Check before this is accepted, not after it is
 					in the store room.
@@ -202,7 +202,7 @@
 			<Alert.Title>Something here has a use-by date</Alert.Title>
 			<Alert.Description>
 				{#each expiringLines as line (line.id)}
-					<span class="block">{line.description} — use by {fmt(line.expiresOn)}</span>
+					<span class="block">{line.description}, use by {fmt(line.expiresOn)}</span>
 				{/each}
 			</Alert.Description>
 		</Alert.Root>
@@ -215,7 +215,7 @@
 			<Alert.Description>
 				{#each pausedLines as line (line.id)}
 					<span class="block">
-						{line.description} — {line.categoryName} is paused on the gift categories screen.
+						{line.description}: {line.categoryName} is paused on the gift categories screen.
 					</span>
 				{/each}
 			</Alert.Description>
@@ -303,7 +303,7 @@
 								<div class="min-w-0">
 									<p class="font-medium">
 										{item.quantity}
-										{item.unit} — {item.description}
+										{item.unit}: {item.description}
 									</p>
 									<p
 										class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
@@ -360,7 +360,7 @@
 									Took in {item.acceptedQuantity}
 									{item.unit}{item.acceptedQuantity < item.quantity
 										? ` of the ${item.quantity} offered`
-										: ''}{item.intakeNote ? ` — ${item.intakeNote}` : ''}
+										: ''}{item.intakeNote ? `, ${item.intakeNote}` : ''}
 								</p>
 							{/if}
 
@@ -375,7 +375,7 @@
 
 				{#if o.estimatedValue}
 					<p class="mt-4 text-xs text-muted-foreground">
-						Estimated at {formatMoney(o.estimatedValue, o.currency)} — {VALUATION_LABELS[
+						Estimated at {formatMoney(o.estimatedValue, o.currency)}, {VALUATION_LABELS[
 							o.valuationBasis
 						]}. This is the donor's own figure, kept for the annual report and their receipt. It is
 						never counted as money raised.
@@ -405,8 +405,8 @@
 						{/each}
 					</div>
 					<p class="mt-3 text-xs text-muted-foreground">
-						Private files — these are often taken inside someone's home, and only signed-in staff
-						can open them.
+						Private files. These are often taken inside someone's home, and only signed-in staff can
+						open them.
 					</p>
 				</Card.Root>
 			{/if}
@@ -450,7 +450,7 @@
 						<p class="flex items-start gap-2">
 							<MapPin class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 							<span>
-								{o.pickupAddressLine ?? '—'}{o.pickupCity ? `, ${o.pickupCity}` : ''}
+								{o.pickupAddressLine ?? '-'}{o.pickupCity ? `, ${o.pickupCity}` : ''}
 								{#if o.pickupLandmark}
 									<span class="block text-muted-foreground">{o.pickupLandmark}</span>
 								{/if}
@@ -593,7 +593,7 @@
 						{#if o.consentToContactAt}
 							Consented to being contacted on {fmt(o.consentToContactAt)}.
 						{:else}
-							No contact consent recorded — ring only about this offer.
+							No contact consent recorded. Ring only about this offer.
 						{/if}
 					</p>
 				</div>
@@ -673,7 +673,7 @@
 				</label>
 			{:else}
 				<p class="text-xs text-muted-foreground">
-					No email address — ring {o.donorPhone ?? 'them'} to confirm.
+					No email address. Ring {o.donorPhone ?? 'them'} to confirm.
 				</p>
 			{/if}
 
@@ -792,8 +792,8 @@
 		<Dialog.Header>
 			<Dialog.Title>Count it in</Dialog.Title>
 			<Dialog.Description>
-				What actually arrived, line by line. Leave a box alone if all of it came — put a zero if a
-				line never turned up.
+				What actually arrived, line by line. Leave a box alone if all of it came, and put a zero if
+				a line never turned up.
 			</Dialog.Description>
 		</Dialog.Header>
 

@@ -28,7 +28,7 @@
 			label: 'Licence required',
 			type: 'select',
 			items: yesNo,
-			placeholder: 'Almost always yes — only trained-but-unlicensed roles are No'
+			placeholder: 'Almost always yes; only trained-but-unlicensed roles are No'
 		},
 		{ name: 'description', label: 'Internal note', type: 'textarea', rows: 2 },
 		{ name: 'isActive', label: 'Offered on the form', type: 'select', items: yesNo },
@@ -70,7 +70,7 @@
 
 <ContentPage
 	title="Medical and professional roles"
-	description="The professions a volunteer can claim on the public form. Each claim becomes its own credential record with its own verification state, and an unverified one holds the volunteer out of approval and placement — so this list decides who ends up in front of the safeguarding gate."
+	description="The professions a volunteer can claim on the public form. Each claim becomes its own credential record with its own verification state, and an unverified one holds the volunteer out of approval and placement, so this list decides who ends up in front of the safeguarding gate."
 	addTitle="Add profession"
 	addForm={data.addForm}
 	{fields}

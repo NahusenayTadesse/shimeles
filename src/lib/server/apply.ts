@@ -20,6 +20,7 @@ import { defaultStatus } from '$lib/server/workflow';
 import { saveUploadedFile } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
 import { toMinor } from '$lib/money';
+import type { PersonGender } from '$lib/gender';
 import { cached } from '$lib/server/cache';
 import type { SubmitResult } from '$lib/server/submissions';
 
@@ -181,7 +182,7 @@ export type ApplySubmission = {
 	subjectName: string | null;
 	subjectDateOfBirth: string | null;
 	subjectApproximateAge: number | null;
-	subjectGender: 'female' | 'male' | 'other' | 'undisclosed';
+	subjectGender: PersonGender;
 	subjectPhone: string | null;
 	city: string | null;
 	addressLine: string | null;
@@ -583,7 +584,7 @@ export async function acceptApplication(
 				email: subject?.applyingFor === 'self' ? submission.email : null,
 				regionId,
 				dateOfBirth: subject?.dateOfBirth ?? null,
-				gender: subject?.gender ?? 'undisclosed',
+				gender: subject?.gender ?? 'prefer_not_to_say',
 				languageId: subject?.writtenLanguageId ?? null,
 				createdBy: userId,
 				updatedBy: userId

@@ -29,7 +29,7 @@
 
 <ContentPage
 	title="Skill groups"
-	description="The headings the skills list is broken into on the public form. A skill whose group is removed still appears, under 'Other skills' — nothing a volunteer can claim quietly disappears because of a tidy-up here."
+	description="The headings the skills list is broken into on the public form. A skill whose group is removed still appears, under 'Other skills', so nothing a volunteer can claim quietly disappears because of a tidy-up here."
 	addTitle="Add skill group"
 	addForm={data.addForm}
 	{fields}

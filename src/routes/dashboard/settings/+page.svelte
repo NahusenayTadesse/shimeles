@@ -27,7 +27,7 @@
 
 	$effect(() => {
 		if (form?.saved) toast.success(`${title(form.saved)} settings saved`);
-		if (form?.errors) toast.error('Some settings could not be saved — see the highlighted fields.');
+		if (form?.errors) toast.error('Some settings could not be saved. See the highlighted fields.');
 	});
 </script>
 
@@ -39,7 +39,7 @@
 		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
 			Everything global on the public site: contact details, social links, bank details, homepage
 			copy. This screen builds itself from the settings that exist, so a new setting appears here
-			the moment it is added — no developer involved.
+			the moment it is added, with no developer involved.
 		</p>
 	</div>
 

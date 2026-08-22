@@ -41,7 +41,7 @@
 	];
 
 	const categoryName = (id: number | null) =>
-		data.categories.find((category) => category.id === id)?.name ?? '—';
+		data.categories.find((category) => category.id === id)?.name ?? '-';
 
 	const columns = $derived([
 		indexColumn,
@@ -54,7 +54,7 @@
 		{
 			accessorKey: 'requiresCredential',
 			header: 'Licence',
-			cell: ({ row }: any) => (row.original.requiresCredential ? 'Required' : '—')
+			cell: ({ row }: any) => (row.original.requiresCredential ? 'Required' : '-')
 		},
 		column('sortOrder', 'Order'),
 		editColumn({ data: data.editForm, fields, title: 'Edit skill', keys }),
@@ -64,7 +64,7 @@
 
 <ContentPage
 	title="Volunteer skills"
-	description="What a volunteer can tick on the public form. Every skill here is a filter on the volunteer list — adding one makes it answerable, and a skill marked as needing a licence sends whoever claims it through credential verification before they can be placed."
+	description="What a volunteer can tick on the public form. Every skill here is a filter on the volunteer list. Adding one makes it answerable, and a skill marked as needing a licence sends whoever claims it through credential verification before they can be placed."
 	addTitle="Add skill"
 	addForm={data.addForm}
 	{fields}

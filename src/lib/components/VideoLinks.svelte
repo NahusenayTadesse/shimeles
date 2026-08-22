@@ -190,8 +190,8 @@
 			</p>
 		{:else if parsed}
 			<p class="text-sm text-muted-foreground">
-				Video <code>{parsed.id}</code>{parsed.start ? `, starting at ${parsed.start}s` : ''} — ready to
-				add.
+				Video <code>{parsed.id}</code>{parsed.start ? `, starting at ${parsed.start}s` : ''}. Ready
+				to add.
 			</p>
 		{/if}
 	</form>

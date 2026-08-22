@@ -8,7 +8,6 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
@@ -33,6 +32,7 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { URGENCY } from './schema';
+	import { PERSON_GENDER_OPTIONS, genderLabel as genderLabelFor } from '$lib/gender';
 
 	let { data } = $props();
 
@@ -150,7 +150,7 @@
 		whenever: 'Whenever you can',
 		weeks: 'Within a few weeks',
 		days: 'Within days',
-		immediate: 'Right now — it is an emergency'
+		immediate: 'Right now, it is an emergency'
 	};
 
 	/** Needs are filtered by the chosen programme, if any. */
@@ -173,16 +173,7 @@
 			.map((need) => ({ name: need.name, hint: need.evidenceHint! }))
 	);
 
-	const GENDERS = [
-		{ value: 'undisclosed', name: 'Prefer not to say' },
-		{ value: 'female', name: 'Female' },
-		{ value: 'male', name: 'Male' },
-		{ value: 'other', name: 'Other' }
-	];
-
-	const genderLabel = $derived(
-		GENDERS.find((option) => option.value === $form.subjectGender)?.name ?? 'Prefer not to say'
-	);
+	const genderLabel = $derived(genderLabelFor($form.subjectGender));
 
 	const chosenLanguage = $derived(
 		data.catalog.languages.find((language) => language.id === $form.writtenLanguageId) ?? null
@@ -197,12 +188,12 @@
 		documentNames = files.map((file) => file.name);
 
 		if (files.length > MAX_DOCUMENTS) {
-			documentError = `You have chosen ${files.length} files — please keep it to ${MAX_DOCUMENTS} or fewer.`;
+			documentError = `You have chosen ${files.length} files. Please keep it to ${MAX_DOCUMENTS} or fewer.`;
 			return;
 		}
 		const tooBig = files.filter((file) => file.size > MAX_DOCUMENT_MB * 1024 * 1024);
 		if (tooBig.length) {
-			documentError = `${tooBig.map((file) => file.name).join(', ')} — over ${MAX_DOCUMENT_MB} MB. Please choose a smaller file.`;
+			documentError = `${tooBig.map((file) => file.name).join(', ')}: over ${MAX_DOCUMENT_MB} MB. Please choose a smaller file.`;
 			return;
 		}
 		documentError = null;
@@ -246,8 +237,8 @@
 			</div>
 			<h2 class="font-heading text-2xl font-semibold">We have your application</h2>
 			<p class="max-w-prose text-muted-foreground">
-				Someone will read it and get in touch. If anything changes in the meantime — or if things
-				get worse — please call us rather than waiting.
+				Someone will read it and get in touch. If anything changes in the meantime, or if things get
+				worse, please call us rather than waiting.
 			</p>
 			{#if confirmation}
 				<button
@@ -273,7 +264,7 @@
 			<div class="mt-2 w-full max-w-prose rounded-lg border bg-muted/40 p-5 text-left">
 				<h3 class="font-heading text-sm font-semibold">What happens next</h3>
 				<ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm text-muted-foreground">
-					<li>A caseworker reads your application — usually within a few working days.</li>
+					<li>A caseworker reads your application, usually within a few working days.</li>
 					<li>
 						We may call you to ask about anything that was not clear, so please keep the number you
 						gave us switched on.
@@ -314,7 +305,7 @@
 		     will not stop the submit but the server will refuse it. Saying which
 		     is which up front costs a sentence. -->
 		<p class="mb-6 text-sm text-muted-foreground">
-			We can work with gaps — answer what you can. The questions marked
+			We can work with gaps, so answer what you can. The questions marked
 			<span class="text-destructive">*</span> are the few we do need before anyone can look at your application.
 		</p>
 
@@ -324,7 +315,7 @@
 				<div>
 					<p class="font-medium">Write in whatever language you are comfortable in</p>
 					<p class="mt-1 text-sm text-muted-foreground">
-						Amharic, Afaan Oromo, Tigrinya, Somali, English — whichever you think in. Nobody is
+						Amharic, Afaan Oromo, Tigrinya, Somali, English: whichever you think in. Nobody is
 						assessed on their writing, and we will find someone who reads it. Just tell us below
 						which language you have used.
 					</p>
@@ -404,7 +395,7 @@
 					{/each}
 				</div>
 
-				<Separator class="my-6" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="grid gap-5 md:grid-cols-2">
 					<InputComp
@@ -461,7 +452,7 @@
 					</div>
 				</div>
 				<p class="mt-3 text-xs text-muted-foreground">
-					A phone number or an email — one is enough. We need some way to come back to you.
+					A phone number or an email, one is enough. We need some way to come back to you.
 				</p>
 			</Card.Root>
 
@@ -474,8 +465,8 @@
 					</h2>
 				</div>
 				<p class="mb-5 text-sm text-muted-foreground">
-					Everything here is optional. Fill in what you know — an incomplete application is far
-					better than none, and we can ask the rest when we speak.
+					Everything here is optional. Fill in what you know, because an incomplete application is
+					far better than none, and we can ask the rest when we speak.
 				</p>
 
 				<div class="grid gap-5 md:grid-cols-2">
@@ -531,7 +522,7 @@
 						>
 							<Select.Trigger class="w-full">{genderLabel}</Select.Trigger>
 							<Select.Content>
-								{#each GENDERS as option (option.value)}
+								{#each PERSON_GENDER_OPTIONS as option (option.value)}
 									<Select.Item value={option.value}>{option.name}</Select.Item>
 								{/each}
 							</Select.Content>
@@ -622,7 +613,7 @@
 					/>
 				</div>
 
-				<Separator class="my-6" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="grid gap-5 md:grid-cols-2">
 					<div class="flex flex-col gap-2">
@@ -684,7 +675,7 @@
 							id="otherSupport"
 							rows={2}
 							bind:value={$form.otherSupport}
-							placeholder="Another charity, a government programme, family — so we add to it rather than repeat it"
+							placeholder="Another charity, a government programme, family, so we add to it rather than repeat it"
 						/>
 					</div>
 				</div>
@@ -698,7 +689,7 @@
 				</div>
 				<p class="mb-5 text-sm text-muted-foreground">
 					Tick anything that applies. If none of it fits, leave them all and just write to us below
-					— we read every application either way.
+					We read every application either way.
 				</p>
 
 				{#if data.catalog.pillars.length}
@@ -726,7 +717,7 @@
 							{/each}
 						</div>
 						<p class="text-xs text-muted-foreground">
-							Not knowing is fine — we work it out from what you tell us.
+							Not knowing is fine, we work it out from what you tell us.
 						</p>
 					</div>
 				{/if}
@@ -814,7 +805,7 @@
 					{/each}
 				</div>
 
-				<Separator class="my-6" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="flex flex-col gap-2">
 					<Label for="story"
@@ -858,7 +849,7 @@
 					<h2 class="font-heading text-xl font-semibold">Anything that supports this?</h2>
 				</div>
 				<p class="mb-4 text-sm text-muted-foreground">
-					A medical letter, a school report, a prescription, a photograph of a document. Optional —
+					A medical letter, a school report, a prescription, a photograph of a document. Optional,
 					send what you have, and nothing if you have nothing. Up to {MAX_DOCUMENTS} files, {MAX_DOCUMENT_MB}
 					MB each.
 				</p>
@@ -868,7 +859,7 @@
 						<p class="mb-1 text-xs font-medium">Helpful for what you ticked:</p>
 						<ul class="ml-4 list-disc text-xs text-muted-foreground">
 							{#each evidenceHints as hint (hint.name)}
-								<li>{hint.name} — {hint.hint}</li>
+								<li>{hint.name}: {hint.hint}</li>
 							{/each}
 						</ul>
 					</div>
@@ -933,7 +924,7 @@
 					/>
 				</div>
 
-				<Separator class="my-6" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<!-- Not politeness. Someone applying about a family situation or a
 				     mental health crisis may not be safe to ring at home, and a
@@ -991,7 +982,7 @@
 					</CheckboxField>
 				</div>
 
-				<Separator class="my-6" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<p class="text-sm text-muted-foreground">

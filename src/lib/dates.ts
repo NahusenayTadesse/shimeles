@@ -55,11 +55,11 @@ const format = (value: DateInput, options: Intl.DateTimeFormatOptions, fallback:
 };
 
 /** `22 Aug 2026`. The default everywhere a date is shown. */
-export const formatDate = (value: DateInput, fallback = '—'): string =>
+export const formatDate = (value: DateInput, fallback = '-'): string =>
 	format(value, { day: 'numeric', month: 'short', year: 'numeric' }, fallback);
 
 /** `22 Aug 2026, 14:05`. For audit rows and anything where the hour matters. */
-export const formatDateTime = (value: DateInput, fallback = '—'): string =>
+export const formatDateTime = (value: DateInput, fallback = '-'): string =>
 	format(
 		value,
 		{ day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
@@ -67,19 +67,19 @@ export const formatDateTime = (value: DateInput, fallback = '—'): string =>
 	);
 
 /** `Monday, 22 August`. For a handover someone has to turn up to — the weekday is the useful part. */
-export const formatDayLong = (value: DateInput, fallback = '—'): string =>
+export const formatDayLong = (value: DateInput, fallback = '-'): string =>
 	format(value, { weekday: 'long', day: 'numeric', month: 'long' }, fallback);
 
 /** `22 August 2026`. For a public page, where there is room for the whole word. */
-export const formatDateLong = (value: DateInput, fallback = '—'): string =>
+export const formatDateLong = (value: DateInput, fallback = '-'): string =>
 	format(value, { day: 'numeric', month: 'long', year: 'numeric' }, fallback);
 
 /** `22 Aug`. For a dense table cell where the year is obvious from context. */
-export const formatDateShort = (value: DateInput, fallback = '—'): string =>
+export const formatDateShort = (value: DateInput, fallback = '-'): string =>
 	format(value, { day: 'numeric', month: 'short' }, fallback);
 
 /** `Aug 2026`. For the chart axes on the impact screen. */
-export const formatMonth = (value: DateInput, fallback = '—'): string =>
+export const formatMonth = (value: DateInput, fallback = '-'): string =>
 	format(value, { month: 'short', year: 'numeric' }, fallback);
 
 /** `2026-08-22` — for filenames and anything a machine reads back. */
@@ -99,7 +99,7 @@ export const formatDateIso = (value: DateInput, fallback = ''): string => {
  */
 export function formatRelative(value: DateInput, now = Date.now()): string {
 	const date = toDate(value);
-	if (!date) return '—';
+	if (!date) return '-';
 
 	const seconds = Math.round((now - date.getTime()) / 1000);
 	const future = seconds < 0;

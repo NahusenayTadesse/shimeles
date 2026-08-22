@@ -8,7 +8,6 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
@@ -32,6 +31,7 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { PROFICIENCY } from './schema';
+	import { genderLabel } from '$lib/gender';
 
 	let { data } = $props();
 
@@ -187,13 +187,6 @@
 
 	/* --- Availability ------------------------------------------------------ */
 
-	const GENDER_LABELS: Record<string, string> = {
-		female: 'Female',
-		male: 'Male',
-		other: 'Other',
-		prefer_not_to_say: 'Prefer not to say'
-	};
-
 	/** Two example lines, so the "one per line" instruction is shown not just said. */
 	const OTHER_SKILLS_PLACEHOLDER = 'Sign language\nMinibus driving';
 
@@ -310,7 +303,7 @@
 			<h2 class="font-heading text-2xl font-semibold">Thank you for offering</h2>
 			<p class="max-w-prose text-muted-foreground">
 				We have your application. Because our volunteers meet people at vulnerable moments, every
-				application goes through a safeguarding review before placement — we will be in touch about
+				application goes through a safeguarding review before placement. We will be in touch about
 				the next step.
 			</p>
 			<button
@@ -322,7 +315,7 @@
 				<Copy class="size-4 opacity-60" />
 			</button>
 			<p class="text-xs text-muted-foreground">
-				Keep this reference — it is how we find you if you get in touch.
+				Keep this reference. It is how we find you if you get in touch.
 			</p>
 		</Card.Root>
 	{:else}
@@ -506,7 +499,7 @@
 							onValueChange={(value) => ($form.gender = (value || null) as typeof $form.gender)}
 						>
 							<Select.Trigger class="w-full">
-								{GENDER_LABELS[$form.gender ?? 'prefer_not_to_say']}
+								{genderLabel($form.gender)}
 							</Select.Trigger>
 							<Select.Content>
 								<Select.Item value="female">Female</Select.Item>
@@ -518,7 +511,7 @@
 					</div>
 				</div>
 
-				<Separator class="my-7" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="mb-4">
 					<h3 class="font-medium">Emergency contact</h3>
@@ -676,7 +669,7 @@
 						{/each}
 					</div>
 
-					<Separator class="my-7" />
+					<div class="my-2" aria-hidden="true"></div>
 
 					<div class="flex flex-col gap-2">
 						<Label for="otherSkills">Anything else? One per line.</Label>
@@ -789,7 +782,7 @@
 				</div>
 				<p class="mb-5 text-sm text-muted-foreground">
 					Medical, mental health or allied health. We verify every licence with the issuing body
-					before any placement involving direct care — so please give us the details exactly as they
+					before any placement involving direct care, so please give us the details exactly as they
 					appear on it.
 				</p>
 
@@ -802,7 +795,7 @@
 					<span class="text-sm">
 						Yes, I hold a professional licence
 						{#if claimsCredentialSkill}
-							<span class="text-muted-foreground"> — required by a skill you ticked above </span>
+							<span class="text-muted-foreground"> (required by a skill you ticked above) </span>
 						{/if}
 					</span>
 				</label>
@@ -1047,8 +1040,6 @@
 						labelClass=""
 					/>
 
-					<Separator />
-
 					<div class="flex flex-col gap-3">
 						<Label>Have you ever been convicted of a criminal offence?</Label>
 						<p class="text-sm text-muted-foreground">
@@ -1084,8 +1075,6 @@
 						{/if}
 					</div>
 
-					<Separator />
-
 					<CheckboxField
 						{errors}
 						bind:checked={$form.consentBackgroundCheck}
@@ -1118,7 +1107,7 @@
 					</CheckboxField>
 				</div>
 
-				<Separator class="my-7" />
+				<div class="my-2" aria-hidden="true"></div>
 
 				<div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<p class="text-sm text-muted-foreground">

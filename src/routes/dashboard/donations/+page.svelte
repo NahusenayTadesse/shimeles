@@ -37,9 +37,9 @@
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
 		else if (form?.reconciled) {
-			toast.success('Gift confirmed — it now counts toward the public total.');
+			toast.success('Gift confirmed. It now counts toward the public total.');
 			lastAction = {
-				message: 'Gift confirmed — it now counts toward the public total.',
+				message: 'Gift confirmed. It now counts toward the public total.',
 				at: Date.now()
 			};
 			matching = null;
@@ -62,7 +62,7 @@
 
 	const summary = (status: string) => data.totals.find((row) => row.status === status);
 
-	const fmt = (value: Date | string | null) => formatDate(value, '—');
+	const fmt = (value: Date | string | null) => formatDate(value, '-');
 
 	const designationLabel = (row: (typeof data.rows)[number]) =>
 		row.pillarName ?? row.initiativeName ?? 'Where most needed';
@@ -84,7 +84,7 @@
 			header: 'Donor',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
-					primary: row.original.isAnonymous ? 'Anonymous' : (row.original.donorName ?? '—'),
+					primary: row.original.isAnonymous ? 'Anonymous' : (row.original.donorName ?? '-'),
 					secondary: row.original.donorEmail ?? row.original.donorPhone
 				})
 		},
@@ -102,7 +102,7 @@
 		{
 			id: 'method',
 			header: 'Method',
-			cell: ({ row }: any) => row.original.methodName ?? '—'
+			cell: ({ row }: any) => row.original.methodName ?? '-'
 		},
 		{
 			id: 'createdAt',
@@ -140,7 +140,7 @@
 		<h1 class="font-heading text-2xl font-bold">Donations & reconciliation</h1>
 		<p class="mt-1 max-w-3xl text-sm text-muted-foreground">
 			A gift pledged on the website is a promise, not money. Match it against your bank statement
-			here to confirm it — only confirmed gifts count toward the public "funds raised" figure.
+			here to confirm it. Only confirmed gifts count toward the public "funds raised" figure.
 		</p>
 	</div>
 

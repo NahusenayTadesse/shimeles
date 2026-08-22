@@ -8,10 +8,7 @@
 
 	let { data } = $props();
 
-	const pillarItems = [
-		{ value: '', name: '— not tied to a pillar —' },
-		...toItems(data.pillarOptions)
-	];
+	const pillarItems = [{ value: '', name: 'Not tied to a pillar' }, ...toItems(data.pillarOptions)];
 
 	const contexts = [
 		{ value: 'application', name: 'Assistance application' },
@@ -81,7 +78,7 @@
 
 <ContentPage
 	title="Forms"
-	description="Every public form: the four application forms, the volunteer form, the contact form. Adding a question to one is a change here, not a developer job — use 'Edit questions'."
+	description="Every public form: the four application forms, the volunteer form, the contact form. Adding a question to one is a change here, not a developer job; use 'Edit questions'."
 	addTitle="Add form"
 	addForm={data.addForm}
 	{fields}

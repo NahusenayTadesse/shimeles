@@ -5,7 +5,6 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
@@ -190,7 +189,7 @@
 				</div>
 				<h2 class="font-heading text-2xl font-semibold">Thank you</h2>
 				<p class="text-muted-foreground">
-					Make your transfer of <strong>{confirmation.amount}</strong> and include this reference — it
+					Make your transfer of <strong>{confirmation.amount}</strong> and include this reference. It
 					is how we match the gift to your name.
 				</p>
 				<button
@@ -203,7 +202,6 @@
 				</button>
 
 				{#if selectedAccount}
-					<Separator />
 					<dl class="w-full space-y-2 text-left text-sm">
 						<div class="flex justify-between gap-4">
 							<dt class="text-muted-foreground">Account name</dt>
@@ -256,7 +254,7 @@
 						{/if}
 					</div>
 					<p class="-mt-3 text-xs text-muted-foreground">
-						This records your gift and gives you a bank-transfer reference — it does not charge you
+						This records your gift and gives you a bank-transfer reference. It does not charge you
 						directly.
 					</p>
 
@@ -281,7 +279,7 @@
 								<p class="-mt-3 text-xs text-muted-foreground">
 									{s(
 										'donate.monthly_note',
-										'We will remind you each month — bank transfers in Ethiopia cannot be charged automatically.'
+										'We will remind you each month. Bank transfers in Ethiopia cannot be charged automatically.'
 									)}
 								</p>
 							{/if}

@@ -82,7 +82,7 @@
 
 		// Was the browser's default locale, so the printed header disagreed with
 		// every date in the table underneath it.
-		const title = `${fileName} — ${formatDate(new Date())}`;
+		const title = `${fileName}, ${formatDate(new Date())}`;
 
 		win.document.write(`<!doctype html>
 <html>

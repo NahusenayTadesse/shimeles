@@ -6,7 +6,6 @@
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
@@ -203,7 +202,7 @@
 									<span>
 										If you are asking for support from
 										<strong>{chosenSubject.suggestedPillarName}</strong>, the application form is
-										the faster route — it reaches the team that can actually help.
+										the faster route. It reaches the team that can actually help.
 									</span>
 								</a>
 							{/if}
@@ -262,7 +261,7 @@
 						/>
 						<div class="flex items-start justify-between gap-3">
 							<p class="text-sm text-muted-foreground">
-								A sentence or two is plenty — we will reply and take it from there.
+								A sentence or two is plenty. We will reply and take it from there.
 							</p>
 							<span class="shrink-0 text-sm text-muted-foreground tabular-nums">
 								{$form.message?.length ?? 0}/{MAX_CONTACT_MESSAGE}
@@ -286,8 +285,6 @@
 						Send me occasional news from the Foundation. Separate from a reply to this message, and
 						you can unsubscribe from any of them.
 					</CheckboxField>
-
-					<Separator />
 
 					<div
 						class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"

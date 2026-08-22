@@ -531,8 +531,8 @@ export const actions: Actions = {
 			return fail(422, {
 				error:
 					field === 'credentials'
-						? 'Verify each licence individually — this flag is derived from them.'
-						: 'Record each reference individually — this flag is derived from them.'
+						? 'Verify each licence individually. This flag is derived from them.'
+						: 'Record each reference individually. This flag is derived from them.'
 			});
 		}
 

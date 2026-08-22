@@ -33,7 +33,7 @@
 
 <ContentPage
 	title="Translations"
-	description="Short interface strings — button labels, field labels, status names. Edited here rather than in code, so a clumsy label is a dashboard fix and not a deploy."
+	description="Short interface strings: button labels, field labels, status names. Edited here rather than in code, so a clumsy label is a dashboard fix and not a deploy."
 	addTitle="Add string"
 	addForm={data.addForm}
 	{fields}
