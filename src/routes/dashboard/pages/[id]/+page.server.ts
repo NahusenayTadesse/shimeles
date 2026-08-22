@@ -8,6 +8,7 @@ import { flagField } from '$lib/server/crud';
 import { invalidateContent } from '$lib/server/content';
 import { savePublicImage } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
+import { METRIC_LABELS, isMetricKey, isMoneyMetric } from '$lib/metrics';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -135,14 +136,51 @@ async function buildContent(
 			if (!trim(data.slug)) return { content: {}, error: 'Which form should this link to?' };
 			return { content: { slug: trim(data.slug), label: trim(data.label) ?? '' } };
 
-		case 'stat_counter':
+		case 'stat_counter': {
+			/*
+			 * The counters now arrive from a repeater rather than a JSON textarea,
+			 * and are re-checked here anyway: an unknown metric key renders as a
+			 * zero on the homepage, and `is_money` is deliberately not accepted at
+			 * all. Whether a figure is currency follows from the metric — that is
+			 * what stopped a missing flag publishing `funds_raised` (santim) as a
+			 * hundredfold overstatement.
+			 */
+			if (!trim(data.json)) return { content: { stats: [] } };
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(data.json!);
+			} catch {
+				return { content: {}, error: 'The counters could not be read. Try again.' };
+			}
+			if (!Array.isArray(parsed)) return { content: {}, error: 'That should be a list.' };
+
+			const stats = [];
+			for (const entry of parsed as Record<string, unknown>[]) {
+				if (!isMetricKey(entry?.metric)) {
+					return { content: {}, error: 'Choose a metric for every counter.' };
+				}
+				stats.push({
+					metric: entry.metric,
+					label:
+						typeof entry.label === 'string' && entry.label.trim()
+							? entry.label.trim().slice(0, 120)
+							: METRIC_LABELS[entry.metric],
+					// A suffix on a money counter would print "ETB 12,345.67+".
+					suffix:
+						!isMoneyMetric(entry.metric) && typeof entry.suffix === 'string'
+							? entry.suffix.trim().slice(0, 8)
+							: undefined
+				});
+			}
+			return { content: { stats } };
+		}
+
 		case 'values_list': {
-			const key = blockType === 'stat_counter' ? 'stats' : 'values';
-			if (!trim(data.json)) return { content: { [key]: [] } };
+			if (!trim(data.json)) return { content: { values: [] } };
 			try {
 				const parsed = JSON.parse(data.json!);
 				if (!Array.isArray(parsed)) return { content: {}, error: 'That should be a JSON list.' };
-				return { content: { [key]: parsed } };
+				return { content: { values: parsed } };
 			} catch {
 				return { content: {}, error: 'That is not valid JSON.' };
 			}

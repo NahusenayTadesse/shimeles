@@ -9,7 +9,9 @@
 		addForm,
 		fields,
 		columns,
-		rows
+		rows,
+		emptyMessage = '',
+		caseScoped = false
 	}: {
 		title: string;
 		/** One line telling the admin where this content shows up on the site. */
@@ -19,6 +21,10 @@
 		fields: CrudField[];
 		columns: any[];
 		rows: any[];
+		/** Overrides the generic "nothing here yet" sentence under the table. */
+		emptyMessage?: string;
+		/** Case data, so an empty table may mean "no programme assigned". */
+		caseScoped?: boolean;
 	} = $props();
 </script>
 
@@ -36,6 +42,14 @@
 	</div>
 
 	{#key rows}
-		<DataTable {columns} data={rows} search={true} fileName={title} />
+		<DataTable
+			{columns}
+			data={rows}
+			search={true}
+			fileName={title}
+			{caseScoped}
+			emptyMessage={emptyMessage ||
+				`Nothing has been added yet. Use “${addTitle}” above to create the first one.`}
+		/>
 	{/key}
 </div>

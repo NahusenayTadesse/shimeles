@@ -151,7 +151,13 @@
 	</div>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} search={false} fileName="Audit log" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			search={false}
+			fileName="Audit log"
+			emptyMessage="Nothing has been recorded in this window. Widen the date range to look further back."
+		/>
 	{/key}
 
 	{#if data.page > 1 || data.hasMore}

@@ -27,16 +27,13 @@ import { SUPPORTED_STAGES } from '$lib/server/workflow';
  * warmed.
  */
 
-export const METRIC = {
-	FAMILIES_SUPPORTED: 'families_supported',
-	STUDENTS_SPONSORED: 'students_sponsored',
-	ELDERS_CARED_FOR: 'elders_cared_for',
-	FUNDS_RAISED: 'funds_raised',
-	VOLUNTEERS_ACTIVE: 'volunteers_active',
-	CASES_OPEN: 'cases_open'
-} as const;
-
-export type MetricKey = (typeof METRIC)[keyof typeof METRIC];
+/**
+ * Re-exported for the many server callers that already import it from here.
+ * The definition moved to `$lib/metrics.ts` so the browser can read it too —
+ * the stat-block editor needs to know which metric is money.
+ */
+export { METRIC, type MetricKey } from '$lib/metrics';
+import { METRIC, type MetricKey } from '$lib/metrics';
 
 /** The `site_settings` key that overrides each metric, per §3.1. */
 const OVERRIDE_KEY = (metric: MetricKey) => `impact.override_${metric}`;

@@ -92,4 +92,5 @@
 	{fields}
 	{columns}
 	rows={data.rows}
+	caseScoped
 />

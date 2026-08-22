@@ -134,6 +134,12 @@
 	</FilterBar>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} search={false} fileName="Newsletter subscribers" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			search={false}
+			fileName="Newsletter subscribers"
+			emptyMessage="People who tick the newsletter box on the public forms land here."
+		/>
 	{/key}
 </div>

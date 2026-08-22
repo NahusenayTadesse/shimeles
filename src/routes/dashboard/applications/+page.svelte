@@ -264,7 +264,14 @@
 		</ScrollArea>
 	{:else}
 		{#key data.rows}
-			<DataTable columns={tableColumns} data={data.rows} search={false} fileName="Applications" />
+			<DataTable
+				columns={tableColumns}
+				data={data.rows}
+				search={false}
+				fileName="Applications"
+				caseScoped
+				emptyMessage="Applications arrive from the public /apply form. Nothing has come in that matches this view."
+			/>
 		{/key}
 	{/if}
 </div>

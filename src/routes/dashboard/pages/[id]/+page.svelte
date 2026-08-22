@@ -22,8 +22,10 @@
 		EyeOff,
 		Plus,
 		SquarePen,
-		Trash
+		Trash,
+		Trash2
 	} from '@lucide/svelte';
+	import { METRIC_LABELS, isMetricKey, isMoneyMetric, type MetricKey } from '$lib/metrics';
 
 	let { data, form } = $props();
 
@@ -58,13 +60,30 @@
 		typeof editing === 'number' ? data.blocks.find((block) => block.id === editing) : null
 	);
 
+	/** The counters being edited, as rows rather than as JSON text. */
+	let stats = $state<{ metric: string; label: string; suffix: string }[]>([]);
+
+	const metricItems = Object.entries(METRIC_LABELS).map(([value, name]) => ({ value, name }));
+
+	function statsOf(block: (typeof data.blocks)[number] | null | undefined) {
+		const value = (block?.content as Record<string, unknown>)?.stats;
+		if (!Array.isArray(value)) return [];
+		return value.map((entry: Record<string, unknown>) => ({
+			metric: isMetricKey(entry?.metric) ? entry.metric : 'families_supported',
+			label: typeof entry?.label === 'string' ? entry.label : '',
+			suffix: typeof entry?.suffix === 'string' ? entry.suffix : ''
+		}));
+	}
+
 	$effect(() => {
 		if (editing === 'new') {
 			blockType = 'rich_text';
 			richText = '';
+			stats = [];
 		} else if (editingBlock) {
 			blockType = editingBlock.blockType;
 			richText = String((editingBlock.content as Record<string, unknown>)?.body ?? '');
+			stats = statsOf(editingBlock);
 		}
 	});
 
@@ -359,31 +378,105 @@
 							value={content(editingBlock ?? ({ content: {} } as never), 'label')}
 						/>
 					</div>
-				{:else if blockType === 'stat_counter' || blockType === 'values_list'}
+				{:else if blockType === 'stat_counter'}
+					<!-- A repeater, not a JSON textarea.
+
+					     Asking a comms person to type `"is_money": true` into raw JSON
+					     put a hundredfold overstatement of funds raised one forgotten
+					     key away from the homepage — and a malformed brace silently
+					     stored an empty block. The metric is a fixed list, so it is a
+					     dropdown; the currency question is answered by the metric
+					     itself and is not asked at all. -->
+					<div class="flex flex-col gap-3">
+						<Label>Counters</Label>
+
+						{#each stats as stat, index (index)}
+							<div class="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3">
+								<div class="flex min-w-48 flex-1 flex-col gap-1">
+									<Label class="text-xs text-muted-foreground" for="stat-metric-{index}">
+										Metric
+									</Label>
+									<select
+										id="stat-metric-{index}"
+										class="h-9 rounded-md border border-input bg-background px-2 text-sm"
+										bind:value={stat.metric}
+									>
+										{#each metricItems as item (item.value)}
+											<option value={item.value}>{item.name}</option>
+										{/each}
+									</select>
+								</div>
+
+								<div class="flex min-w-48 flex-1 flex-col gap-1">
+									<Label class="text-xs text-muted-foreground" for="stat-label-{index}">
+										Label on the page
+									</Label>
+									<Input
+										id="stat-label-{index}"
+										bind:value={stat.label}
+										placeholder={METRIC_LABELS[stat.metric as MetricKey] ?? ''}
+									/>
+								</div>
+
+								{#if !isMoneyMetric(stat.metric)}
+									<div class="flex w-24 flex-col gap-1">
+										<Label class="text-xs text-muted-foreground" for="stat-suffix-{index}">
+											Suffix
+										</Label>
+										<Input id="stat-suffix-{index}" bind:value={stat.suffix} placeholder="+" />
+									</div>
+								{/if}
+
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									aria-label="Remove this counter"
+									onclick={() => (stats = stats.filter((_, i) => i !== index))}
+								>
+									<Trash2 class="size-4" />
+								</Button>
+
+								<p class="w-full text-xs text-muted-foreground">
+									{#if isMoneyMetric(stat.metric)}
+										Shown as currency — the figure is stored in santim and formatted as birr.
+									{:else}
+										The number is computed from the records; only the wording is yours.
+									{/if}
+								</p>
+							</div>
+						{/each}
+
+						<div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onclick={() =>
+									(stats = [...stats, { metric: 'families_supported', label: '', suffix: '' }])}
+							>
+								<Plus class="size-4" /> Add a counter
+							</Button>
+						</div>
+
+						<!-- The server still receives the same `json` field; it is built
+						     here rather than typed. -->
+						<input type="hidden" name="json" value={JSON.stringify(stats)} />
+					</div>
+				{:else if blockType === 'values_list'}
 					<div class="flex flex-col gap-2">
-						<Label for="json">
-							{blockType === 'stat_counter' ? 'Counters' : 'Values'}
-						</Label>
+						<Label for="json">Values</Label>
 						<Textarea
 							id="json"
 							name="json"
 							rows={10}
 							class="font-mono text-xs"
-							value={jsonOf(editingBlock, blockType === 'stat_counter' ? 'stats' : 'values')}
-							placeholder={blockType === 'stat_counter'
-								? '[\n  { "metric": "families_supported", "label": "Families supported" }\n]'
-								: '[\n  { "icon": "Sun", "title": "Hope", "body": "…" }\n]'}
+							value={jsonOf(editingBlock, 'values')}
+							placeholder={'[\n  { "icon": "Sun", "title": "Hope", "body": "…" }\n]'}
 						/>
 						<p class="text-xs text-muted-foreground">
-							{#if blockType === 'stat_counter'}
-								Each counter names a metric — <code>families_supported</code>,
-								<code>students_sponsored</code>, <code>elders_cared_for</code>,
-								<code>funds_raised</code>, <code>cases_open</code>. The number itself is computed,
-								never typed in. Add <code>"is_money": true</code> to format it as currency.
-							{:else}
-								Each value takes an <code>icon</code>, a <code>title</code> and a
-								<code>body</code>, and optionally <code>title_am</code> and <code>body_am</code>.
-							{/if}
+							Each value takes an <code>icon</code>, a <code>title</code> and a
+							<code>body</code>, and optionally <code>title_am</code> and <code>body_am</code>.
 						</p>
 					</div>
 				{:else if blockType === 'memoriam'}

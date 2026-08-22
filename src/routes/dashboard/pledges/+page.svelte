@@ -87,6 +87,11 @@
 	</div>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} fileName="Pledges" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			fileName="Pledges"
+			emptyMessage="Recurring pledges appear here once a donor sets one up."
+		/>
 	{/key}
 </div>

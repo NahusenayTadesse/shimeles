@@ -64,6 +64,11 @@
 	</div>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} fileName="Donors" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			fileName="Donors"
+			emptyMessage="A donor record is created the first time someone gives."
+		/>
 	{/key}
 </div>

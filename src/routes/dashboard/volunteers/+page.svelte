@@ -158,6 +158,12 @@
 	</FilterBar>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} search={false} fileName="Volunteers" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			search={false}
+			fileName="Volunteers"
+			emptyMessage="Applications arrive from the public /volunteer form."
+		/>
 	{/key}
 </div>

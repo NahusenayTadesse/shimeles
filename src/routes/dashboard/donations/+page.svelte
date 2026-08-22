@@ -162,7 +162,13 @@
 	</FilterBar>
 
 	{#key data.rows}
-		<DataTable {columns} data={data.rows} search={false} fileName="Donations" />
+		<DataTable
+			{columns}
+			data={data.rows}
+			search={false}
+			fileName="Donations"
+			emptyMessage="Donations appear here once someone gives through the site, or when finance records a bank transfer."
+		/>
 	{/key}
 </div>
 

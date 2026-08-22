@@ -27,7 +27,11 @@
 		fileName = 'File',
 		selected = $bindable(),
 		serverSide = false,
-		total
+		total,
+		emptyTitle = '',
+		emptyMessage = '',
+		emptyAction,
+		caseScoped = false
 	}: DataTableProps<TData, TValue> = $props();
 	// let filterSchema = $derived(
 	//   discoverFilterSchema(data).filter(meta => !filterBlacklist.includes(meta.key))
@@ -36,10 +40,13 @@
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ChevronDownIcon, Filter, Frown, ListOrdered, X } from '@lucide/svelte';
+	import { ChevronDownIcon, Filter, Inbox, ListOrdered, Lock, SearchX, X } from '@lucide/svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import ResizableHandle from '../ui/resizable/resizable-handle.svelte';
 	import { isMobile } from '$lib/global.svelte';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import type { Snippet } from 'svelte';
 
 	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: data.length || 10 });
 	let columnFilters = $state<ColumnFiltersState>([]);
@@ -60,6 +67,18 @@
 		serverSide?: boolean;
 		/** Result count to show. Defaults to the rows actually held. */
 		total?: number;
+		/** Heading for the empty state. Defaults to "No <fileName> yet". */
+		emptyTitle?: string;
+		/** Sentence under that heading. */
+		emptyMessage?: string;
+		/** A button for the empty state — usually the screen's own "Add" control. */
+		emptyAction?: Snippet;
+		/**
+		 * This table shows case data, so an empty result may mean the user has
+		 * not been assigned to a programme rather than that there is nothing to
+		 * see. Set on the screens `pillarScope` applies to.
+		 */
+		caseScoped?: boolean;
 	};
 
 	let sorting = $state<SortingState>([]);
@@ -67,6 +86,66 @@
 
 	let columnVisibility = $state<VisibilityState>({});
 	let rowSelection = $state<RowSelectionState>({});
+
+	/* ==========================================================================
+	   The empty state
+
+	   Every table used to render the same bouncing frown and "Nothing found
+	   here." for three quite different situations: a table with nothing in it,
+	   a filter that matched nothing, and a pillar-scoped user who has not been
+	   assigned to a programme and will see this on every case screen until an
+	   administrator fixes it. The third is the worst — a new caseworker's first
+	   impression of the system is an empty board that does not say why.
+
+	   Filters are read off the URL rather than passed in: every server-filtered
+	   screen puts them there (see `filter-bar.svelte`), so this needs no
+	   plumbing at each of the ten call sites.
+	   ========================================================================== */
+
+	const urlFilters = $derived(
+		[...page.url.searchParams.entries()].filter(([key, value]) => key !== 'page' && value !== '')
+	);
+
+	const filtered = $derived(
+		urlFilters.length > 0 || Boolean(globalFilter) || columnFilters.length > 0
+	);
+
+	/** "Applications" → "applications", for a sentence. */
+	const subject = $derived(fileName === 'File' ? 'records' : fileName.toLowerCase());
+
+	/**
+	 * `null` means "all pillars" (a super admin); an empty array means the user
+	 * has been given no programme at all, which on a case screen is the whole
+	 * explanation for an empty board.
+	 */
+	const noPillarAccess = $derived(
+		caseScoped &&
+			Array.isArray(page.data?.access?.pillarIds) &&
+			page.data.access.pillarIds.length === 0
+	);
+
+	const emptyHeading = $derived(
+		noPillarAccess
+			? 'You have not been assigned to a programme yet'
+			: filtered
+				? 'No results for these filters'
+				: emptyTitle || `No ${subject} yet`
+	);
+
+	const emptyBody = $derived(
+		noPillarAccess
+			? 'Case screens only show the programmes your account covers. An administrator can assign you one under Configuration → Users.'
+			: filtered
+				? 'Nothing here matches what you are filtering by. Clearing the filters brings the whole list back.'
+				: emptyMessage
+	);
+
+	function clearFilters() {
+		globalFilter = undefined;
+		table.setGlobalFilter(undefined);
+		columnFilters = [];
+		if (urlFilters.length) goto(page.url.pathname);
+	}
 
 	/**
 	 * Matches a scalar cell against the list of ticked values.
@@ -434,10 +513,33 @@
 									{/each}
 								</Table.Row>
 							{:else}
-								<Table.Row>
-									<Table.Cell colspan={columns.length} class="font-2xl text-center">
-										<div class="flex flex-row items-center justify-center gap-2">
-											<Frown class="animate-bounce" /> Nothing found here.
+								<Table.Row class="hover:bg-transparent">
+									<Table.Cell colspan={columns.length} class="py-12 text-center">
+										<div class="mx-auto flex max-w-md flex-col items-center gap-2">
+											<div
+												class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+											>
+												{#if noPillarAccess}
+													<Lock class="size-5" />
+												{:else if filtered}
+													<SearchX class="size-5" />
+												{:else}
+													<Inbox class="size-5" />
+												{/if}
+											</div>
+											<p class="text-base font-semibold normal-case">{emptyHeading}</p>
+											{#if emptyBody}
+												<p class="text-sm font-normal text-muted-foreground normal-case">
+													{emptyBody}
+												</p>
+											{/if}
+											{#if filtered && !noPillarAccess}
+												<Button variant="outline" size="sm" class="mt-2" onclick={clearFilters}>
+													<X class="size-4" /> Clear filters
+												</Button>
+											{:else if emptyAction}
+												<div class="mt-2">{@render emptyAction()}</div>
+											{/if}
 										</div>
 									</Table.Cell>
 								</Table.Row>

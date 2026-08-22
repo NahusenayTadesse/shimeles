@@ -236,7 +236,13 @@
 		</Card.Root>
 	{:else}
 		{#key data.rows}
-			<DataTable {columns} data={data.rows} search={false} fileName="Gifts in kind" />
+			<DataTable
+				{columns}
+				data={data.rows}
+				search={false}
+				fileName="Gifts in kind"
+				emptyMessage="Offers of goods and services arrive from the public donate page."
+			/>
 		{/key}
 	{/if}
 

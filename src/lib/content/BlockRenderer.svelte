@@ -3,6 +3,7 @@
 	import { countUp } from '$lib/actions/count-up';
 	import { assetUrl } from '$lib/assets';
 	import { formatCompact, formatMoney } from '$lib/money';
+	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import TrimBand from '$lib/components/trim-band.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
@@ -160,9 +161,10 @@
 					{/if}
 				</figure>
 			{:else if block.type === 'stat_counter'}
-				<!-- `{ stats: [{ metric, label, suffix, is_money }] }`
-				     `metric` names a key in `impact_metrics_cache`; the value comes
-				     from there, or from an `impact.override_*` setting. -->
+				<!-- `{ stats: [{ metric, label, suffix }] }`. `metric` names a key in
+				     `impact_metrics_cache`; the value comes from there, or from an
+				     `impact.override_*` setting. Whether a counter is money is a
+				     property of the metric, not of the block. -->
 				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
 					<div
 						class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-olive/10 blur-3xl"
@@ -174,6 +176,11 @@
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							{@const value = metrics[key] ?? 0}
+							<!-- Derived from the metric, never read from the block. A stat block
+							     saved without `is_money` used to render funds raised — stored in
+							     santim — through the plain compact formatter, so 1234567 published
+							     as "1.2M" rather than "ETB 12,345.67". -->
+							{@const money = isMoneyMetric(key)}
 							<div
 								use:reveal={{ delay: stagger(statIndex, 80, 4), scale: 0.92 }}
 								class="group flex flex-col items-center gap-1.5 px-6 py-10 text-center"
@@ -181,15 +188,13 @@
 								<p
 									use:countUp={{
 										value,
-										format: stat.is_money
+										format: money
 											? (n) => formatMoney(n)
 											: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 									}}
 									class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
 								>
-									{stat.is_money
-										? formatMoney(value)
-										: `${formatCompact(value)}${stat.suffix ?? ''}`}
+									{money ? formatMoney(value) : `${formatCompact(value)}${stat.suffix ?? ''}`}
 								</p>
 								<p class="text-sm text-[oklch(0.94_0.012_80)]/65">
 									{stat.label ?? key}

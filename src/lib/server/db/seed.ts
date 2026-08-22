@@ -1304,7 +1304,9 @@ async function seedPages() {
 					{ metric: 'families_supported', label: 'Families supported' },
 					{ metric: 'students_sponsored', label: 'Students sponsored' },
 					{ metric: 'elders_cared_for', label: 'Elders cared for' },
-					{ metric: 'funds_raised', label: 'Raised and disbursed', is_money: true }
+					// No `is_money` here: currency formatting follows from the metric
+					// (see `$lib/metrics.ts`), so it cannot be forgotten.
+					{ metric: 'funds_raised', label: 'Raised and disbursed' }
 				]
 			}
 		},
