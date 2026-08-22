@@ -1,6 +1,7 @@
-import { and, count, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
+	auditLog,
 	contactMessages,
 	donations,
 	formSubmissions,
@@ -86,6 +87,33 @@ export const load: LayoutServerLoad = async (event) => {
 			: 0
 	]);
 
+	/*
+	 * When the whole system was last taken off the server.
+	 *
+	 * There is no `backups` table: `/dashboard/backup` writes an audit row when
+	 * it hands out an archive, and that row already says who, when and from
+	 * where. Reading it back here is cheaper than a second source of truth that
+	 * could disagree with the log. Only a `super_admin` can download a backup,
+	 * so only a `super_admin` is told how stale one is.
+	 */
+	const lastBackupAt = access.isSuperAdmin
+		? await db
+				.select({ createdAt: auditLog.createdAt })
+				.from(auditLog)
+				.where(
+					and(
+						eq(auditLog.action, 'exported_data'),
+						eq(auditLog.entityType, 'export'),
+						// `metadata` is a JSON text column; this is what separates a full
+						// backup from an ordinary table export, which shares the action.
+						sql`json_extract(${auditLog.metadata}, '$.kind') = 'full_backup'`
+					)
+				)
+				.orderBy(desc(auditLog.createdAt))
+				.limit(1)
+				.then((rows) => rows[0]?.createdAt?.getTime() ?? null)
+		: null;
+
 	return {
 		access: {
 			userId: access.userId,
@@ -101,6 +129,7 @@ export const load: LayoutServerLoad = async (event) => {
 			newMessages: messages,
 			pendingDonations,
 			newInKind
-		}
+		},
+		lastBackupAt
 	};
 };

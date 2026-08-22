@@ -4,6 +4,7 @@
 	import DarkMode from '$lib/components/DarkMode.svelte';
 	import Search from '$lib/components/Search.svelte';
 	import AvatarSettings from '$lib/components/AvatarSettings.svelte';
+	import BackupButton from '$lib/components/BackupButton.svelte';
 
 	let { children, data } = $props();
 </script>
@@ -25,8 +26,12 @@
 					<span class="hidden text-xs text-muted-foreground sm:inline">{data.access.roleName}</span>
 				{/if}
 				<Search permissions={data.access.permissions} />
+				
 				<DarkMode />
 				<AvatarSettings data={data.user?.name} />
+				{#if data.access.isSuperAdmin}
+					<BackupButton lastBackupAt={data.lastBackupAt} />
+				{/if}
 			</div>
 		</div>
 
