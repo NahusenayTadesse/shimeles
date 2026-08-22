@@ -12,6 +12,7 @@
 	import GalleryUpload from '$lib/components/GalleryUpload.svelte';
 	import VideoLinks from '$lib/components/VideoLinks.svelte';
 	import { ExternalLink } from '@lucide/svelte';
+	import { cn } from '$lib/utils.js';
 
 	let { data, form } = $props();
 
@@ -22,6 +23,18 @@
 
 	let storyBody = $state(data.content?.storyBody ?? '');
 	let memoriamBody = $state(data.content?.memoriamBody ?? '');
+	let memoriamBodyAm = $state(data.content?.memoriamBodyAm ?? '');
+
+	/**
+	 * Which language the In Memoriam editor is showing. Only this section is
+	 * bilingual — the rest of the About page is English in v1 — so the toggle
+	 * lives on the card rather than anywhere page-wide.
+	 *
+	 * Both languages stay mounted and are hidden with `hidden` rather than
+	 * being swapped in and out: the rich-text editor reads its body once at
+	 * mount, so unmounting the inactive one would risk losing an unsaved edit.
+	 */
+	let lang = $state<'en' | 'am'>('en');
 
 	let saving = $state(false);
 </script>
@@ -103,19 +116,54 @@
 		</Card.Root>
 
 		<Card.Root class="flex flex-col gap-4 p-6">
-			<h2 class="font-heading text-lg font-semibold">In Memoriam</h2>
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<h2 class="font-heading text-lg font-semibold">In Memoriam</h2>
+				<div
+					class="inline-flex rounded-lg border bg-muted/40 p-0.5"
+					role="group"
+					aria-label="Tribute language"
+				>
+					{#each [{ value: 'en', label: 'English' }, { value: 'am', label: 'አማርኛ' }] as const as option (option.value)}
+						<button
+							type="button"
+							onclick={() => (lang = option.value)}
+							aria-pressed={lang === option.value}
+							class={cn(
+								'rounded-md px-3 py-1 text-sm font-medium transition-colors',
+								lang === option.value
+									? 'bg-background text-foreground shadow-sm'
+									: 'text-muted-foreground hover:text-foreground'
+							)}
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
+			</div>
 			<p class="text-sm text-muted-foreground">
 				The large tribute photo and text at the bottom of the About page — not the small version on
 				the homepage, which is a regular content block (Pages &amp; content → About was, before this
-				screen — see Pages &amp; content for other pages).
+				screen — see Pages &amp; content for other pages). The photo is shared; the toggle above
+				switches which language's words you are editing, and both are saved together.
 			</p>
 
-			<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-2" class:hidden={lang !== 'en'}>
 				<Label for="memoriamName">Name</Label>
 				<Input
 					id="memoriamName"
 					name="memoriamName"
 					value={data.content?.memoriamName ?? 'Shimeles Abera'}
+				/>
+			</div>
+
+			<div class="flex flex-col gap-2" class:hidden={lang !== 'am'}>
+				<Label for="memoriamNameAm">Name (Amharic)</Label>
+				<Input
+					id="memoriamNameAm"
+					name="memoriamNameAm"
+					lang="am"
+					placeholder="Leave empty to show the English name"
+					value={data.content?.memoriamNameAm ?? ''}
 				/>
 			</div>
 
@@ -125,11 +173,23 @@
 				image={data.content?.memoriamHeroImage}
 			/>
 
-			<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-2" class:hidden={lang !== 'en'}>
 				<Label>Tribute text</Label>
 				<RichTextEditor bind:value={memoriamBody} />
-				<input type="hidden" name="memoriamBody" value={memoriamBody} />
 			</div>
+
+			<div class="flex flex-col gap-2" class:hidden={lang !== 'am'}>
+				<Label>Tribute text (Amharic)</Label>
+				<p class="text-sm text-muted-foreground">
+					Left empty, the public page shows no Amharic toggle at all.
+				</p>
+				<RichTextEditor bind:value={memoriamBodyAm} placeholder="በአማርኛ ይጻፉ..." />
+			</div>
+
+			<!-- Outside the toggled panes so both languages submit whichever one
+			     happens to be on screen. -->
+			<input type="hidden" name="memoriamBody" value={memoriamBody} />
+			<input type="hidden" name="memoriamBodyAm" value={memoriamBodyAm} />
 		</Card.Root>
 
 		<Button type="submit" class="w-fit" disabled={saving}>

@@ -30,6 +30,25 @@
 		memoriamPhoto ??
 			(content?.memoriamHeroImage ? { storagePath: content.memoriamHeroImage } : data.gallery[0])
 	);
+
+	/**
+	 * In Memoriam is the one bilingual section on the page: the tribute to the
+	 * man the Foundation is named for is written in Amharic as well as English
+	 * (`memoriam_name_am` / `memoriam_body_am`). The toggle below is local to
+	 * this section — nothing else on `/about` has an Amharic version to switch
+	 * to — and only appears when an Amharic tribute has actually been written.
+	 */
+	const hasAmharic = $derived(Boolean(content?.memoriamBodyAm?.trim()));
+	let memoriamLang = $state<'en' | 'am'>('en');
+	const showAmharic = $derived(hasAmharic && memoriamLang === 'am');
+	/** The Amharic name is optional even when the tribute is translated — a
+	 *  name often reads the same either way, so it falls back to the English. */
+	const memoriamName = $derived(
+		(showAmharic ? content?.memoriamNameAm?.trim() : '') ||
+			content?.memoriamName ||
+			'Shimeles Abera'
+	);
+	const memoriamText = $derived(showAmharic ? content?.memoriamBodyAm : content?.memoriamBody);
 </script>
 
 <svelte:head>
@@ -189,9 +208,35 @@
      else on the page. -->
 <section id="in-memoriam" class="scroll-mt-20 py-16 md:py-24">
 	<div class="mb-10 flex flex-col items-center gap-2 text-center">
-		<span class="eyebrow">In Memoriam</span>
-		<h2 class="text-3xl md:text-4xl">{content?.memoriamName || 'Shimeles Abera'}</h2>
+		<span class="eyebrow">{showAmharic ? 'መታሰቢያ' : 'In Memoriam'}</span>
+		<h2 class="text-3xl md:text-4xl" lang={showAmharic ? 'am' : 'en'}>{memoriamName}</h2>
 		<span class="h-[3px] w-14 rounded-full bg-olive"></span>
+
+		{#if hasAmharic}
+			<div
+				class="mt-3 inline-flex rounded-full border border-olive/25 bg-olive/5 p-1"
+				role="group"
+				aria-label="Tribute language"
+			>
+				{#each [{ value: 'en', label: 'English' }, { value: 'am', label: 'አማርኛ' }] as const as option (option.value)}
+					{@const active = memoriamLang === option.value}
+					<button
+						type="button"
+						onclick={() => (memoriamLang = option.value)}
+						aria-pressed={active}
+						lang={option.value}
+						class={cn(
+							'rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200',
+							active
+								? 'bg-olive text-clay-deep shadow-sm'
+								: 'text-muted-foreground hover:text-foreground'
+						)}
+					>
+						{option.label}
+					</button>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<div class="shadow-warm relative w-full overflow-hidden bg-clay-deep">
@@ -212,7 +257,7 @@
 						<img
 							use:reveal={{ scale: 0.98 }}
 							src={assetUrl(memoriamMainPhoto.storagePath)}
-							alt={memoriamMainPhoto.caption || content?.memoriamName || 'Shimeles Abera'}
+							alt={memoriamMainPhoto.caption || memoriamName}
 							class="shadow-warm h-[24rem] w-full rounded-[1.75rem] object-cover sm:h-[30rem] lg:h-[36rem]"
 						/>
 					{/key}
@@ -251,9 +296,12 @@
 			<div
 				class="flex flex-col justify-center gap-5 py-4 md:border-l md:border-olive/15 md:py-0 md:pl-12"
 			>
-				{#if content?.memoriamBody}
-					<div class="prose-block prose-invert text-justify text-[oklch(0.97_0.01_80)]/80">
-						{@html content.memoriamBody}
+				{#if memoriamText}
+					<div
+						lang={showAmharic ? 'am' : 'en'}
+						class="prose-block prose-invert text-justify text-[oklch(0.97_0.01_80)]/80"
+					>
+						{@html memoriamText}
 					</div>
 				{/if}
 			</div>

@@ -57,7 +57,9 @@ const contentSchema = z.object({
 	missionText: z.string().trim().max(3000).optional(),
 	visionText: z.string().trim().max(3000).optional(),
 	memoriamName: z.string().trim().max(150).optional(),
-	memoriamBody: z.string().max(20000).optional()
+	memoriamNameAm: z.string().trim().max(150).optional(),
+	memoriamBody: z.string().max(20000).optional(),
+	memoriamBodyAm: z.string().max(20000).optional()
 });
 
 async function guard(event: Parameters<PageServerLoad>[0]) {
@@ -93,8 +95,12 @@ export const actions: Actions = {
 			missionText: parsed.data.missionText?.trim() || '',
 			visionText: parsed.data.visionText?.trim() || '',
 			memoriamName: parsed.data.memoriamName?.trim() || 'Shimeles Abera',
+			// Amharic stays null when empty, not '' — the public toggle only
+			// appears when there is actually something to toggle to.
+			memoriamNameAm: parsed.data.memoriamNameAm?.trim() || null,
 			memoriamHeroImage,
 			memoriamBody: parsed.data.memoriamBody?.trim() || '',
+			memoriamBodyAm: parsed.data.memoriamBodyAm?.trim() || null,
 			updatedBy: access.userId,
 			updatedAt: new Date()
 		};

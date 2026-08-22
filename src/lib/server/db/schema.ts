@@ -390,10 +390,16 @@ export const aboutContent = sqliteTable('about_content', {
 	missionText: text('mission_text'),
 	visionText: text('vision_text'),
 	memoriamName: text('memoriam_name').default('Shimeles Abera').notNull(),
+	/** The tribute in Amharic. Unlike the rest of the page — which is English
+	 *  only in v1 — the In Memoriam section carries both, and the public page
+	 *  offers a toggle between them whenever these are filled in. */
+	memoriamNameAm: text('memoriam_name_am'),
 	/** The large, prominent In Memoriam photograph — not the small avatar the
-	 *  generic `memoriam` content block uses elsewhere on the site. */
+	 *  generic `memoriam` content block uses elsewhere on the site. The photo
+	 *  is shared by both languages; only the words change. */
 	memoriamHeroImage: text('memoriam_hero_image'),
 	memoriamBody: text('memoriam_body'),
+	memoriamBodyAm: text('memoriam_body_am'),
 	updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
 	updatedAt: timestampMs('updated_at').default(nowMs).notNull()
 });
