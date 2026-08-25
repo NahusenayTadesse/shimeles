@@ -9,7 +9,8 @@
 	import CheckboxComp from './CheckboxComp.svelte';
 	import RichTextEditor from './RichTextEditor.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { CircleAlert } from '@lucide/svelte';
+	import { CircleAlert, Eye, EyeOff } from '@lucide/svelte';
+	import { cn } from '$lib/utils.js';
 
 	/**
 	 * One labelled form control, with its error message.
@@ -80,6 +81,34 @@
 	} = $props();
 
 	const controlId = $derived(id ?? name);
+
+	/**
+	 * Whether a password field is currently showing its characters.
+	 *
+	 * Per-field, because the component is one control — the login form's single
+	 * box and the change-password screen's three each keep their own state, so
+	 * revealing the one you are stuck on does not put the other two on screen.
+	 *
+	 * It deliberately resets to hidden on every render of a fresh component: the
+	 * value is never revealed by default, only by an explicit click.
+	 */
+	let revealed = $state(false);
+
+	/*
+	 * A revealed box re-masks itself when something else empties it.
+	 *
+	 * `resetForm` clears the change-password screen on success, and a field left
+	 * revealed would then show the *next* password in plain text on a screen
+	 * nobody expected to be readable. Only the non-empty → empty transition
+	 * counts: clicking the eye on an empty box to watch yourself type is a
+	 * deliberate choice, and re-masking that would fight the person using it.
+	 */
+	let previousValue = '';
+	$effect(() => {
+		const current = value ?? '';
+		if (previousValue !== '' && current === '') revealed = false;
+		previousValue = current;
+	});
 
 	/**
 	 * A calendar with only arrows is the wrong control for a date of birth.
@@ -184,6 +213,41 @@
 			     box posts the *string* "false", which `z.coerce.boolean()` turns
 			     into `true`. See the note in `$lib/forms/fields`. -->
 			<input type="hidden" {name} value={String(value === true)} />
+		</div>
+	{:else if type === 'password'}
+		<!-- A password box you cannot read back is where typos live, and the cost
+		     falls hardest on exactly the passwords worth having: long ones, typed
+		     on a phone keyboard. The reveal is a real `<button type="button">`, so
+		     it neither submits the form nor is skipped by keyboard navigation, and
+		     the input keeps `type="password"` until it is pressed — a manager's
+		     password does not sit legible on screen by default. -->
+		<div class="relative">
+			<Input
+				class={cn('pr-9', className)}
+				id={controlId}
+				type={revealed ? 'text' : 'password'}
+				{name}
+				bind:value
+				{maxlength}
+				{placeholder}
+				{autocomplete}
+				{required}
+				{...rest}
+			/>
+			<button
+				type="button"
+				class="absolute inset-y-0 right-0 flex h-10 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+				aria-label={revealed ? 'Hide password' : 'Show password'}
+				aria-pressed={revealed}
+				aria-controls={controlId}
+				onclick={() => (revealed = !revealed)}
+			>
+				{#if revealed}
+					<EyeOff class="size-4" />
+				{:else}
+					<Eye class="size-4" />
+				{/if}
+			</button>
 		</div>
 	{:else}
 		<Input
