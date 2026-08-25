@@ -61,7 +61,17 @@
 	<div class="relative mx-auto grid w-full max-w-6xl gap-10 px-4 pt-16 pb-10 md:grid-cols-4">
 		<div use:reveal class="flex flex-col gap-4 md:col-span-2">
 			<div class="flex items-center gap-2.5">
-				<img src="/logo.png" alt="" class="h-20 w-auto shrink-0 rounded-full object-contain" />
+				<!-- Drawn at 80px tall in a footer nobody scrolls to immediately: lazy, and
+				     with its real dimensions so the row does not jump when it lands. -->
+				<img
+					src="/logo.png"
+					alt=""
+					width="720"
+					height="238"
+					loading="lazy"
+					decoding="async"
+					class="h-20 w-auto shrink-0 rounded-full object-contain"
+				/>
 				<!-- <p class="font-heading text-xl font-semibold">
 					{s('site.name') || 'Shimeles Abera Foundation'}
 				</p> -->

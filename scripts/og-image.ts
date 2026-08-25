@@ -105,7 +105,10 @@ const html = `<!doctype html>
 			}
 			.arc.one { right: -220px; bottom: -300px; width: 700px; height: 700px; }
 			.arc.two { left: -260px; top: -320px; width: 620px; height: 620px; }
-			img { width: 780px; height: auto; position: relative; }
+			/* 700, not more: static/logo.png is 720px wide — sized for the footer,
+			   where it is drawn at 240 — and upscaling it here would soften the one
+			   image whose whole job is to look sharp in a preview. */
+			img { width: 700px; height: auto; position: relative; }
 			.rule { width: 120px; height: 5px; border-radius: 999px; background: ${OLIVE}; position: relative; }
 			h1 {
 				font-family: 'Sora', sans-serif;

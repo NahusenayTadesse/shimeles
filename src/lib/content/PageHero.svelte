@@ -75,7 +75,15 @@
 		</div>
 
 		{#if image}
-			<div use:reveal={{ delay: 100, x: 28, scale: 0.97 }} class="relative">
+			<!-- No `use:reveal` on this one, deliberately.
+			
+			     The photograph is the largest-contentful-paint element on every page
+			     that has one, and the reveal action starts an element at `opacity:
+			     0` until hydration runs and an IntersectionObserver fires. That was
+			     costing about 900ms of LCP: the image had arrived and was simply
+			     being held invisible. The text beside it still animates in, which
+			     is where the movement reads from anyway. -->
+			<div class="relative">
 				<div
 					class="absolute -inset-3 -z-10 rounded-[2.5rem] border-2 border-dashed border-olive/40"
 					aria-hidden="true"

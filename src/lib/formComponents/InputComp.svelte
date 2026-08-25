@@ -7,7 +7,6 @@
 	import SelectComp from './SelectComp.svelte';
 	import ComboboxComp from './ComboboxComp.svelte';
 	import CheckboxComp from './CheckboxComp.svelte';
-	import RichTextEditor from './RichTextEditor.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { CircleAlert, Eye, EyeOff } from '@lucide/svelte';
 	import { cn } from '$lib/utils.js';
@@ -177,8 +176,17 @@
 	{:else if type === 'richtext'}
 		<!-- Body copy staff author themselves. Stored as HTML and rendered through
 		     `.prose-block`, which hands back the list markers and heading sizes
-		     Tailwind's reset strips. -->
-		<RichTextEditor bind:value placeholder={placeholder || 'Write here…'} />
+		     Tailwind's reset strips.
+
+		     Imported on demand, because it is ProseMirror: 553 KB of editor, and a
+		     static import here put all of it into the shared chunk that *every*
+		     page carrying any form field downloads. /donate and /volunteer were
+		     paying 170 KB over the wire for an editor that only ever appears on a
+		     dashboard content screen. Nothing else in this component is heavy
+		     enough to be worth the same treatment. -->
+		{#await import('./RichTextEditor.svelte') then { default: RichTextEditor }}
+			<RichTextEditor bind:value placeholder={placeholder || 'Write here…'} />
+		{/await}
 		<input type="hidden" {name} bind:value />
 	{:else if type === 'file'}
 		<FileUpload {name} {form} {image} {placeholder} />
