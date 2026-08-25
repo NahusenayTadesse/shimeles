@@ -39,8 +39,14 @@
 {#if images.length}
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
 		{#each images as image, index (image.id)}
+			<!-- The `alt` on the image inside does not name the *button*: the
+			     caption is often empty, and an empty alt is the correct choice for
+			     a decorative thumbnail. So the button says what it does. -->
 			<button
 				type="button"
+				aria-label={image.caption
+					? `Open photo: ${image.caption}`
+					: `Open photo ${index + 1} of ${images.length}`}
 				use:reveal={{ delay: stagger(index, 60, 6) }}
 				onclick={() => open(index)}
 				class="group shadow-warm aspect-square overflow-hidden rounded-2xl bg-muted transition-transform hover:-translate-y-1"

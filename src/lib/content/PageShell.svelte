@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { page as currentPage } from '$app/state';
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import type {
 		RenderInitiative,
 		RenderPage,
@@ -46,22 +48,30 @@
 		children?: import('svelte').Snippet;
 	} = $props();
 
-	const siteName = $derived(settings['site.name'] || 'Shimeles Abera Foundation');
+	/*
+	 * The homepage carries the site-wide structured data and titles itself from
+	 * the organisation rather than from its own row ("Home"). Both are decided
+	 * from the path, because that is the one thing a shared shell can know for
+	 * certain about which page it is drawing.
+	 */
+	const isHome = $derived(currentPage.url.pathname === '/');
 </script>
 
-<svelte:head>
-	<title>{page.title} · {siteName}</title>
-	{#if page.metaDescription}
-		<meta name="description" content={page.metaDescription} />
-	{/if}
-	<meta property="og:title" content={`${page.title} · ${siteName}`} />
-	{#if page.metaDescription}
-		<meta property="og:description" content={page.metaDescription} />
-	{/if}
-	{#if page.shareImage}
-		<meta property="og:image" content={`/files/${page.shareImage}`} />
-	{/if}
-</svelte:head>
+<!-- The homepage's row is titled "Home": useless as a `<title>`, and useless as
+     the alt text of a share image. Both fall through to the site's own name. -->
+<Seo
+	title={isHome ? null : page.title}
+	description={page.metaDescription}
+	image={page.shareImage}
+	imageAlt={isHome ? null : page.title}
+	organisation={isHome}
+	breadcrumbs={isHome
+		? []
+		: [
+				{ name: 'Home', path: '/' },
+				{ name: page.title, path: currentPage.url.pathname }
+			]}
+/>
 
 {#if header}
 	{@render header()}

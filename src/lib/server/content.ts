@@ -695,6 +695,10 @@ export async function getBlogPost(slug: string): Promise<RenderBlogPostDetail | 
 				readMinutes: blogPosts.readMinutes,
 				isFeatured: blogPosts.isFeatured,
 				publishedAt: blogPosts.publishedAt,
+				/* Read for `dateModified` in the post's structured data. Google
+				   uses it to decide how fresh an article is, and a corrected post
+				   that still advertises its original date is understating itself. */
+				updatedAt: blogPosts.updatedAt,
 				categorySlug: blogCategories.slug,
 				categoryName: blogCategories.name,
 				categoryColor: blogCategories.color
@@ -749,6 +753,7 @@ export async function getBlogPost(slug: string): Promise<RenderBlogPostDetail | 
 		readMinutes: post.readMinutes || estimateReadMinutes(post.body),
 		isFeatured: post.isFeatured,
 		publishedAt: publishedAt.getTime(),
+		updatedAt: post.updatedAt.getTime(),
 		category: post.categorySlug
 			? {
 					slug: post.categorySlug,

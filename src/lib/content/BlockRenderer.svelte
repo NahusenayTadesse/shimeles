@@ -284,18 +284,27 @@
 										<p class="text-muted-foreground">{pillar.summary}</p>
 									{/if}
 									<div class="mt-auto flex flex-wrap gap-2 pt-3">
+										<!-- The programme's name is in the link, not only in an
+										     `aria-label`: four cards side by side each saying "Learn
+										     more" are four identical anchors to four different pages,
+										     which is the least useful anchor text on the site for a
+										     screen reader's link list and for a crawler alike. It is
+										     `sr-only` rather than visible because the card directly
+										     above it is already headed with the name, and repeating it
+										     in the button would read as clutter to someone who can see
+										     both. -->
 										<a
 											href={`/programs/${pillar.slug}`}
 											class={buttonVariants({ variant: 'outline', size: 'sm' })}
 										>
-											Learn more
+											Learn more<span class="sr-only"> about {pillar.name}</span>
 										</a>
 										{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
 											<a
 												href={`/programs/${pillar.slug}#apply`}
 												class={buttonVariants({ variant: 'ghost', size: 'sm' })}
 											>
-												Apply for support
+												Apply for support<span class="sr-only"> from {pillar.name}</span>
 											</a>
 										{/if}
 									</div>

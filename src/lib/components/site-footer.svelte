@@ -154,8 +154,11 @@
 	</div>
 
 	<div class="relative border-t border-olive/15">
+		<!-- 90% rather than 50%: at half opacity this sand-on-green measured
+		     2.7:1, well under the 4.5:1 small text needs, and 80% still landed at
+		     4.47:1 — close enough to fail. Measured with Lighthouse, not guessed. -->
 		<div
-			class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-[oklch(0.94_0.012_80)]/50 sm:flex-row sm:justify-between"
+			class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-[oklch(0.94_0.012_80)]/90 sm:flex-row sm:justify-between"
 		>
 			<p>
 				© {new Date().getFullYear()}
@@ -164,7 +167,7 @@
 			</p>
 			<p>{s('footer.registration') || ''}</p>
 		</div>
-		<p class="mb-2 text-center text-[8px] text-[oklch(0.94_0.012_80)]/50">
+		<p class="mb-2 text-center text-[10px] text-[oklch(0.94_0.012_80)]/90">
 			Developed By: <a target="_blank" href="https://nahusenaytadesse.vercel.app">NT</a>
 		</p>
 	</div>

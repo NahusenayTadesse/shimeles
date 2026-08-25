@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import BlogCard, { accentClass, formatPostDate } from '$lib/content/BlogCard.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
@@ -31,16 +32,48 @@
 	};
 
 	const hasFilters = $derived(Boolean(data.query || data.category));
-	const siteName = $derived(data.settings?.['site.name'] || 'Shimeles Abera Foundation');
+
+	/**
+	 * What this particular view of the archive calls itself, and which URL it
+	 * declares as its own.
+	 *
+	 * A category and a page number each identify a genuinely different list, so
+	 * they belong in the canonical — drop them and page 4 of Field Notes tells
+	 * Google it is the blog's front page, and three quarters of the archive
+	 * disappears behind a duplicate. A *search* is different: it is one
+	 * visitor's question, of which there are infinitely many, and Google asks
+	 * explicitly that internal search results stay out of the index. Hence
+	 * `noindex, follow` on `?q=` — the posts it links to are still crawled.
+	 */
+	const categoryName = $derived(
+		data.categories.find((entry) => entry.slug === data.category)?.name ?? ''
+	);
+
+	const listTitle = $derived(
+		[categoryName || 'Blog', data.currentPage > 1 ? `Page ${data.currentPage}` : '']
+			.filter(Boolean)
+			.join(' · ')
+	);
+
+	const canonicalPath = $derived.by(() => {
+		const params = [
+			data.category ? `category=${encodeURIComponent(data.category)}` : '',
+			data.currentPage > 1 ? `page=${data.currentPage}` : ''
+		].filter(Boolean);
+		return params.length ? `/blog?${params.join('&')}` : '/blog';
+	});
 </script>
 
-<svelte:head>
-	<title>Blog · {siteName}</title>
-	<meta
-		name="description"
-		content="Programme updates, field notes and stories from the families and volunteers the Foundation works with."
-	/>
-</svelte:head>
+<Seo
+	title={listTitle}
+	description="Programme updates, field notes and stories from the families and volunteers the Foundation works with."
+	{canonicalPath}
+	noindex={Boolean(data.query)}
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: 'Blog', path: '/blog' }
+	]}
+/>
 
 <PageHero
 	eyebrow="From the Foundation"

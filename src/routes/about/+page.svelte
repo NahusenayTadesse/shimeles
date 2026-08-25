@@ -3,6 +3,7 @@
 	import { assetUrl } from '$lib/assets';
 	import { formatMoney } from '$lib/money';
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import TrimBand from '$lib/components/trim-band.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
@@ -51,18 +52,16 @@
 	const memoriamText = $derived(showAmharic ? content?.memoriamBodyAm : content?.memoriamBody);
 </script>
 
-<svelte:head>
-	<title>About Us · {siteName}</title>
-	<meta
-		name="description"
-		content={content?.metaDescription ||
-			'Who we are, why the Foundation exists, and the man it is named for.'}
-	/>
-	<meta property="og:title" content={`About Us · ${siteName}`} />
-	{#if content?.heroImage}
-		<meta property="og:image" content={`/files/${content.heroImage}`} />
-	{/if}
-</svelte:head>
+<Seo
+	title="About Us"
+	description={content?.metaDescription}
+	image={content?.heroImage}
+	imageAlt={`${siteName} — about the Foundation`}
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: 'About Us', path: '/about' }
+	]}
+/>
 
 <PageHero
 	eyebrow="A family foundation · Addis Ababa"

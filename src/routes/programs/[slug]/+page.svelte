@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { reveal } from '$lib/actions/reveal';
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
@@ -24,10 +25,17 @@
 	);
 </script>
 
-<svelte:head>
-	<title>{pillar.name} · {data.settings?.['site.name'] ?? 'Shimeles Abera Foundation'}</title>
-	{#if pillar.summary}<meta name="description" content={pillar.summary} />{/if}
-</svelte:head>
+<Seo
+	title={pillar.name}
+	description={pillar.summary}
+	image={pillar.image}
+	imageAlt={pillar.name}
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: 'Programs', path: '/programs' },
+		{ name: pillar.name, path: `/programs/${pillar.slug}` }
+	]}
+/>
 
 <PageHero
 	eyebrow="One of four programmes"

@@ -181,6 +181,23 @@ async function seedSettings() {
 			value: 'Hope. Compassion. Opportunity.'
 		},
 		{ key: 'site.logo', label: 'Logo', group: 'general', valueType: 'image' },
+		{
+			key: 'seo.description',
+			label: 'Search description',
+			group: 'general',
+			valueType: 'textarea',
+			value:
+				'Hope, compassion and opportunity for families in Addis Ababa: medical hardship ' +
+				'support, elder care, mental wellness and youth education.',
+			hint: 'Shown under the site name in Google results and on shared links, for pages with no description of their own. Around 155 characters.'
+		},
+		{
+			key: 'seo.share_image',
+			label: 'Default share image',
+			group: 'general',
+			valueType: 'image',
+			hint: 'The picture shown when a link to this site is posted on Facebook, WhatsApp or X. Ideally 1200x630. Pages with their own share image use that instead.'
+		},
 
 		// Contact
 		{

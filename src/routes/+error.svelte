@@ -32,6 +32,10 @@
 
 <svelte:head>
 	<title>{heading} · Shimeles Abera Foundation</title>
+	<!-- An indexed 404 is a "soft 404" in Search Console and drags on the whole
+	     site's crawl budget. The status code says it, but the tag says it to the
+	     crawlers that render before they read headers. -->
+	<meta name="robots" content="noindex, follow" />
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl px-4 py-20 sm:py-28">

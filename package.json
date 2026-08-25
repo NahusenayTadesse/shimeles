@@ -22,6 +22,7 @@
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"db:seed": "tsx src/lib/server/db/seed.ts",
+		"og:image": "tsx scripts/og-image.ts",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run"
 	},

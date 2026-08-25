@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import TestimonialCard from '$lib/content/TestimonialCard.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
@@ -13,17 +14,16 @@
 	const shown = $derived(
 		filter ? data.testimonials.filter((t) => t.pillar?.slug === filter) : data.testimonials
 	);
-
-	const siteName = $derived(data.settings?.['site.name'] || 'Shimeles Abera Foundation');
 </script>
 
-<svelte:head>
-	<title>What people say · {siteName}</title>
-	<meta
-		name="description"
-		content="In their own words: the families, elders, students and volunteers the Foundation works alongside."
-	/>
-</svelte:head>
+<Seo
+	title="What people say"
+	description="In their own words: the families, elders, students and volunteers the Foundation works alongside."
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: 'What people say', path: '/testimonials' }
+	]}
+/>
 
 <PageHero
 	eyebrow="In their own words"

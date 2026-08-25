@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
+	import Seo from '$lib/components/Seo.svelte';
 	import { toast } from 'svelte-sonner';
 	import PageHero from '$lib/content/PageHero.svelte';
 	import BlockRenderer from '$lib/content/BlockRenderer.svelte';
@@ -277,15 +278,16 @@
 	);
 </script>
 
-<svelte:head>
-	<title
-		>{data.page?.title ?? 'Volunteer'} · {data.settings?.['site.name'] ??
-			'Shimeles Abera Foundation'}</title
-	>
-	{#if data.page?.metaDescription}
-		<meta name="description" content={data.page.metaDescription} />
-	{/if}
-</svelte:head>
+<Seo
+	title={data.page?.title ?? 'Volunteer'}
+	description={data.page?.metaDescription}
+	image={data.page?.shareImage}
+	imageAlt={data.page?.title ?? 'Volunteer'}
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: data.page?.title ?? 'Volunteer', path: '/volunteer' }
+	]}
+/>
 
 <PageHero
 	eyebrow={s('volunteer.eyebrow', 'Give your time')}

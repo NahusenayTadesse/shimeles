@@ -109,9 +109,22 @@ const handleSecurity: Handle = async ({ event, resolve }) => {
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('X-Frame-Options', 'SAMEORIGIN');
 
-	if (event.url.pathname.startsWith('/dashboard') || event.url.pathname.startsWith('/files')) {
+	if (event.url.pathname.startsWith('/dashboard')) {
 		response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 	}
+
+	/*
+	 * `/files` used to be noindex'd here too, by path prefix. It cannot be.
+	 *
+	 * That one path serves both a beneficiary's medical letter and every
+	 * photograph on the public site — including the `og:image` of every page,
+	 * which is the image a link preview shows. A blanket `noindex` on it told
+	 * Google not to index the Foundation's own photographs, and left the share
+	 * images in a grey area with the crawlers that read the header.
+	 *
+	 * The distinction is per file, not per path, and only the file endpoint
+	 * knows which is which — so it sets the header itself, from `is_public`.
+	 */
 
 	return response;
 };

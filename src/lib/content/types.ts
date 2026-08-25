@@ -138,6 +138,8 @@ export interface RenderBlogPostDetail extends Omit<RenderBlogPost, 'publishedAt'
 	body: string | null;
 	metaDescription: string | null;
 	publishedAt: number;
+	/** Last edit, for `dateModified`. Equal to `publishedAt` on an untouched post. */
+	updatedAt: number;
 	gallery: { id: number; storagePath: string; caption: string | null }[];
 	/**
 	 * Pasted YouTube links, exactly as staff entered them. The video id is

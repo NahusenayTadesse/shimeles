@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHero from '$lib/content/PageHero.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import BlogCard, { accentClass, formatPostDate } from '$lib/content/BlogCard.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
@@ -12,18 +13,26 @@
 	let { data } = $props();
 
 	const post = $derived(data.post);
-	const siteName = $derived(data.settings?.['site.name'] || 'Shimeles Abera Foundation');
 	const description = $derived(post.metaDescription || post.excerpt || '');
 </script>
 
-<svelte:head>
-	<title>{post.title} · {siteName}</title>
-	{#if description}<meta name="description" content={description} />{/if}
-	<meta property="og:type" content="article" />
-	<meta property="og:title" content={`${post.title} · ${siteName}`} />
-	{#if description}<meta property="og:description" content={description} />{/if}
-	{#if post.coverImage}<meta property="og:image" content={`/files/${post.coverImage}`} />{/if}
-</svelte:head>
+<Seo
+	title={post.title}
+	{description}
+	image={post.coverImage}
+	imageAlt={post.title}
+	type="article"
+	article
+	publishedAt={post.publishedAt}
+	modifiedAt={post.updatedAt}
+	author={post.authorName}
+	section={post.category?.name}
+	breadcrumbs={[
+		{ name: 'Home', path: '/' },
+		{ name: 'Blog', path: '/blog' },
+		{ name: post.title, path: `/blog/${post.slug}` }
+	]}
+/>
 
 <PageHero
 	eyebrow={post.category?.name ?? 'From the Foundation'}

@@ -228,7 +228,18 @@ export const GET: RequestHandler = async (event) => {
 		'Content-Disposition': inlineSafe(mimeType)
 			? `inline; filename="${encodeURIComponent(record.originalFilename)}"`
 			: `attachment; filename="${encodeURIComponent(record.originalFilename)}"`,
-		'X-Content-Type-Options': 'nosniff'
+		'X-Content-Type-Options': 'nosniff',
+		/*
+		 * Indexability, decided per file rather than per path.
+		 *
+		 * A public asset is a photograph the Foundation published and wants
+		 * found — it is the `og:image` of a page, and Google Images is a real
+		 * source of visitors for a charity. A private one is a case document,
+		 * and while an anonymous crawler already gets a 404 for it, saying
+		 * `noindex` costs nothing and covers the case where a crawler somehow
+		 * holds a session.
+		 */
+		'X-Robots-Tag': record.isPublic ? 'all' : 'noindex, nofollow'
 	};
 
 	const rangeHeader = request.headers.get('range');

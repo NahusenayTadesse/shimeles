@@ -127,6 +127,13 @@
       "when": 1787439011196,
       "tag": "0017_person_gender_vocabulary",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1787637092060,
+      "tag": "0018_seo_settings",
+      "breakpoints": true
     }
   ]
 }
