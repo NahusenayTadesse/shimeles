@@ -15,6 +15,7 @@
 	} from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 	import imageCompression from 'browser-image-compression';
+	import { IMAGE_COMPRESSION, webpName } from '$lib/forms/uploads';
 
 	/**
 	 * The dashboard counterpart to `$lib/components/Gallery` — add, caption,
@@ -67,20 +68,13 @@
 		if (!list || list.length === 0) return;
 		isProcessing = true;
 
-		const options = {
-			maxSizeMB: 1,
-			maxWidthOrHeight: 1920,
-			useWebWorker: true,
-			initialQuality: 0.8
-		};
-
 		try {
 			const processed = await Promise.all(
 				Array.from(list).map(async (f) => {
 					if (!f.type.startsWith('image/')) return f;
 					try {
-						const compressed = await imageCompression(f, options);
-						return new File([compressed], f.name, { type: compressed.type });
+						const compressed = await imageCompression(f, IMAGE_COMPRESSION);
+						return new File([compressed], webpName(f.name), { type: compressed.type });
 					} catch (err) {
 						console.error('Compression error:', err);
 						return f;

@@ -3,7 +3,10 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<!-- 64px, not the 692px original: the favicon is requested on every page
+		     and the full-size one was 217 KB of the budget for a 16px glyph. -->
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" sizes="64x64" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
 		<meta name="theme-color" content="#0e3b2e" />
 		%sveltekit.head%
 	</head>

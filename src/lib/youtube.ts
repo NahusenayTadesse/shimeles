@@ -115,9 +115,12 @@ const clampStart = (seconds: number) =>
  * able to look at a page here without that being logged against them before
  * they have touched anything.
  */
-export function youtubeEmbedUrl(video: YouTubeVideo): string {
+export function youtubeEmbedUrl(video: YouTubeVideo, autoplay = false): string {
 	const params = new URLSearchParams({ rel: '0', modestbranding: '1' });
 	if (video.start) params.set('start', String(video.start));
+	// Only ever set when a reader has just pressed play, so this cannot start a
+	// video at somebody unasked — it continues the gesture they already made.
+	if (autoplay) params.set('autoplay', '1');
 	return `https://www.youtube-nocookie.com/embed/${video.id}?${params}`;
 }
 

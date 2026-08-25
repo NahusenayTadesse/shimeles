@@ -31,7 +31,6 @@ const OUT = path.join(ROOT, 'static', 'og-default.png');
    a browser but unreadable in a template. Keep the two in step by eye: they are
    `--clay` and `--olive` in `src/routes/layout.css`. */
 const CLAY = '#0e3b2e';
-const CLAY_DEEP = '#082019';
 const OLIVE = '#ccab59';
 const SAND = '#f5efe3';
 

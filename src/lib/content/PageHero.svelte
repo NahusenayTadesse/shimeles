@@ -80,9 +80,19 @@
 					class="absolute -inset-3 -z-10 rounded-[2.5rem] border-2 border-dashed border-olive/40"
 					aria-hidden="true"
 				></div>
+				<!-- This is the largest-contentful-paint element on most secondary
+				     pages, so it says so: `fetchpriority="high"` moves it ahead of
+				     the scripts in the queue, and it is deliberately *not* lazy —
+				     it is above the fold on every one of them. The intrinsic size
+				     matches the 4:3 box the CSS already reserves, which is what
+				     keeps the layout from shifting when it lands. -->
 				<img
 					src={assetUrl(image)}
 					alt={imageAlt}
+					width="800"
+					height="600"
+					fetchpriority="high"
+					decoding="async"
 					class="tilt-right shadow-warm aspect-[4/3] w-full rounded-[2rem] object-cover"
 				/>
 			</div>

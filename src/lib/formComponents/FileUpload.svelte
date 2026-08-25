@@ -4,6 +4,7 @@
 	import { CloudUpload as UploadCloud, FileText, Loader, X } from '@lucide/svelte';
 	import { assetUrl } from '$lib/assets';
 	import imageCompression from 'browser-image-compression';
+	import { IMAGE_COMPRESSION, webpName } from '$lib/forms/uploads';
 	import { fileProxy } from 'sveltekit-superforms';
 
 	/**
@@ -64,13 +65,8 @@
 		try {
 			if (file.type.startsWith('image/')) {
 				try {
-					const compressed = await imageCompression(file, {
-						maxSizeMB: 1,
-						maxWidthOrHeight: 1920,
-						useWebWorker: true,
-						initialQuality: 0.8
-					});
-					assign(new File([compressed], file.name, { type: compressed.type }));
+					const compressed = await imageCompression(file, IMAGE_COMPRESSION);
+					assign(new File([compressed], webpName(file.name), { type: compressed.type }));
 				} catch (err) {
 					console.error('Compression error:', err);
 					assign(file);
