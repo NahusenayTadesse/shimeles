@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
-	import { LogOut, ExternalLink } from '@lucide/svelte';
+	import { LogOut, ExternalLink, KeyRound } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import { dropdownClass } from '$lib/global.svelte';
@@ -28,6 +28,14 @@
 			{#snippet child({ props })}
 				<a {...props} href="/" target="_blank" rel="noreferrer">
 					<ExternalLink class="size-4" /> View public site
+				</a>
+			{/snippet}
+		</DropdownMenu.Item>
+
+		<DropdownMenu.Item class={dropdownClass}>
+			{#snippet child({ props })}
+				<a {...props} href="/dashboard/password">
+					<KeyRound class="size-4" /> Change password
 				</a>
 			{/snippet}
 		</DropdownMenu.Item>
