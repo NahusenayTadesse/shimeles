@@ -14,6 +14,8 @@ export const label = `text-sm font-medium leading-none capitalize`;
 export type Item = {
 	value: string | number;
 	name: string;
+	/** Shown, but not choosable — a paused in-kind category, say. */
+	disabled?: boolean;
 };
 
 export function isMobile() {

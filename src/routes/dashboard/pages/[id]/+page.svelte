@@ -396,15 +396,13 @@
 									<Label class="text-xs text-muted-foreground" for="stat-metric-{index}">
 										Metric
 									</Label>
-									<select
+									<SelectComp
 										id="stat-metric-{index}"
-										class="h-9 rounded-md border border-input bg-background px-2 text-sm"
+										name="stat-metric-{index}"
+										items={metricItems}
 										bind:value={stat.metric}
-									>
-										{#each metricItems as item (item.value)}
-											<option value={item.value}>{item.name}</option>
-										{/each}
-									</select>
+										triggerClass="h-9 normal-case"
+									/>
 								</div>
 
 								<div class="flex min-w-48 flex-1 flex-col gap-1">

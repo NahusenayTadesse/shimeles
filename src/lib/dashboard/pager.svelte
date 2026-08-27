@@ -2,8 +2,7 @@
 	import { page as currentPage } from '$app/state';
 	import { applyFilter } from '$lib/dashboard/apply-filter';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
-	import { selectItem } from '$lib/global.svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
 
 	/**
@@ -27,6 +26,11 @@
 	const set = (key: string, value: string) =>
 		applyFilter(currentPage.url, key, value, { resetsPage: key === 'perPage' });
 
+	const pageSizes = [25, 50, 100, 200].map((size) => ({
+		value: String(size),
+		name: `${size} per page`
+	}));
+
 	const first = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
 	const last = $derived(Math.min(page * perPage, total));
 </script>
@@ -42,18 +46,15 @@
 	</p>
 
 	<div class="flex items-center gap-2">
-		<Select.Root
-			type="single"
+		<!-- Four fixed sizes: a search box over them would only be noise. -->
+		<SelectComp
+			name="perPage"
 			value={String(perPage)}
+			items={pageSizes}
+			searchable={false}
+			triggerClass="h-8 w-28 text-sm"
 			onValueChange={(v) => v && set('perPage', v)}
-		>
-			<Select.Trigger class="h-8 w-28 text-sm">{perPage} per page</Select.Trigger>
-			<Select.Content>
-				{#each [25, 50, 100, 200] as size (size)}
-					<Select.Item value={String(size)} class={selectItem}>{size} per page</Select.Item>
-				{/each}
-			</Select.Content>
-		</Select.Root>
+		/>
 
 		<Button
 			variant="outline"

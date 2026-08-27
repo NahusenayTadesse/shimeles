@@ -11,13 +11,13 @@
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import { formDraft } from '$lib/formComponents/form-draft.svelte';
 	import DraftBanner from '$lib/formComponents/DraftBanner.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import {
@@ -153,6 +153,12 @@
 		days: 'Within days',
 		immediate: 'Right now, it is an emergency'
 	};
+
+	const urgencyItems = URGENCY.map((level) => ({ value: level, name: URGENCY_LABELS[level] }));
+
+	const regionItems = $derived(
+		data.catalog.regions.map((region) => ({ value: String(region.id), name: region.name }))
+	);
 
 	/** Needs are filtered by the chosen programme, if any. */
 	const visibleGroups = $derived(
@@ -519,18 +525,15 @@
 
 					<div class="flex flex-col gap-2">
 						<Label>Gender</Label>
-						<Select.Root
-							type="single"
+						<SelectComp
+							name="subjectGender"
 							value={$form.subjectGender}
+							items={PERSON_GENDER_OPTIONS}
+							searchable={false}
+							triggerClass="normal-case"
+							placeholder={genderLabel}
 							onValueChange={(value) => ($form.subjectGender = value as typeof $form.subjectGender)}
-						>
-							<Select.Trigger class="w-full">{genderLabel}</Select.Trigger>
-							<Select.Content>
-								{#each PERSON_GENDER_OPTIONS as option (option.value)}
-									<Select.Item value={option.value}>{option.name}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						/>
 					</div>
 
 					<InputComp
@@ -555,21 +558,14 @@
 					{#if data.catalog.regions.length > 1}
 						<div class="flex flex-col gap-2">
 							<Label>Region</Label>
-							<Select.Root
-								type="single"
+							<SelectComp
+								name="regionId"
 								value={$form.regionId ? String($form.regionId) : ''}
+								items={regionItems}
+								triggerClass="normal-case"
+								placeholder="Choose a region"
 								onValueChange={(value) => ($form.regionId = value ? Number(value) : null)}
-							>
-								<Select.Trigger class="w-full">
-									{data.catalog.regions.find((region) => region.id === $form.regionId)?.name ??
-										'Choose a region'}
-								</Select.Trigger>
-								<Select.Content>
-									{#each data.catalog.regions as region (region.id)}
-										<Select.Item value={String(region.id)}>{region.name}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+							/>
 						</div>
 					{/if}
 
@@ -785,20 +781,14 @@
 														placeholder="Birr, if you know"
 														class="h-8 text-xs"
 													/>
-													<Select.Root
-														type="single"
+													<SelectComp
+														name="urgency"
 														value={claim.urgency}
+														items={urgencyItems}
+														searchable={false}
+														triggerClass="h-8 flex-1 text-xs normal-case"
 														onValueChange={(value) => updateNeed(need.id, { urgency: value })}
-													>
-														<Select.Trigger class="h-8 flex-1 text-xs">
-															{URGENCY_LABELS[claim.urgency]}
-														</Select.Trigger>
-														<Select.Content>
-															{#each URGENCY as level (level)}
-																<Select.Item value={level}>{URGENCY_LABELS[level]}</Select.Item>
-															{/each}
-														</Select.Content>
-													</Select.Root>
+													/>
 												</div>
 											</div>
 										{/if}

@@ -6,13 +6,13 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import { formDraft } from '$lib/formComponents/form-draft.svelte';
 	import DraftBanner from '$lib/formComponents/DraftBanner.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import { Copy, CircleCheck, Package, Plus, Trash2, TriangleAlert } from '@lucide/svelte';
@@ -161,6 +161,54 @@
 		}
 	};
 
+	/**
+	 * Option lists for the comboboxes. A paused category is still listed —
+	 * a donor should see that we know about it — but cannot be chosen.
+	 */
+	const categoryItems = $derived(
+		categories.map((option) => ({
+			value: String(option.id),
+			name: option.isAcceptingNow ? option.name : `${option.name} (paused)`,
+			disabled: !option.isAcceptingNow
+		}))
+	);
+
+	const regionItems = $derived(
+		regions.map((region) => ({ value: String(region.id), name: region.name }))
+	);
+
+	const conditionItems = ITEM_CONDITIONS.map((condition) => ({
+		value: condition,
+		name: CONDITION_LABELS[condition]
+	}));
+
+	const ageGroupItems = ITEM_AGE_GROUPS.map((group) => ({
+		value: group,
+		name: AGE_LABELS[group]
+	}));
+
+	const itemGenderItems = ITEM_GENDERS.map((gender) => ({
+		value: gender,
+		name: GENDER_LABELS[gender]
+	}));
+
+	const loadSizeItems = LOAD_SIZES.map((size) => ({ value: size, name: LOAD_LABELS[size] }));
+
+	const donorTypeItems = DONOR_TYPES.map((type) => ({
+		value: type,
+		name: DONOR_TYPE_LABELS[type]
+	}));
+
+	const channelItems = CONTACT_CHANNELS.map((channel) => ({
+		value: channel,
+		name: CHANNEL_LABELS[channel]
+	}));
+
+	const valuationItems = VALUATION_BASES.map((basis) => ({
+		value: basis,
+		name: VALUATION_LABELS[basis]
+	}));
+
 	const categoryById = $derived(new Map(categories.map((category) => [category.id, category])));
 
 	/** New lines open on a category we are actually taking, never a paused one. */
@@ -306,22 +354,15 @@
 					<div class="grid gap-3 md:grid-cols-2">
 						<div class="flex flex-col gap-2">
 							<Label for="category-{index}">Kind of thing</Label>
-							<Select.Root
-								type="single"
+							<SelectComp
+								id="category-{index}"
+								name="categoryId-{index}"
 								value={item.categoryId ? String(item.categoryId) : ''}
+								items={categoryItems}
+								triggerClass="normal-case"
+								placeholder="Choose a category"
 								onValueChange={(value) => chooseCategory(index, value ? Number(value) : null)}
-							>
-								<Select.Trigger id="category-{index}" class="w-full">
-									{category?.name ?? 'Choose a category'}
-								</Select.Trigger>
-								<Select.Content>
-									{#each categories as option (option.id)}
-										<Select.Item value={String(option.id)} disabled={!option.isAcceptingNow}>
-											{option.name}{option.isAcceptingNow ? '' : ' (paused)'}
-										</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+							/>
 							{#if category?.description}
 								<p class="text-xs text-muted-foreground">{category.description}</p>
 							{/if}
@@ -359,21 +400,16 @@
 						/>
 						<div class="flex flex-col gap-2">
 							<Label for="condition-{index}">Condition</Label>
-							<Select.Root
-								type="single"
+							<SelectComp
+								id="condition-{index}"
+								name="condition-{index}"
 								value={item.condition}
+								items={conditionItems}
+								searchable={false}
+								triggerClass="normal-case"
 								onValueChange={(value) =>
 									(item.condition = (value || 'good') as typeof item.condition)}
-							>
-								<Select.Trigger id="condition-{index}" class="w-full">
-									{CONDITION_LABELS[item.condition]}
-								</Select.Trigger>
-								<Select.Content>
-									{#each ITEM_CONDITIONS as condition (condition)}
-										<Select.Item value={condition}>{CONDITION_LABELS[condition]}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+							/>
 						</div>
 					</div>
 
@@ -383,39 +419,29 @@
 						<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
 							<div class="flex flex-col gap-2">
 								<Label for="ageGroup-{index}">Who would it fit?</Label>
-								<Select.Root
-									type="single"
+								<SelectComp
+									id="ageGroup-{index}"
+									name="ageGroup-{index}"
 									value={item.ageGroup}
+									items={ageGroupItems}
+									searchable={false}
+									triggerClass="normal-case"
 									onValueChange={(value) =>
 										(item.ageGroup = (value || 'any') as typeof item.ageGroup)}
-								>
-									<Select.Trigger id="ageGroup-{index}" class="w-full">
-										{AGE_LABELS[item.ageGroup]}
-									</Select.Trigger>
-									<Select.Content>
-										{#each ITEM_AGE_GROUPS as group (group)}
-											<Select.Item value={group}>{AGE_LABELS[group]}</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
+								/>
 							</div>
 							<div class="flex flex-col gap-2">
 								<Label for="gender-{index}">Made for</Label>
-								<Select.Root
-									type="single"
+								<SelectComp
+									id="gender-{index}"
+									name="gender-{index}"
 									value={item.gender}
+									items={itemGenderItems}
+									searchable={false}
+									triggerClass="normal-case"
 									onValueChange={(value) =>
 										(item.gender = (value || 'unisex') as typeof item.gender)}
-								>
-									<Select.Trigger id="gender-{index}" class="w-full">
-										{GENDER_LABELS[item.gender]}
-									</Select.Trigger>
-									<Select.Content>
-										{#each ITEM_GENDERS as gender (gender)}
-											<Select.Item value={gender}>{GENDER_LABELS[gender]}</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
+								/>
 							</div>
 							<div class="flex flex-col gap-2 sm:col-span-2 md:col-span-1">
 								<Label for="sizeRange-{index}">Sizes</Label>
@@ -619,20 +645,15 @@
 				{#if regions.length > 1}
 					<div class="flex flex-col gap-2">
 						<Label for="in-kind-region">Region</Label>
-						<Select.Root
-							type="single"
+						<SelectComp
+							id="in-kind-region"
+							name="regionId"
 							value={$form.regionId ? String($form.regionId) : ''}
+							items={regionItems}
+							triggerClass="normal-case"
+							placeholder="Choose a region"
 							onValueChange={(value) => ($form.regionId = value ? Number(value) : null)}
-						>
-							<Select.Trigger id="in-kind-region" class="w-full">
-								{regions.find((region) => region.id === $form.regionId)?.name ?? 'Choose a region'}
-							</Select.Trigger>
-							<Select.Content>
-								{#each regions as region (region.id)}
-									<Select.Item value={String(region.id)}>{region.name}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						/>
 					</div>
 				{/if}
 
@@ -651,18 +672,15 @@
 
 		<div class="flex flex-col gap-2">
 			<Label for="loadSize">How much is there?</Label>
-			<Select.Root
-				type="single"
+			<SelectComp
+				id="loadSize"
+				name="loadSize"
 				value={$form.loadSize}
+				items={loadSizeItems}
+				searchable={false}
+				triggerClass="normal-case"
 				onValueChange={(value) => ($form.loadSize = (value || 'car_boot') as typeof $form.loadSize)}
-			>
-				<Select.Trigger id="loadSize" class="w-full">{LOAD_LABELS[$form.loadSize]}</Select.Trigger>
-				<Select.Content>
-					{#each LOAD_SIZES as size (size)}
-						<Select.Item value={size}>{LOAD_LABELS[size]}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+			/>
 		</div>
 
 		<div class="grid gap-3 sm:grid-cols-2">
@@ -760,21 +778,15 @@
 		<div class="grid gap-3 md:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="in-kind-donorType">This gift is from</Label>
-				<Select.Root
-					type="single"
+				<SelectComp
+					id="in-kind-donorType"
+					name="donorType"
 					value={$form.donorType}
+					items={donorTypeItems}
+					triggerClass="normal-case"
 					onValueChange={(value) =>
 						($form.donorType = (value || 'individual') as typeof $form.donorType)}
-				>
-					<Select.Trigger id="in-kind-donorType" class="w-full">
-						{DONOR_TYPE_LABELS[$form.donorType]}
-					</Select.Trigger>
-					<Select.Content>
-						{#each DONOR_TYPES as type (type)}
-							<Select.Item value={type}>{DONOR_TYPE_LABELS[type]}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
+				/>
 			</div>
 
 			<InputComp
@@ -821,22 +833,17 @@
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-2">
 				<Label for="preferredContactChannel">Best way to reach you</Label>
-				<Select.Root
-					type="single"
+				<SelectComp
+					id="preferredContactChannel"
+					name="preferredContactChannel"
 					value={$form.preferredContactChannel}
+					items={channelItems}
+					searchable={false}
+					triggerClass="normal-case"
 					onValueChange={(value) =>
 						($form.preferredContactChannel = (value ||
 							'phone') as typeof $form.preferredContactChannel)}
-				>
-					<Select.Trigger id="preferredContactChannel" class="w-full">
-						{CHANNEL_LABELS[$form.preferredContactChannel]}
-					</Select.Trigger>
-					<Select.Content>
-						{#each CONTACT_CHANNELS as channel (channel)}
-							<Select.Item value={channel}>{CHANNEL_LABELS[channel]}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
+				/>
 			</div>
 			<InputComp
 				{errors}
@@ -852,21 +859,15 @@
 		<!-- ==================== Paperwork ==================== -->
 		<div class="flex flex-col gap-2">
 			<Label for="valuationBasis">Where the values above come from</Label>
-			<Select.Root
-				type="single"
+			<SelectComp
+				id="valuationBasis"
+				name="valuationBasis"
 				value={$form.valuationBasis}
+				items={valuationItems}
+				triggerClass="normal-case"
 				onValueChange={(value) =>
 					($form.valuationBasis = (value || 'donor_estimate') as typeof $form.valuationBasis)}
-			>
-				<Select.Trigger id="valuationBasis" class="w-full">
-					{VALUATION_LABELS[$form.valuationBasis]}
-				</Select.Trigger>
-				<Select.Content>
-					{#each VALUATION_BASES as basis (basis)}
-						<Select.Item value={basis}>{VALUATION_LABELS[basis]}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+			/>
 			<p class="text-xs text-muted-foreground">
 				Only ever an estimate, kept for our records and your receipt. It is never counted as money
 				raised.

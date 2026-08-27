@@ -11,13 +11,13 @@
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import { formDraft } from '$lib/formComponents/form-draft.svelte';
 	import DraftBanner from '$lib/formComponents/DraftBanner.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import {
@@ -164,6 +164,27 @@
 		advanced: 'Very experienced',
 		professional: 'This is my profession'
 	};
+
+	/** Option lists for the comboboxes below. */
+	const proficiencyItems = PROFICIENCY.map((level) => ({
+		value: level,
+		name: PROFICIENCY_LABELS[level]
+	}));
+
+	const genderItems = [
+		{ value: 'female', name: 'Female' },
+		{ value: 'male', name: 'Male' },
+		{ value: 'other', name: 'Other' },
+		{ value: 'prefer_not_to_say', name: 'Prefer not to say' }
+	];
+
+	const regionItems = $derived(
+		data.catalog.regions.map((region) => ({ value: String(region.id), name: region.name }))
+	);
+
+	const professionItems = $derived(
+		data.catalog.professions.map((row) => ({ value: String(row.id), name: row.name }))
+	);
 
 	/**
 	 * Skills the catalogue marks as needing a credential. Ticking one is what
@@ -477,41 +498,28 @@
 					{#if data.catalog.regions.length > 1}
 						<div class="flex flex-col gap-2">
 							<Label>Region</Label>
-							<Select.Root
-								type="single"
+							<SelectComp
+								name="regionId"
 								value={$form.regionId ? String($form.regionId) : ''}
+								items={regionItems}
+								triggerClass="normal-case"
+								placeholder="Choose a region"
 								onValueChange={(value) => ($form.regionId = value ? Number(value) : null)}
-							>
-								<Select.Trigger class="w-full">
-									{data.catalog.regions.find((region) => region.id === $form.regionId)?.name ??
-										'Choose a region'}
-								</Select.Trigger>
-								<Select.Content>
-									{#each data.catalog.regions as region (region.id)}
-										<Select.Item value={String(region.id)}>{region.name}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+							/>
 						</div>
 					{/if}
 
 					<div class="flex flex-col gap-2">
 						<Label>Gender</Label>
-						<Select.Root
-							type="single"
+						<SelectComp
+							name="gender"
 							value={$form.gender ?? ''}
+							items={genderItems}
+							searchable={false}
+							triggerClass="normal-case"
+							placeholder={genderLabel($form.gender)}
 							onValueChange={(value) => ($form.gender = (value || null) as typeof $form.gender)}
-						>
-							<Select.Trigger class="w-full">
-								{genderLabel($form.gender)}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Item value="female">Female</Select.Item>
-								<Select.Item value="male">Male</Select.Item>
-								<Select.Item value="other">Other</Select.Item>
-								<Select.Item value="prefer_not_to_say">Prefer not to say</Select.Item>
-							</Select.Content>
-						</Select.Root>
+						/>
 					</div>
 				</div>
 
@@ -650,20 +658,14 @@
 
 											{#if claim}
 												<div class="mt-3 pl-7">
-													<Select.Root
-														type="single"
+													<SelectComp
+														name="proficiency"
 														value={claim.proficiency}
+														items={proficiencyItems}
+														searchable={false}
+														triggerClass="h-8 w-full text-xs normal-case"
 														onValueChange={(value) => setProficiency(skill.id, value)}
-													>
-														<Select.Trigger class="h-8 w-full text-xs">
-															{PROFICIENCY_LABELS[claim.proficiency]}
-														</Select.Trigger>
-														<Select.Content>
-															{#each PROFICIENCY as level (level)}
-																<Select.Item value={level}>{PROFICIENCY_LABELS[level]}</Select.Item>
-															{/each}
-														</Select.Content>
-													</Select.Root>
+													/>
 												</div>
 											{/if}
 										</div>
@@ -829,20 +831,14 @@
 								<div class="grid gap-5 md:grid-cols-2">
 									<div class="flex flex-col gap-2">
 										<Label>Profession</Label>
-										<Select.Root
-											type="single"
+										<SelectComp
+											name="professionId"
 											value={credential.professionId ? String(credential.professionId) : ''}
+											items={professionItems}
+											triggerClass="normal-case"
+											placeholder="Choose your profession"
 											onValueChange={(value) => setProfession(index, value)}
-										>
-											<Select.Trigger class="w-full">
-												{profession?.name ?? 'Choose your profession'}
-											</Select.Trigger>
-											<Select.Content>
-												{#each data.catalog.professions as row (row.id)}
-													<Select.Item value={String(row.id)}>{row.name}</Select.Item>
-												{/each}
-											</Select.Content>
-										</Select.Root>
+										/>
 									</div>
 
 									<InputComp
