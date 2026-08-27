@@ -95,6 +95,10 @@
 		{testimonials}
 		{labels}
 		initiativeNotice={settings['initiatives.disclaimer'] ?? ''}
+		paymentNotice={{
+			en: settings['donation.notice_bank'] ?? '',
+			am: settings['donation.notice_bank_am'] ?? ''
+		}}
 	/>
 	{@render children?.()}
 </div>

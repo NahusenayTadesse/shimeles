@@ -12,6 +12,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { ArrowRight, Copy, Quote } from '@lucide/svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
+	import PaymentNotice from '$lib/components/payment-notice.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import TestimonialSlider from '$lib/content/TestimonialSlider.svelte';
 	import { toast } from 'svelte-sonner';
@@ -49,6 +50,7 @@
 		testimonials = [],
 		labels = {},
 		initiativeNotice = '',
+		paymentNotice = { en: '', am: '' },
 		class: className = ''
 	}: {
 		blocks: RenderBlock[];
@@ -85,6 +87,12 @@
 		 * when staff have cleared it, in which case nothing renders.
 		 */
 		initiativeNotice?: string;
+		/**
+		 * The bank wording of "no money moves on this website", from
+		 * `donation.notice_bank`, rendered under a `donation_details` block.
+		 * Passed in for the same reason as everything else here.
+		 */
+		paymentNotice?: { en: string; am: string };
 		class?: string;
 	} = $props();
 
@@ -496,6 +504,9 @@
 						</Card.Root>
 					{/each}
 				</div>
+				<!-- Under the account numbers, not above them: it answers the
+				     question the numbers raise. -->
+				<PaymentNotice en={paymentNotice.en} am={paymentNotice.am} class="mt-5" />
 			{:else if block.type === 'gallery'}
 				<!-- Photographs live in `media_items` keyed by this block, not in
 				     `content` — they are managed on the shared media screen. -->

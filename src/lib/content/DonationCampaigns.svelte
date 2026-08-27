@@ -7,6 +7,7 @@
 	import { ArrowUpRight, ChevronDown, CreditCard, Info, Play } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
+	import PaymentNotice from '$lib/components/payment-notice.svelte';
 	import { cn } from '$lib/utils';
 	import type { RenderDonationCampaign } from '$lib/content/types';
 
@@ -28,12 +29,18 @@
 		videos = {},
 		heading = 'Give by card',
 		description = '',
+		notice = { en: '', am: '' },
 		class: className = ''
 	}: {
 		campaigns?: RenderDonationCampaign[];
 		videos?: Record<number, { id: number; youtubeUrl: string; caption: string | null }[]>;
 		heading?: string;
 		description?: string;
+		/**
+		 * The card wording of "no money moves on this website", from
+		 * `donation.notice_card`. Cleared, the plain sentence below stands alone.
+		 */
+		notice?: { en: string; am: string };
 		class?: string;
 	} = $props();
 
@@ -206,11 +213,17 @@
 		<!--
 			Said plainly, because it is true and because a donor who expects a
 			reference number and does not get one will email to ask where it is:
-			these platforms confirm the gift themselves.
+			these platforms confirm the gift themselves. The settings row says it
+			in both languages and adds where the card details actually go; the
+			sentence below is what stands if staff ever clear that row.
 		-->
-		<p class="text-xs text-muted-foreground">
-			These take you to the platform to complete your gift. They will send you their own receipt, so
-			you will not need a reference number from us.
-		</p>
+		{#if notice.en?.trim()}
+			<PaymentNotice en={notice.en} am={notice.am} />
+		{:else}
+			<p class="text-xs text-muted-foreground">
+				These take you to the platform to complete your gift. They will send you their own receipt,
+				so you will not need a reference number from us.
+			</p>
+		{/if}
 	</section>
 {/if}

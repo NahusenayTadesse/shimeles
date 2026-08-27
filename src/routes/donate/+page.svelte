@@ -19,12 +19,23 @@
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import HelpPanel from '$lib/components/help-panel.svelte';
+	import PaymentNotice from '$lib/components/payment-notice.svelte';
 	import { CircleCheck, Copy, HeartHandshake, Package } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
 
 	const s = (key: string, fallback: string) => data.strings?.[key] ?? fallback;
+
+	/**
+	 * One of the three "no money moves on this website" notices, with its
+	 * Amharic. Both halves are settings rows, so the pair is looked up together
+	 * rather than spelled out at each of the four places one is shown.
+	 */
+	const notice = (key: string) => ({
+		en: data.settings?.[`donation.notice_${key}`] ?? '',
+		am: data.settings?.[`donation.notice_${key}_am`] ?? ''
+	});
 
 	const { form, errors, enhance, delayed, message, allErrors } = superForm(data.form, {
 		resetForm: false,
@@ -174,6 +185,11 @@
 			</Tabs.List>
 		</Tabs.Root>
 
+		<!-- Before anything else on the page: somebody deciding whether to trust a
+		     donation form should not have to reach the bank details to find out
+		     that this site never touches their money. -->
+		<PaymentNotice {...notice('general')} tone="loud" />
+
 		<!-- Above the form, not below it. People were reaching the transfer step
 		     already unsure what the reference was for, and an answer they find
 		     after they have guessed is an answer that arrived too late. -->
@@ -238,6 +254,7 @@
 							</div>
 						{/if}
 					</dl>
+					<PaymentNotice {...notice('bank')} class="w-full text-left" />
 				{/if}
 
 				<Button variant="outline" onclick={() => (confirmation = null)} class="mt-2">
@@ -421,6 +438,10 @@
 								</div>
 							{/if}
 							<input type="hidden" name="paymentAccountId" value={$form.paymentAccountId ?? ''} />
+
+							<!-- Under the accounts, where the donor is choosing how to send
+							     it and is closest to expecting a card field. -->
+							<PaymentNotice {...notice('bank')} />
 						</div>
 
 						<div class="flex min-w-0 flex-col gap-5">
@@ -541,6 +562,7 @@
 			<DonationCampaigns
 				campaigns={data.campaigns}
 				videos={data.campaignVideos}
+				notice={notice('card')}
 				heading={s('donate.card_heading', 'Give by card')}
 				description={s(
 					'donate.card_description',
@@ -563,6 +585,7 @@
 			moneyTotals={data.moneyTotals}
 			payments={data.blocks.payments}
 			initiativeNotice={data.settings?.['initiatives.disclaimer'] ?? ''}
+			paymentNotice={notice('bank')}
 		/>
 	</div>
 {/if}

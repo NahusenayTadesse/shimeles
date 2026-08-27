@@ -258,6 +258,84 @@ async function seedSettings() {
 			value: 'Every birr is accounted for and reported back to the people who gave it.'
 		},
 
+		// "No money moves on this website." Three wordings, because the sentence
+		// that reassures somebody staring at an account number is not the one
+		// that reassures somebody about to press a PayPal button — and each is a
+		// row, not a literal, because a notice about what the Foundation does
+		// with money is precisely what a board revises without a deploy (§0).
+		//
+		// The `_am` half of each pair is shown directly under the English rather
+		// than behind a switch: this is what somebody reads when they are
+		// deciding whether to trust the page.
+		{
+			key: 'donation.notice_general',
+			label: 'Payment notice — the whole page',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown near the top of the donate page. Clear it to remove the notice.',
+			value:
+				'This website does not process payments. No card, bank or mobile-money details are ' +
+				'ever entered here, and none are held by us. The form on this page records your gift ' +
+				'and gives you a reference — the money itself moves at your bank, or on the payment ' +
+				"provider's own site."
+		},
+		{
+			key: 'donation.notice_general_am',
+			label: 'Payment notice — the whole page (Amharic)',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown directly under the English. Clear it to show the English alone.',
+			value:
+				'ይህ ድረ ገጽ ክፍያ አያስተናግድም። የካርድ፣ የባንክ ወይም የሞባይል ገንዘብ መረጃዎ እዚህ አይገባም፤ በእኛም አይያዝም። ' +
+				'በዚህ ገጽ ላይ ያለው ቅጽ ስጦታዎን መዝግቦ ማመሳከሪያ ይሰጥዎታል፤ ገንዘቡ ራሱ የሚተላለፈው በባንክዎ ወይም በክፍያ ' +
+				'አቅራቢው ራሱ ድረ ገጽ ላይ ነው።'
+		},
+		{
+			key: 'donation.notice_bank',
+			label: 'Payment notice — bank and mobile money',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown under the account details, wherever they are listed.',
+			value:
+				'The transfer happens at your bank or in your mobile-money app, never on this ' +
+				'website. We cannot take money from your account, and we will never ask you for a ' +
+				'PIN, a password or a card number. Use the details above and quote your reference.'
+		},
+		{
+			key: 'donation.notice_bank_am',
+			label: 'Payment notice — bank and mobile money (Amharic)',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown directly under the English. Clear it to show the English alone.',
+			value:
+				'ዝውውሩ የሚፈጸመው በባንክዎ ወይም በሞባይል ገንዘብ መተግበሪያዎ ውስጥ ነው፤ በዚህ ድረ ገጽ ላይ በጭራሽ አይደለም። ' +
+				'ከመለያዎ ገንዘብ ልናወጣ አንችልም፤ ፒንዎን፣ የይለፍ ቃልዎን ወይም የካርድ ቁጥርዎን ፈጽሞ አንጠይቅም። ከላይ ያሉትን ' +
+				'ዝርዝሮች ተጠቅመው ማመሳከሪያዎን ይጥቀሱ።'
+		},
+		{
+			key: 'donation.notice_card',
+			label: 'Payment notice — card and outside platforms',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown under the PayPal and other platform buttons.',
+			value:
+				"These buttons take you to the platform's own secure checkout — PayPal, or whichever " +
+				'provider is named on the button. Your card details are entered there, on their site, ' +
+				'and are never seen by this website or by the Foundation. They send you their own ' +
+				'receipt, so you will not need a reference number from us.'
+		},
+		{
+			key: 'donation.notice_card_am',
+			label: 'Payment notice — card and outside platforms (Amharic)',
+			group: 'donation',
+			valueType: 'textarea',
+			hint: 'Shown directly under the English. Clear it to show the English alone.',
+			value:
+				'እነዚህ አዝራሮች ወደ አቅራቢው ራሱ ደኅንነቱ የተጠበቀ የክፍያ ገጽ — ወደ ፔይፓል ወይም በአዝራሩ ላይ ወደ ተጠቀሰው ' +
+				'አቅራቢ — ይወስዱዎታል። የካርድዎ መረጃ የሚገባው እዚያ በእነሱ ገጽ ላይ ነው፤ በዚህ ድረ ገጽም ሆነ በፋውንዴሽኑ ' +
+				'ፈጽሞ አይታይም። ደረሰኙን እነሱ ራሳቸው ስለሚልኩልዎት ከእኛ ማመሳከሪያ ቁጥር አያስፈልግዎትም።'
+		},
+
 		// Future initiatives. §0: the disclaimer is a row, not a string in a
 		// component — it is a legal notice the Foundation must be able to revise
 		// (or withdraw, by clearing it) the day a programme actually opens,
