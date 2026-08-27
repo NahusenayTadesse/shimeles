@@ -44,6 +44,7 @@
 			{ key: 'contact.phone_1', icon: Phone, href: (v: string) => `tel:${v.replace(/\s/g, '')}` },
 			{ key: 'contact.phone_2', icon: Phone, href: (v: string) => `tel:${v.replace(/\s/g, '')}` },
 			{ key: 'contact.email_primary', icon: Mail, href: (v: string) => `mailto:${v}` },
+			{ key: 'contact.email_secondary', icon: Mail, href: (v: string) => `mailto:${v}` },
 			{ key: 'contact.address', icon: MapPin, href: () => '' }
 		].filter((contact) => s(contact.key))
 	);
