@@ -1,0 +1,1 @@
+ALTER TABLE `status_options` ADD `notify_applicant` integer DEFAULT false NOT NULL;

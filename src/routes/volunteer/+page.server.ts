@@ -159,7 +159,7 @@ export const actions: Actions = {
 			// Both fire-and-forget: the application is already stored, and a slow
 			// mail server must not turn a saved application into an error page.
 			const mail = volunteerAcknowledgementTemplate(data.fullName, result.referenceNumber);
-			void sendEmail(data.email, mail.subject, mail.html).catch((err) =>
+			void sendEmail({ to: data.email, ...mail }).catch((err) =>
 				console.error('volunteer acknowledgement failed', err)
 			);
 			void notifyNewVolunteer(result).catch((err) =>

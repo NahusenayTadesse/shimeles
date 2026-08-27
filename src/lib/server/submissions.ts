@@ -6,6 +6,7 @@ import {
 	formDefinitions,
 	formFields,
 	formSubmissionDocuments,
+	formSubmissionNotes,
 	formSubmissions,
 	regions
 } from '$lib/server/db/schema';
@@ -15,6 +16,8 @@ import { defaultStatus } from '$lib/server/workflow';
 import { audit } from '$lib/server/audit';
 import { isFieldVisible } from '$lib/server/forms';
 import type { RenderForm } from '$lib/forms/types';
+import { replyTemplate, sendEmail } from '$lib/server/email';
+import type { Access } from '$lib/server/permissions';
 
 /**
  * Turning a validated dynamic-form payload into a case file.
@@ -28,6 +31,16 @@ import type { RenderForm } from '$lib/forms/types';
 export interface SubmitResult {
 	id: number;
 	referenceNumber: string;
+	/**
+	 * Who to write to, carried out of the write rather than re-queried.
+	 *
+	 * The submitter's details are already split out of the payload here (see
+	 * the contact-column mapping below), and a form can name them in a question
+	 * rather than in the explicit fields — so this is the one place that knows
+	 * the answer without guessing which question was the email address.
+	 */
+	submittedByEmail?: string | null;
+	submittedByName?: string | null;
 }
 
 /**
@@ -121,7 +134,12 @@ export async function submitForm(
 			.returning({ id: formSubmissions.id })
 			.all();
 
-		return { id: submission.id, referenceNumber };
+		return {
+			id: submission.id,
+			referenceNumber,
+			submittedByEmail: str(payload.submittedByEmail) ?? mapped.email ?? null,
+			submittedByName: str(payload.submittedByName) ?? mapped.name ?? null
+		};
 	});
 
 	// Documents are stored private and scoped to the form's pillar, so the
@@ -250,4 +268,92 @@ export async function linkBeneficiary(
 	});
 
 	return beneficiaryId;
+}
+
+/* ==========================================================================
+   The case file's thread
+   ========================================================================== */
+
+/**
+ * Adds one row to a case's history, and sends it if it is a reply rather than
+ * an internal note.
+ *
+ * The same shape as `addContactReply`, and for the same reason: a note and a
+ * reply are the same text, and the only difference is whether the applicant
+ * can see it. `isInternal` decides everything and is passed explicitly from
+ * two separate submit buttons — never inferred from whether an email address
+ * happens to exist, because "we had their address so we sent it" is how a
+ * caseworker's private assessment of a family reaches that family.
+ *
+ * The send happens before `sent_at` is written, so a bounced reply is recorded
+ * as an unsent one rather than leaving the case looking answered. Staff need
+ * to see that they wrote it and that it did not go.
+ */
+export async function addSubmissionNote(
+	event: RequestEvent,
+	access: Access,
+	input: {
+		submissionId: number;
+		note: string;
+		isInternal: boolean;
+	}
+): Promise<{ emailed: boolean; reason?: 'no-email' | 'send-failed' }> {
+	const [submission] = await db
+		.select({
+			id: formSubmissions.id,
+			reference: formSubmissions.referenceNumber,
+			name: formSubmissions.submittedByName,
+			email: formSubmissions.submittedByEmail
+		})
+		.from(formSubmissions)
+		.where(eq(formSubmissions.id, input.submissionId))
+		.limit(1);
+
+	if (!submission) return { emailed: false };
+
+	let emailed = false;
+	let reason: 'no-email' | 'send-failed' | undefined;
+
+	// An application can be taken on paper or over the phone, so no address is
+	// an ordinary state — the caller reports it rather than failing.
+	if (!input.isInternal && !submission.email) reason = 'no-email';
+
+	if (!input.isInternal && submission.email) {
+		try {
+			const result = await sendEmail({
+				to: submission.email,
+				...replyTemplate({
+					name: submission.name ?? 'friend',
+					body: input.note,
+					reference: submission.reference,
+					about: 'request'
+				})
+			});
+			emailed = result.sent;
+			if (!result.sent) reason = 'send-failed';
+		} catch (err) {
+			console.error('case reply email failed', err);
+			reason = 'send-failed';
+		}
+	}
+
+	await db.insert(formSubmissionNotes).values({
+		formSubmissionId: input.submissionId,
+		authorId: access.userId,
+		note: input.note,
+		isSystem: false,
+		isInternal: input.isInternal,
+		sentAt: emailed ? new Date() : null,
+		createdAt: new Date()
+	});
+
+	audit({
+		event,
+		action: 'created',
+		entityType: 'form_submission_note',
+		entityId: input.submissionId,
+		metadata: { internal: input.isInternal, emailed }
+	});
+
+	return { emailed, reason };
 }

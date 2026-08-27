@@ -321,9 +321,27 @@ export const statusOptions = sqliteTable(
 		labelAm: text('label_am'),
 		/** Badge colour token used by the dashboard tables and the kanban board. */
 		color: text('color').default('slate').notNull(),
-		/** Shown to the applicant if the status is ever surfaced publicly. */
+		/**
+		 * Shown to the applicant if the status is ever surfaced publicly, and
+		 * the body of the email sent when `notifyApplicant` is on.
+		 */
 		publicDescription: text('public_description'),
 		publicDescriptionAm: text('public_description_am'),
+		/**
+		 * Email the applicant when a record moves to this status.
+		 *
+		 * A row rather than an `if (stage === 'approved')` in the transition
+		 * function, per §0: which moments are worth telling somebody about is a
+		 * judgement the Foundation makes and changes — a coordinator deciding
+		 * that "Under review" should reassure people is a checkbox, not a
+		 * deploy. `publicDescription` is what the email says, so the same edit
+		 * screen governs whether it sends and what it reads like.
+		 *
+		 * Nothing sends without a `publicDescription`: an email whose whole body
+		 * is a status label tells the reader nothing and trains them to ignore
+		 * the next one.
+		 */
+		notifyApplicant: integer('notify_applicant', { mode: 'boolean' }).default(false).notNull(),
 		/** The status a brand-new record lands on, per context. */
 		isDefault: integer('is_default', { mode: 'boolean' }).default(false).notNull(),
 		sortOrder: integer('sort_order').default(0).notNull(),
@@ -651,6 +669,24 @@ export const formDefinitions = sqliteTable(
 			.notNull(),
 		/** Notification recipients for new submissions, one email per array entry. */
 		notifyEmails: text('notify_emails', { mode: 'json' }).$type<string[]>(),
+		/**
+		 * Email the person who filled the form in, confirming it arrived.
+		 *
+		 * On by default, because a form that swallows a request without a word
+		 * is indistinguishable from a broken one — and the reference number is
+		 * useless to somebody who only ever saw it on a page they have closed.
+		 * `successMessage` is the body, so the confirmation on screen and the
+		 * confirmation in the inbox are the same sentence and a program manager
+		 * edits both at once.
+		 *
+		 * Turned **off** for a low-barrier form, and that is a safeguarding
+		 * decision rather than a preference: an unexpected email headed with the
+		 * Foundation's name can out somebody who asked for help quietly, on a
+		 * shared device or a family address. See `isLowBarrier`.
+		 */
+		acknowledgeSubmitter: integer('acknowledge_submitter', { mode: 'boolean' })
+			.default(true)
+			.notNull(),
 		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
 		sortOrder: integer('sort_order').default(0).notNull(),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -821,6 +857,20 @@ export const formSubmissionNotes = sqliteTable(
 		note: text('note').notNull(),
 		/** System-written notes (status changes) versus staff-written ones. */
 		isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+		/**
+		 * True = nobody outside the Foundation has seen this. **Defaults to
+		 * true**, the opposite of `contact_message_replies.isInternal`, and the
+		 * difference is deliberate: a message is a conversation whose rows are
+		 * mostly sent, while a case file is a working record whose rows are
+		 * mostly private. A caseworker's assessment of a family's circumstances
+		 * must never reach that family because a default leaned the wrong way.
+		 *
+		 * Like its counterpart it is set explicitly, from two separate submit
+		 * buttons, and never inferred.
+		 */
+		isInternal: integer('is_internal', { mode: 'boolean' }).default(true).notNull(),
+		/** Set once the email actually went out; null means it was not sent. */
+		sentAt: timestampMs('sent_at'),
 		createdAt: timestampMs('created_at').default(nowMs).notNull(),
 		deletedAt: timestampMs('deleted_at')
 	},
@@ -1276,7 +1326,16 @@ export const donors = sqliteTable(
 		preferredLanguage: text('preferred_language', { enum: ['en', 'am'] })
 			.default('en')
 			.notNull(),
-		/** Cached sum of completed donations, in `lifetimeCurrency` minor units. */
+		/**
+		 * Cached total of completed donations in `lifetimeCurrency`, which is the
+		 * single currency this donor has given the most of.
+		 *
+		 * Deliberately not their whole giving history: one number against one
+		 * currency cannot hold a donor who wires birr *and* sends dollars, and
+		 * summing both into it printed cents as santim. It is the sort key and
+		 * the headline; the donors screen reads the full per-currency breakdown
+		 * straight off `donations`.
+		 */
 		lifetimeTotal: integer('lifetime_total').default(0).notNull(),
 		lifetimeCurrency: text('lifetime_currency').default('ETB').notNull(),
 		donationCount: integer('donation_count').default(0).notNull(),
@@ -2594,7 +2653,14 @@ export const impactMetricsCache = sqliteTable(
 		pillarId: integer('pillar_id').references(() => pillars.id, { onDelete: 'cascade' }),
 		regionId: integer('region_id').references(() => regions.id, { onDelete: 'cascade' }),
 		value: integer('value').default(0).notNull(),
-		/** Set for money metrics; null for counts. */
+		/**
+		 * Set for money metrics; null for counts.
+		 *
+		 * It is also what tells the two kinds of row apart on read. A money
+		 * metric writes **one row per currency** — birr and dollars are counted
+		 * apart everywhere, so `funds_raised` is a list of totals and never a
+		 * single number that added santim to cents.
+		 */
 		currency: text('currency'),
 		computedAt: timestampMs('computed_at').default(nowMs).notNull()
 	},

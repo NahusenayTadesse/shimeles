@@ -318,10 +318,17 @@ async function seedSettings() {
 		},
 		{
 			key: 'impact.override_funds_raised',
-			label: 'Override: funds raised (santim)',
+			label: 'Override: funds raised (minor units)',
 			group: 'impact',
 			valueType: 'number',
-			hint: 'Leave blank to use the live total of completed donations.'
+			hint: 'Leave blank to use the live totals of completed donations, counted per currency.'
+		},
+		{
+			key: 'impact.override_funds_raised_currency',
+			value: 'ETB',
+			label: 'Override: funds raised — currency',
+			group: 'impact',
+			hint: 'Which currency the override above is in. Only read when it is set.'
 		},
 
 		// Which pillar each per-pillar counter reads. Settings rather than
@@ -441,7 +448,11 @@ async function seedStatuses() {
 			context: 'application',
 			stage: 'approved',
 			label: 'Approved',
-			color: 'olive'
+			color: 'olive',
+			notifyApplicant: true,
+			publicDescription:
+				'Your request has been approved. Someone from the team will be in touch to arrange ' +
+				'what happens next. There is nothing you need to do in the meantime.'
 		},
 		{
 			context: 'application',
@@ -454,6 +465,7 @@ async function seedStatuses() {
 			stage: 'waitlisted',
 			label: 'Waitlisted',
 			color: 'amber',
+			notifyApplicant: true,
 			publicDescription:
 				'You are on the waiting list. We assess the list at each intake round and will ' +
 				'contact you if you match an upcoming camp or programme.'
@@ -463,7 +475,12 @@ async function seedStatuses() {
 			context: 'application',
 			stage: 'declined',
 			label: 'Not proceeding',
-			color: 'rose'
+			color: 'rose',
+			notifyApplicant: true,
+			publicDescription:
+				'We are not able to take this request forward. That is not a judgement about you or ' +
+				'your situation — we can only reach a limited number of families at a time. You are ' +
+				'welcome to apply again.'
 		},
 
 		// Volunteers
@@ -481,8 +498,26 @@ async function seedStatuses() {
 			label: 'Credentials verified',
 			color: 'olive'
 		},
-		{ context: 'volunteer', stage: 'approved', label: 'Approved to volunteer', color: 'clay' },
-		{ context: 'volunteer', stage: 'declined', label: 'Not proceeding', color: 'rose' },
+		{
+			context: 'volunteer',
+			stage: 'approved',
+			label: 'Approved to volunteer',
+			color: 'clay',
+			notifyApplicant: true,
+			publicDescription:
+				'Your safeguarding review is complete and you are approved to volunteer with us. ' +
+				'The coordinator will be in touch about placing you.'
+		},
+		{
+			context: 'volunteer',
+			stage: 'declined',
+			label: 'Not proceeding',
+			color: 'rose',
+			notifyApplicant: true,
+			publicDescription:
+				'We are not taking your volunteer application forward on this occasion. Thank you ' +
+				'for offering your time — it matters that you did.'
+		},
 
 		// Contact messages reuse the same vocabulary rather than a second
 		// hardcoded lifecycle, so a coordinator can relabel "Answered" without
@@ -512,6 +547,11 @@ async function seedStatuses() {
 			color: status.color,
 			isDefault: 'isDefault' in status ? status.isDefault : false,
 			publicDescription: 'publicDescription' in status ? status.publicDescription : null,
+			// Only the moments that genuinely warrant a letter start out ticked:
+			// a decision, and the waitlist. Everything else is internal movement,
+			// and mailing somebody about it trains them to ignore the one that
+			// matters. Staff turn any of them on from Configuration → Statuses.
+			notifyApplicant: 'notifyApplicant' in status ? status.notifyApplicant : false,
 			sortOrder: index
 		});
 	}
@@ -1119,6 +1159,15 @@ async function seedForms() {
 						'We have your request. Someone will look at it and be in touch. Please keep your reference number.',
 					requiresDocuments: form.requiresDocuments,
 					isLowBarrier: form.isLowBarrier,
+					/**
+					 * Off for a low-barrier form, and that is safeguarding rather
+					 * than preference: Mental Wellness is designed so that asking
+					 * for help costs as little as possible, and an unexpected email
+					 * headed with the Foundation's name arriving on a shared device
+					 * or a family address is a cost. Staff can turn it on per form
+					 * from Configuration → Forms.
+					 */
+					acknowledgeSubmitter: !form.isLowBarrier,
 					referencePrefix: form.referencePrefix,
 					statusContext: 'statusContext' in form ? form.statusContext! : 'application',
 					sortOrder: formIndex,
@@ -2308,6 +2357,9 @@ async function seedApply() {
 				'We have your application. Someone will read it and be in touch. Please keep your reference number.',
 			requiresDocuments: false,
 			isLowBarrier: true,
+			// `/apply` sends its own, more specific acknowledgement from its own
+			// route, so this must stay off or an applicant gets two emails.
+			acknowledgeSubmitter: false,
 			referencePrefix: 'APP',
 			statusContext: 'application',
 			sortOrder: 0

@@ -108,6 +108,7 @@ export async function loadForm(slug: string): Promise<RenderForm | null> {
 		successMessage: definition.successMessage,
 		requiresDocuments: definition.requiresDocuments,
 		isLowBarrier: definition.isLowBarrier,
+		acknowledgeSubmitter: definition.acknowledgeSubmitter,
 		pillar: pillar
 			? { id: pillar.id, name: pillar.name, color: pillar.color, icon: pillar.icon }
 			: null,

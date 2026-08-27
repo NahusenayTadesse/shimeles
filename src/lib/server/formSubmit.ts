@@ -4,7 +4,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { buildSchema, formStatusContext, loadForm, normaliseFormData } from '$lib/server/forms';
 import { submitForm } from '$lib/server/submissions';
 import { submitVolunteerApplication } from '$lib/server/volunteers';
-import { notifyNewSubmission, notifyNewVolunteer } from '$lib/server/notify';
+import { acknowledgeSubmission, notifyNewSubmission, notifyNewVolunteer } from '$lib/server/notify';
 
 /**
  * Validates and stores one public form submission — shared by the standalone
@@ -78,6 +78,23 @@ export async function handleFormSubmission(
 				: notifyNewSubmission(definition.slug, result);
 
 		void notify.catch((err) => console.error('submission notification failed', err));
+
+		/**
+		 * And the person who filled it in.
+		 *
+		 * Here rather than in each route, so every dynamic form gets it: the four
+		 * programme applications rendered on `/programs/[slug]`, anything reached
+		 * at `/forms/[slug]`, and any `form_embed` block. A fifth programme added
+		 * from the dashboard tomorrow acknowledges its applicants with no code
+		 * change, which is the whole point of the form engine.
+		 *
+		 * `/apply`, `/volunteer` and `/contact` do not come through here — they
+		 * have their own submit paths and their own, more specific wording — so
+		 * there is no double send.
+		 */
+		void acknowledgeSubmission(definition, result).catch((err) =>
+			console.error('submission acknowledgement failed', err)
+		);
 
 		return message(form, {
 			type: 'success',

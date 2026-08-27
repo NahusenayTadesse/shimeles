@@ -34,6 +34,7 @@ export const addSchema = z.object({
 	label: z.string().trim().min(1, 'Required').max(80),
 	color: z.string().trim().min(1).max(30).default('slate'),
 	publicDescription: optionalText(300),
+	notifyApplicant: flagField(false),
 	isDefault: flagField(false),
 	isActive: flagField(true),
 	sortOrder: sortOrderField

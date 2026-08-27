@@ -38,7 +38,20 @@
 		},
 		{ name: 'label', label: 'Label shown to staff', required: true },
 		{ name: 'color', label: 'Badge colour', type: 'select', items: statusColorItems },
-		{ name: 'publicDescription', label: 'Description for applicants', type: 'textarea', rows: 2 },
+		{
+			name: 'publicDescription',
+			label: 'Description for applicants',
+			type: 'textarea',
+			rows: 2,
+			placeholder: 'What this status means, in words the applicant will read'
+		},
+		{
+			name: 'notifyApplicant',
+			label: 'Email the applicant when they reach this status',
+			type: 'select',
+			items: yesNo,
+			placeholder: 'Sends the description above. Nothing is sent without one.'
+		},
 		{ name: 'isDefault', label: 'Default for new records', type: 'select', items: yesNo },
 		{ name: 'isActive', label: 'Active', type: 'select', items: yesNo },
 		{ name: 'sortOrder', label: 'Display order', type: 'number' }
@@ -50,6 +63,7 @@
 		'label',
 		'color',
 		'publicDescription',
+		'notifyApplicant',
 		'isDefault',
 		'isActive',
 		'sortOrder'
@@ -65,6 +79,14 @@
 				renderComponent(StatusBadge, { label: row.original.label, color: row.original.color })
 		},
 		column('stage', 'Stage'),
+		{
+			id: 'notifyApplicant',
+			header: 'Emails them',
+			// Worth a column: "does this status write to the applicant" is the
+			// kind of thing a coordinator should be able to check at a glance
+			// rather than by opening six dialogs.
+			cell: ({ row }: any) => (row.original.notifyApplicant ? 'Yes' : 'No')
+		},
 		column('sortOrder', 'Order'),
 		editColumn({ data: data.editForm, fields, title: 'Edit status', keys }),
 		deleteColumn(data.deleteForm, 'label')
@@ -73,7 +95,7 @@
 
 <ContentPage
 	title="Workflow statuses"
-	description="Rename a status, recolour it, or reorder it freely. Records store the status, not its label, so nothing breaks. The underlying stage is what workflow rules key off, including the safeguarding gate, so change it only if you know what depends on it."
+	description="Rename a status, recolour it, or reorder it freely. Records store the status, not its label, so nothing breaks. Ticking 'Email the applicant' sends them the description when they reach that status, so write it as something you would want to receive. The underlying stage is what workflow rules key off, including the safeguarding gate, so change it only if you know what depends on it."
 	addTitle="Add status"
 	addForm={data.addForm}
 	{fields}

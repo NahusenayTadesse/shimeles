@@ -156,7 +156,7 @@ export const actions: Actions = {
 			const email = trim(data.applicantEmail);
 			if (email) {
 				const mail = applicantAcknowledgementTemplate(data.applicantName, result.referenceNumber);
-				void sendEmail(email, mail.subject, mail.html).catch((err) =>
+				void sendEmail({ to: email, ...mail }).catch((err) =>
 					console.error('application acknowledgement failed', err)
 				);
 			}

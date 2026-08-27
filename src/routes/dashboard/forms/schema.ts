@@ -25,6 +25,7 @@ export const addSchema = z.object({
 	successMessage: optionalText(1000),
 	requiresDocuments: flagField(false),
 	isLowBarrier: flagField(false),
+	acknowledgeSubmitter: flagField(true),
 	referencePrefix: z
 		.string()
 		.trim()

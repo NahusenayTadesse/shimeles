@@ -13,7 +13,14 @@ import {
 } from '$lib/server/db/schema';
 import { nextContactReference, withReference } from '$lib/server/reference';
 import { defaultStatus } from '$lib/server/workflow';
-import { sendEmail } from '$lib/server/email';
+import {
+	contactAcknowledgementTemplate,
+	plainTemplate,
+	replyTemplate,
+	sendEmail,
+	sendEmailToEach,
+	staffRecipients
+} from '$lib/server/email';
 import { setting } from '$lib/server/settings';
 import { audit } from '$lib/server/audit';
 import { cached } from '$lib/server/cache';
@@ -250,13 +257,7 @@ export async function notifyNewContactMessage(
 				.limit(1)
 		: [];
 
-	const fallback = await setting('contact.email_primary');
-	const recipients = subject?.notifyEmails?.length
-		? subject.notifyEmails
-		: fallback
-			? [fallback]
-			: [];
-
+	const recipients = await staffRecipients(subject?.notifyEmails);
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
@@ -272,7 +273,50 @@ export async function notifyNewContactMessage(
 		.filter(Boolean)
 		.join('\n');
 
-	await Promise.all(recipients.map((to) => sendEmail(to, subjectLine, escapeHtml(body))));
+	await sendEmailToEach(recipients, plainTemplate('New enquiry', body, subjectLine));
+}
+
+/**
+ * Tells the person who wrote in that their message arrived.
+ *
+ * Every other public form on the site acknowledges; this one did not, so an
+ * enquiry went into the form and nothing came back — indistinguishable from a
+ * broken page. Sent only when they gave an email address: the form accepts a
+ * phone number instead, and that is a deliberate choice, not a gap to nag
+ * about.
+ *
+ * The topic's `publicResponseNote` is the promise the Foundation has chosen to
+ * make in public about this kind of enquiry, so it is repeated here rather
+ * than invented.
+ */
+export async function acknowledgeContactMessage(
+	result: ContactResult,
+	subjectId: number | null,
+	email: string | null,
+	fullName: string
+): Promise<void> {
+	if (!email) return;
+
+	const [subject] = subjectId
+		? await db
+				.select({ name: contactSubjects.name, note: contactSubjects.publicResponseNote })
+				.from(contactSubjects)
+				.where(eq(contactSubjects.id, subjectId))
+				.limit(1)
+		: [];
+
+	await sendEmail({
+		to: email,
+		// So a reply to the acknowledgement reaches the team rather than the
+		// SMTP mailbox.
+		replyTo: (await setting('contact.email_primary')) || undefined,
+		...contactAcknowledgementTemplate({
+			name: fullName,
+			reference: result.referenceNumber,
+			topic: subject?.name ?? null,
+			responseTarget: subject?.note?.trim() || null
+		})
+	});
 }
 
 /* ==========================================================================
@@ -320,12 +364,19 @@ export async function addContactReply(
 
 	if (shouldEmail) {
 		try {
-			await sendEmail(
-				message.email!,
-				`Re: your message to the Shimeles Abera Foundation (${message.reference})`,
-				replyTemplate(message.fullName, input.body, message.reference)
-			);
-			emailed = true;
+			const result = await sendEmail({
+				to: message.email!,
+				// The reply promises "you can reply to this email", so it has to
+				// land somewhere a person reads — the SMTP account is not that.
+				replyTo: (await setting('contact.email_primary')) || undefined,
+				...replyTemplate({
+					name: message.fullName,
+					body: input.body,
+					reference: message.reference,
+					about: 'message'
+				})
+			});
+			emailed = result.sent;
 		} catch (err) {
 			// Recorded as an unsent reply rather than lost: staff need to see that
 			// they wrote it and that it did not go.
@@ -368,12 +419,3 @@ export async function addContactReply(
 
 	return { emailed };
 }
-
-/** Plain-text bodies still go out as HTML, so the newlines need help. */
-const escapeHtml = (text: string) =>
-	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br />');
-
-const replyTemplate = (name: string, body: string, reference: string) =>
-	`<p>Dear ${escapeHtml(name)},</p>
-	 <p>${escapeHtml(body)}</p>
-	 <p style="color:#666;font-size:12px">Your reference is ${reference}. You can reply to this email and it will reach us.</p>`;

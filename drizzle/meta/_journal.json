@@ -134,6 +134,27 @@
       "when": 1787637092060,
       "tag": "0018_seo_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1787819436081,
+      "tag": "0019_status_notify_applicant",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1787821838738,
+      "tag": "0020_form_acknowledge_submitter",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1787823669871,
+      "tag": "0021_submission_note_replies",
+      "breakpoints": true
     }
   ]
 }

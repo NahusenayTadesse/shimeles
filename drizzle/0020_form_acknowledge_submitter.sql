@@ -1,0 +1,1 @@
+ALTER TABLE `form_definitions` ADD `acknowledge_submitter` integer DEFAULT true NOT NULL;

@@ -15,7 +15,7 @@ import { searchFilter } from '$lib/server/query';
 import { requirePermission } from '$lib/server/permissions';
 import { audit, auditList } from '$lib/server/audit';
 import { invalidateImpact } from '$lib/server/impact';
-import { formatMoney } from '$lib/money';
+import { formatMoney, toMinor } from '$lib/money';
 import { sendEmail, donationReceiptTemplate } from '$lib/server/email';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -92,15 +92,20 @@ export const load: PageServerLoad = async (event) => {
 			.orderBy(desc(donations.createdAt))
 			.limit(500),
 
+		// Status *and* currency. Finance reconciles against a bank statement, and
+		// a statement is denominated — "awaiting matching: ETB 40,000 and USD
+		// 300" is two searches, where the single summed figure this used to show
+		// matched no statement at all because it was santim plus cents.
 		db
 			.select({
 				status: donations.status,
+				currency: donations.currency,
 				total: sql<number>`count(*)`,
 				amount: sql<number>`coalesce(sum(${donations.amount}), 0)`
 			})
 			.from(donations)
 			.where(isNull(donations.deletedAt))
-			.groupBy(donations.status)
+			.groupBy(donations.status, donations.currency)
 	]);
 
 	auditList(event, 'donation', { status, search, results: rows.length });
@@ -123,9 +128,10 @@ export const actions: Actions = {
 		const id = Number(formData.get('id'));
 		const bankReference = String(formData.get('bankReference') ?? '').trim();
 		// Finance may see a different figure on the statement than was pledged.
-		const matchedBirr = formData.get('amountMatched');
-		const amountMatched =
-			matchedBirr && String(matchedBirr).trim() ? Math.round(Number(matchedBirr) * 100) : null;
+		// Converted below, once the donation's own currency is known — the
+		// `* 100` this used to do inline is only right for a two-decimal
+		// currency, and `toMinor` is the one place that factor belongs.
+		const matchedMajor = formData.get('amountMatched');
 
 		if (!Number.isFinite(id)) return fail(400, { error: 'Unknown donation.' });
 
@@ -149,6 +155,10 @@ export const actions: Actions = {
 			return fail(409, { error: 'That donation has already been reconciled.' });
 		}
 
+		const amountMatched =
+			matchedMajor && String(matchedMajor).trim()
+				? toMinor(Number(matchedMajor), donation.currency)
+				: null;
 		const finalAmount = amountMatched ?? donation.amount;
 		const now = new Date();
 
@@ -164,14 +174,41 @@ export const actions: Actions = {
 				.run();
 
 			if (donation.donorId) {
-				// Recomputed from completed donations rather than incremented: an
-				// increment drifts the first time a reconciliation is reversed.
+				/**
+				 * Recomputed from completed donations rather than incremented: an
+				 * increment drifts the first time a reconciliation is reversed.
+				 *
+				 * `lifetime_total` is a single number against a single
+				 * `lifetime_currency`, so it can only ever hold one currency's
+				 * worth — it used to hold every currency's, summed, and then
+				 * printed with whatever `lifetime_currency` happened to say. It now
+				 * holds the donor's largest single-currency total and names that
+				 * currency, which is a true statement. The donors screen shows the
+				 * full per-currency breakdown; this column is the sort key and the
+				 * headline.
+				 */
+				const [largest] = tx
+					.select({
+						currency: donations.currency,
+						total: sql<number>`coalesce(sum(${donations.amount}), 0)`
+					})
+					.from(donations)
+					.where(
+						and(
+							eq(donations.donorId, donation.donorId),
+							eq(donations.status, 'completed'),
+							isNull(donations.deletedAt)
+						)
+					)
+					.groupBy(donations.currency)
+					.orderBy(desc(sql`coalesce(sum(${donations.amount}), 0)`))
+					.limit(1)
+					.all();
+
 				tx.update(donors)
 					.set({
-						lifetimeTotal: sql`(
-							select coalesce(sum(amount), 0) from donations
-							where donor_id = ${donation.donorId} and status = 'completed' and deleted_at is null
-						)`,
+						lifetimeTotal: Number(largest?.total ?? 0),
+						lifetimeCurrency: largest?.currency ?? 'ETB',
 						donationCount: sql`(
 							select count(*) from donations
 							where donor_id = ${donation.donorId} and status = 'completed' and deleted_at is null
@@ -318,7 +355,7 @@ export const actions: Actions = {
 		);
 
 		try {
-			await sendEmail(donation.donorEmail, mail.subject, mail.html);
+			await sendEmail({ to: donation.donorEmail, ...mail });
 		} catch (err) {
 			console.error('receipt send failed', err);
 			return fail(500, { error: 'The receipt could not be sent. Check the mail settings.' });

@@ -269,7 +269,7 @@ async function notifyDonor(input: {
 	});
 
 	try {
-		await sendEmail(input.email, mail.subject, mail.html);
+		await sendEmail({ to: input.email, ...mail });
 		await db
 			.update(inKindDonations)
 			.set({ acknowledgementSentAt: new Date() })

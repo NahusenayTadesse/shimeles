@@ -38,6 +38,7 @@ const testForm = (over: Partial<RenderForm> = {}): RenderForm => ({
 	introText: null,
 	successMessage: null,
 	requiresDocuments: false,
+	acknowledgeSubmitter: true,
 	isLowBarrier: false,
 	pillar: null,
 	fields: [

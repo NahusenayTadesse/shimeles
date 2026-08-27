@@ -14,6 +14,7 @@ import { cached, invalidate } from '$lib/server/cache';
 import { audit } from '$lib/server/audit';
 import type { Access } from '$lib/server/permissions';
 import { assertPillarAccess } from '$lib/server/permissions';
+import { sendEmail, statusChangeTemplate } from '$lib/server/email';
 
 /**
  * Workflow stages and the rules that gate them.
@@ -70,6 +71,10 @@ export interface StatusRow {
 	color: string;
 	isDefault: boolean;
 	sortOrder: number;
+	/** Email the applicant on arriving here. Staff decide this, per row (§0). */
+	notifyApplicant: boolean;
+	/** What that email says. No description, no email — see `notifyApplicant`. */
+	publicDescription: string | null;
 }
 
 export const listStatuses = (context: 'application' | 'volunteer' | 'donation' | 'contact') =>
@@ -82,7 +87,9 @@ export const listStatuses = (context: 'application' | 'volunteer' | 'donation' |
 				label: statusOptions.label,
 				color: statusOptions.color,
 				isDefault: statusOptions.isDefault,
-				sortOrder: statusOptions.sortOrder
+				sortOrder: statusOptions.sortOrder,
+				notifyApplicant: statusOptions.notifyApplicant,
+				publicDescription: statusOptions.publicDescription
 			})
 			.from(statusOptions)
 			.where(
@@ -114,6 +121,63 @@ async function statusById(id: number): Promise<StatusRow | null> {
 }
 
 /* ==========================================================================
+   Telling the person about it
+   ========================================================================== */
+
+/**
+ * Emails whoever the record is about, when the status they landed on says to.
+ *
+ * Two conditions, both of them data rather than code: the status has
+ * `notify_applicant` ticked, and it has a `public_description` to say. A
+ * status with the flag on and nothing to say sends nothing — an email whose
+ * body is a status label teaches the reader to ignore the next one — and that
+ * is worth a warning, because a coordinator who ticked the box is expecting
+ * mail to go out.
+ *
+ * Never throws. A transition that succeeded must not be reported as failed
+ * because the mail server is down, and the status change is already committed
+ * and audited by the time this runs.
+ */
+async function notifyStatusChange(input: {
+	kind: 'application' | 'volunteer';
+	status: StatusRow;
+	email: string | null;
+	name: string | null;
+	reference: string;
+	note?: string;
+}): Promise<void> {
+	if (!input.status.notifyApplicant) return;
+
+	if (!input.status.publicDescription?.trim()) {
+		console.warn(
+			`status "${input.status.label}" is set to notify but has no public description, ` +
+				`so nothing was sent. Add one under Configuration → Statuses.`
+		);
+		return;
+	}
+
+	// No address is not a failure: an application can be taken on paper or over
+	// the phone, and a volunteer's email is nullable for the same reason.
+	if (!input.email) return;
+
+	try {
+		await sendEmail({
+			to: input.email,
+			...statusChangeTemplate({
+				name: input.name?.trim() || 'friend',
+				reference: input.reference,
+				statusLabel: input.status.label,
+				publicDescription: input.status.publicDescription,
+				note: input.note,
+				kind: input.kind
+			})
+		});
+	} catch (err) {
+		console.error('status change email failed', err);
+	}
+}
+
+/* ==========================================================================
    Application status transitions
    ========================================================================== */
 
@@ -135,7 +199,10 @@ export async function setSubmissionStatus(
 		.select({
 			id: formSubmissions.id,
 			pillarId: formSubmissions.pillarId,
-			statusId: formSubmissions.statusId
+			statusId: formSubmissions.statusId,
+			reference: formSubmissions.referenceNumber,
+			applicantName: formSubmissions.submittedByName,
+			applicantEmail: formSubmissions.submittedByEmail
 		})
 		.from(formSubmissions)
 		.where(eq(formSubmissions.id, submissionId))
@@ -178,6 +245,17 @@ export async function setSubmissionStatus(
 		entityType: 'form_submission',
 		entityId: submissionId,
 		metadata: { from: previous?.stage ?? null, to: next.stage, statusId: next.id }
+	});
+
+	// After the write and the audit row, so a bounced email cannot leave the
+	// case looking like it never moved.
+	await notifyStatusChange({
+		kind: 'application',
+		status: next,
+		email: submission.applicantEmail,
+		name: submission.applicantName,
+		reference: submission.reference,
+		note
 	});
 
 	return next;
@@ -266,7 +344,10 @@ export async function setVolunteerStatus(
 			statusId: volunteerApplications.statusId,
 			safeguardingComplete: volunteerApplications.safeguardingChecklistComplete,
 			credentials: volunteerApplications.professionalCredentials,
-			credentialsVerified: volunteerApplications.credentialsVerified
+			credentialsVerified: volunteerApplications.credentialsVerified,
+			reference: volunteerApplications.referenceNumber,
+			volunteerName: volunteerApplications.fullName,
+			volunteerEmail: volunteerApplications.email
 		})
 		.from(volunteerApplications)
 		.where(eq(volunteerApplications.id, applicationId))
@@ -338,6 +419,15 @@ export async function setVolunteerStatus(
 		entityType: 'volunteer_application',
 		entityId: applicationId,
 		metadata: { from: previous?.stage ?? null, to: next.stage, note: note ?? null }
+	});
+
+	await notifyStatusChange({
+		kind: 'volunteer',
+		status: next,
+		email: application.volunteerEmail,
+		name: application.volunteerName,
+		reference: application.reference,
+		note
 	});
 
 	return next;

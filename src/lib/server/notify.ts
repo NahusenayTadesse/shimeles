@@ -2,8 +2,15 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { formDefinitions } from '$lib/server/db/schema';
 import { setting } from '$lib/server/settings';
-import { sendEmail } from '$lib/server/email';
+import {
+	formAcknowledgementTemplate,
+	plainTemplate,
+	sendEmail,
+	sendEmailToEach,
+	staffRecipients
+} from '$lib/server/email';
 import type { SubmitResult } from '$lib/server/submissions';
+import type { RenderForm } from '$lib/forms/types';
 
 /**
  * Outbound notifications.
@@ -31,13 +38,7 @@ export async function notifyNewSubmission(slug: string, result: SubmitResult): P
 
 	if (!definition) return;
 
-	const fallback = await setting('contact.email_primary');
-	const recipients = definition.notifyEmails?.length
-		? definition.notifyEmails
-		: fallback
-			? [fallback]
-			: [];
-
+	const recipients = await staffRecipients(definition.notifyEmails);
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
@@ -54,7 +55,7 @@ export async function notifyNewSubmission(slug: string, result: SubmitResult): P
 		.filter(Boolean)
 		.join('\n');
 
-	await Promise.all(recipients.map((to) => sendEmail(to, subject, escapeHtml(body))));
+	await sendEmailToEach(recipients, plainTemplate(`New ${definition.name}`, body, subject));
 }
 
 /**
@@ -75,13 +76,7 @@ export async function notifyNewVolunteer(result: SubmitResult): Promise<void> {
 		)
 		.limit(1);
 
-	const fallback = await setting('contact.email_primary');
-	const recipients = definition?.notifyEmails?.length
-		? definition.notifyEmails
-		: fallback
-			? [fallback]
-			: [];
-
+	const recipients = await staffRecipients(definition?.notifyEmails);
 	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
@@ -98,7 +93,7 @@ export async function notifyNewVolunteer(result: SubmitResult): Promise<void> {
 		.filter(Boolean)
 		.join('\n');
 
-	await Promise.all(recipients.map((to) => sendEmail(to, subject, escapeHtml(body))));
+	await sendEmailToEach(recipients, plainTemplate('New volunteer application', body, subject));
 }
 
 /**
@@ -115,8 +110,8 @@ export async function notifyNewInKindOffer(offer: {
 	referenceCode: string;
 	summary: string;
 }): Promise<void> {
-	const to = await setting('contact.email_primary');
-	if (!to) return;
+	const recipients = await staffRecipients();
+	if (recipients.length === 0) return;
 
 	const origin = await setting('site.url');
 	const body = [
@@ -132,7 +127,13 @@ export async function notifyNewInKindOffer(offer: {
 		.filter(Boolean)
 		.join('\n');
 
-	await sendEmail(to, `New offer of goods: ${offer.referenceCode}`, escapeHtml(body));
+	await sendEmailToEach(
+		recipients,
+		plainTemplate('New offer of goods', body, `New offer of goods: ${offer.referenceCode}`, {
+			label: 'Open in the dashboard',
+			href: `/dashboard/in-kind/${offer.id}`
+		})
+	);
 }
 
 /** Reminder for a standing pledge that has come due (§3.5). */
@@ -152,9 +153,36 @@ export async function notifyPledgeReminder(
 		'Thank you for standing with the families we serve.'
 	].join('\n');
 
-	await sendEmail(to, subject, escapeHtml(body));
+	await sendEmail({ to, ...plainTemplate('Your monthly gift is due', body, subject) });
 }
 
-/** Plain-text bodies still go out as HTML, so the newlines need help. */
-const escapeHtml = (text: string) =>
-	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br />');
+/**
+ * Confirms a dynamic form submission to the person who made it.
+ *
+ * Two conditions, both data rather than code, in the spirit of the status
+ * emails: the form has `acknowledge_submitter` on, and the submitter gave an
+ * address. Neither absence is an error — a low-barrier form deliberately has
+ * the flag off (an unexpected email headed with the Foundation's name can out
+ * somebody who asked for help quietly), and a form can be filled in with a
+ * phone number instead, which is a choice the form offers on purpose.
+ *
+ * The body is the form's own `success_message`, so the sentence on the
+ * confirmation screen and the one in the inbox are the same sentence.
+ */
+export async function acknowledgeSubmission(
+	definition: Pick<RenderForm, 'title' | 'successMessage' | 'acknowledgeSubmitter'>,
+	result: SubmitResult
+): Promise<void> {
+	if (definition.acknowledgeSubmitter === false) return;
+	if (!result.submittedByEmail) return;
+
+	await sendEmail({
+		to: result.submittedByEmail,
+		...formAcknowledgementTemplate({
+			name: result.submittedByName ?? null,
+			reference: result.referenceNumber,
+			formTitle: definition.title,
+			message: definition.successMessage ?? null
+		})
+	});
+}

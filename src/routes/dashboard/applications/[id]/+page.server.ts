@@ -19,6 +19,7 @@ import {
 } from '$lib/server/db/schema';
 import { assertPillarAccess, requirePermission } from '$lib/server/permissions';
 import { listStatuses, setSubmissionStatus } from '$lib/server/workflow';
+import { addSubmissionNote } from '$lib/server/submissions';
 import { linkBeneficiary } from '$lib/server/submissions';
 import { acceptApplication, getApplicationDetail } from '$lib/server/apply';
 import { audit } from '$lib/server/audit';
@@ -114,6 +115,8 @@ export const load: PageServerLoad = async (event) => {
 				id: formSubmissionNotes.id,
 				note: formSubmissionNotes.note,
 				isSystem: formSubmissionNotes.isSystem,
+				isInternal: formSubmissionNotes.isInternal,
+				sentAt: formSubmissionNotes.sentAt,
 				createdAt: formSubmissionNotes.createdAt,
 				authorName: user.name
 			})
@@ -291,6 +294,15 @@ export const actions: Actions = {
 		return { ok: true };
 	},
 
+	/**
+	 * One action, two buttons.
+	 *
+	 * `send` is posted by the "Send reply" button and absent from the "Save
+	 * note" one, so which of the two happened is carried explicitly by the form
+	 * rather than guessed from whether the applicant has an email address. That
+	 * guess is precisely how a caseworker's private assessment of a family
+	 * would end up in that family's inbox.
+	 */
 	addNote: async (event) => {
 		const { access, id } = await guard(event as never, 'submissions.write');
 		const formData = await event.request.formData();
@@ -298,16 +310,27 @@ export const actions: Actions = {
 
 		if (!parsed.success) return fail(400, { error: 'Write something first.' });
 
-		await db.insert(formSubmissionNotes).values({
-			formSubmissionId: id,
-			authorId: access.userId,
+		const isInternal = formData.get('send') !== 'true';
+
+		const { emailed, reason } = await addSubmissionNote(event, access, {
+			submissionId: id,
 			note: parsed.data.note,
-			isSystem: false,
-			createdAt: new Date()
+			isInternal
 		});
 
-		audit({ event, action: 'created', entityType: 'form_submission_note', entityId: id });
-		return { ok: true };
+		if (!isInternal && !emailed) {
+			// Saved either way — the words are not lost — but staff must be told
+			// plainly that the applicant did not receive them.
+			return {
+				ok: true,
+				warning:
+					reason === 'no-email'
+						? 'Saved, but this applicant gave no email address, so nothing was sent.'
+						: 'Saved, but the reply could not be emailed. It is recorded as unsent.'
+			};
+		}
+
+		return { ok: true, emailed };
 	},
 
 	/**

@@ -5,6 +5,7 @@ import { hydrateBlocks } from '$lib/server/pageData';
 import {
 	createContactMessage,
 	getContactCatalog,
+	acknowledgeContactMessage,
 	notifyNewContactMessage
 } from '$lib/server/contact';
 import { contactSchema } from './schema';
@@ -83,6 +84,9 @@ export const actions: Actions = {
 			// server must not turn a saved enquiry into an error page.
 			void notifyNewContactMessage(result, data.subjectId).catch((err) =>
 				console.error('contact notification failed', err)
+			);
+			void acknowledgeContactMessage(result, data.subjectId, trim(data.email), data.fullName).catch(
+				(err) => console.error('contact acknowledgement failed', err)
 			);
 
 			return message(form, {

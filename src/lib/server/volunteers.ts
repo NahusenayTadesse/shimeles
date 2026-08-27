@@ -558,7 +558,12 @@ export async function createVolunteerApplication(
 				.run();
 		}
 
-		return { id, referenceNumber };
+		return {
+			id,
+			referenceNumber,
+			submittedByEmail: input.email,
+			submittedByName: input.fullName
+		};
 	});
 
 	// Both are derived columns, and both are recomputed rather than written
@@ -689,7 +694,12 @@ export async function submitVolunteerApplication(
 			.returning({ id: volunteerApplications.id })
 			.all();
 
-		return { id: application.id, referenceNumber };
+		return {
+			id: application.id,
+			referenceNumber,
+			submittedByEmail: str('email'),
+			submittedByName: str('fullName')
+		};
 	});
 
 	// The pillar ids that could be resolved also become interest rows, so the

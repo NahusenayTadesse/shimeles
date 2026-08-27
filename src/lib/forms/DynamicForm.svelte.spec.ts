@@ -39,6 +39,7 @@ const testForm = (fields: RenderField[]): RenderForm => ({
 	introText: null,
 	successMessage: null,
 	requiresDocuments: false,
+	acknowledgeSubmitter: true,
 	isLowBarrier: false,
 	pillar: null,
 	fields

@@ -61,6 +61,8 @@ export interface RenderForm {
 	successMessage: string | null;
 	requiresDocuments: boolean;
 	isLowBarrier: boolean;
+	/** Whether submitting emails the person who filled it in. See the schema. */
+	acknowledgeSubmitter: boolean;
 	pillar: { id: number; name: string; color: string; icon: string } | null;
 	fields: RenderField[];
 }

@@ -26,7 +26,20 @@
 		{ name: 'title', label: 'Title shown to the public', required: true },
 		{ name: 'pillarId', label: 'Pillar', type: 'combo', items: pillarItems },
 		{ name: 'introText', label: 'Intro text', type: 'textarea', rows: 3 },
-		{ name: 'successMessage', label: 'Message after submitting', type: 'textarea', rows: 2 },
+		{
+			name: 'successMessage',
+			label: 'Message after submitting',
+			type: 'textarea',
+			rows: 2,
+			placeholder: 'Shown on screen and sent in the confirmation email — the same words do both'
+		},
+		{
+			name: 'acknowledgeSubmitter',
+			label: 'Email the applicant a confirmation',
+			type: 'select',
+			items: yesNo,
+			placeholder: 'Sends the message above with their reference number'
+		},
 		{ name: 'referencePrefix', label: 'Reference prefix', required: true, placeholder: 'MED' },
 		{ name: 'statusContext', label: 'Workflow', type: 'select', items: contexts },
 		{ name: 'requiresDocuments', label: 'Expects documents', type: 'select', items: yesNo },
@@ -47,6 +60,7 @@
 		'pillarId',
 		'introText',
 		'successMessage',
+		'acknowledgeSubmitter',
 		'referencePrefix',
 		'statusContext',
 		'requiresDocuments',
@@ -61,6 +75,11 @@
 		column('slug', 'Slug'),
 		column('referencePrefix', 'Reference'),
 		column('isLowBarrier', 'Low barrier'),
+		{
+			id: 'acknowledgeSubmitter',
+			header: 'Emails them',
+			cell: ({ row }: any) => (row.original.acknowledgeSubmitter ? 'Yes' : 'No')
+		},
 		{
 			id: 'builder',
 			header: 'Questions',
