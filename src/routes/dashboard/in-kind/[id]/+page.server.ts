@@ -17,6 +17,7 @@ import { requirePermission } from '$lib/server/permissions';
 import { canMoveInKind, recordInKindIntake, setInKindStatus } from '$lib/server/inKind';
 import { audit } from '$lib/server/audit';
 import { sendEmail, inKindDecisionTemplate } from '$lib/server/email';
+import { normalizeRichText } from '$lib/richtext';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -318,7 +319,7 @@ export const actions: Actions = {
 		const { access, id } = await guard(event);
 		const formData = await event.request.formData();
 		const outcome = String(formData.get('outcome'));
-		const note = String(formData.get('note') ?? '').trim();
+		const note = normalizeRichText(String(formData.get('note') ?? ''));
 		const notify = formData.get('notify') === 'on';
 
 		if (outcome !== 'accepted' && outcome !== 'declined') {
@@ -414,7 +415,7 @@ export const actions: Actions = {
 	receive: async (event) => {
 		const { access, id } = await guard(event);
 		const formData = await event.request.formData();
-		const intakeNotes = String(formData.get('intakeNotes') ?? '').trim();
+		const intakeNotes = normalizeRichText(String(formData.get('intakeNotes') ?? ''));
 		const notify = formData.get('notify') === 'on';
 
 		const lines = formData

@@ -4,10 +4,11 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import { renderRichText } from '$lib/richtext';
 	import {
 		ArrowLeft,
 		Clock,
@@ -29,6 +30,15 @@
 		if (form?.error) toast.error(form.error);
 		else if (form?.ok) toast.success(form.message ?? 'Saved');
 	});
+
+	/**
+	 * The reply box owns its content, so clearing the form is not enough to
+	 * clear it: `reset: true` empties the inputs the browser knows about, and
+	 * the editor is a ProseMirror document that is not one of them. Bumping
+	 * `composerKey` remounts it, which is what an emptied box actually is.
+	 */
+	let replyBody = $state('');
+	let composerKey = $state(0);
 
 	let statusId = $state('');
 	let assignedToId = $state('');
@@ -178,7 +188,9 @@
 							</span>
 							<span class="text-xs text-muted-foreground">{fmt(reply.createdAt)}</span>
 						</div>
-						<p class="text-sm whitespace-pre-wrap">{reply.body}</p>
+						<!-- Written in the editor above, so it is HTML — and plain text on
+						     every row saved before that box became one. -->
+						<div class="prose-block text-sm">{@html renderRichText(reply.body)}</div>
 
 						{#if !reply.isInternal && reply.channel === 'email' && !reply.sentAt}
 							<p class="mt-2 flex items-center gap-1 text-xs text-destructive">
@@ -199,15 +211,24 @@
 					method="post"
 					action="?/reply"
 					use:enhance={() =>
-						async ({ update }) =>
-							await update({ reset: true })}
+						async ({ update, result }) => {
+							await update({ reset: true });
+							if (result.type === 'success') {
+								replyBody = '';
+								composerKey += 1;
+							}
+						}}
 					class="flex flex-col gap-3"
 				>
-					<Textarea
-						name="body"
-						rows={5}
-						placeholder="Write your reply, or a note for colleagues…"
-					/>
+					{#key composerKey}
+						<InputComp
+							label=""
+							name="body"
+							type="richtext"
+							bind:value={replyBody}
+							placeholder="Write your reply, or a note for colleagues…"
+						/>
+					{/key}
 
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 						<div class="flex flex-col gap-1">

@@ -20,6 +20,16 @@
  * so callers only ever import `$lib/server/email`.
  */
 import { formatDayLong } from '../dates';
+import {
+	escapeHtml,
+	hasRichText,
+	isRichText,
+	plainToHtml,
+	richTextToPlain,
+	sanitizeRichText
+} from '../richtext';
+
+export { escapeHtml, richTextToPlain } from '../richtext';
 
 /** A link rendered as a button. `href` may be a path — it is resolved against the site origin. */
 export interface EmailAction {
@@ -61,23 +71,16 @@ export interface EmailTemplate {
    Building a template
    ========================================================================== */
 
-/** Escapes text destined for an HTML body. Never skip it on typed-in content. */
-export const escapeHtml = (text: string): string =>
-	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
 /**
- * Turns typed-in prose into paragraphs.
+ * Typed-in prose as escaped paragraphs. Never skip it on plain text.
  *
- * Blank lines become paragraphs, single newlines become `<br />`. Sending a
- * plain-text body straight into an HTML message — which is what this codebase
- * used to do — collapses every newline, so a staff notification with a
- * reference on its own line arrived as one run-on sentence.
+ * It lives in `$lib/richtext` now, alongside the sanitizer, because the
+ * dashboard needs the same two rules — is this HTML, and if not, keep the line
+ * breaks — to show back what it is about to send. Re-exported under the name
+ * every template in this file already calls it by. Use `prose()` for anything
+ * a staff member typed into an editor.
  */
-export const paragraphs = (text: string): string =>
-	text
-		.split(/\n{2,}/)
-		.map((block) => `<p>${escapeHtml(block.trim()).replace(/\n/g, '<br />')}</p>`)
-		.join('\n');
+export const paragraphs = plainToHtml;
 
 /**
  * The inset sand panel used for bank details and staff notes.
@@ -165,6 +168,51 @@ export const BRAND = {
 	muted: '#6c6158',
 	line: '#e6ded1'
 } as const;
+
+/**
+ * Inline styles for the tags the dashboard editor emits.
+ *
+ * Everything here is repeated on every element rather than written once in a
+ * stylesheet for the reason the shell documents: Outlook strips a `<style>`
+ * block, and a bulleted list that loses its indentation arrives as a run of
+ * orphaned sentences. Sizes match the shell's own body copy so a typed
+ * paragraph and a generated one are the same paragraph.
+ */
+const EMAIL_STYLES: Record<string, string> = {
+	p: 'margin: 0 0 14px; font-size: 15px; line-height: 1.7;',
+	h1: `margin: 22px 0 10px; font-size: 21px; line-height: 1.35; color: ${BRAND.green};`,
+	h2: `margin: 22px 0 10px; font-size: 19px; line-height: 1.35; color: ${BRAND.green};`,
+	h3: `margin: 20px 0 8px; font-size: 17px; line-height: 1.4; color: ${BRAND.green};`,
+	h4: `margin: 18px 0 8px; font-size: 15px; line-height: 1.4; color: ${BRAND.green};`,
+	ul: 'margin: 0 0 14px; padding-left: 22px; font-size: 15px; line-height: 1.7;',
+	ol: 'margin: 0 0 14px; padding-left: 22px; font-size: 15px; line-height: 1.7;',
+	li: 'margin: 0 0 6px;',
+	blockquote: `margin: 16px 0; padding: 2px 0 2px 16px; border-left: 3px solid ${BRAND.gold}; color: ${BRAND.muted}; font-style: italic;`,
+	pre: `margin: 0 0 14px; padding: 12px 14px; background: ${BRAND.sand}; border-radius: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;`,
+	code: `font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: ${BRAND.greenBright};`,
+	a: `color: ${BRAND.green}; text-decoration: underline;`,
+	hr: `border: 0; border-top: 1px solid ${BRAND.line}; margin: 22px 0;`
+};
+
+/** Gives every tag in sanitized editor HTML the inline style mail clients need. */
+const withEmailStyles = (html: string): string =>
+	html.replace(/<([a-z][a-z0-9]*)((?:\s[^>]*)?)>/gi, (match, rawName: string, attrs: string) => {
+		const style = EMAIL_STYLES[rawName.toLowerCase()];
+		return style ? `<${rawName}${attrs} style="${style}">` : match;
+	});
+
+/**
+ * Prose from a staff member, however they wrote it.
+ *
+ * The reply boxes and note boxes in the dashboard are rich text editors, so
+ * what arrives is usually HTML — but every one of those fields has plain-text
+ * rows behind it from before the editors existed, and a caseworker's note
+ * taken over the phone into an older screen must still arrive with its line
+ * breaks. `isRichText` decides which of the two this is; both end up as
+ * styled, safe HTML.
+ */
+export const prose = (text: string): string =>
+	isRichText(text) ? withEmailStyles(sanitizeRichText(text)) : plainToHtml(text);
 
 /**
  * Where every absolute URL in an email points.
@@ -437,7 +485,7 @@ export const inKindDecisionTemplate = (input: {
 		heading: chosen.heading,
 		body: `<p>Dear ${escapeHtml(input.name)},</p>
 			 ${chosen.body}
-			 ${input.note ? panel(paragraphs(input.note)) : ''}
+			 ${hasRichText(input.note) ? panel(prose(input.note!)) : ''}
 			 <p>Your reference is <strong>${escapeHtml(input.referenceCode)}</strong>.</p>`,
 		action: { label: 'Other ways to give', href: '/donate' }
 	};
@@ -522,8 +570,8 @@ export const statusChangeTemplate = (input: {
 				input.kind === 'volunteer' ? 'volunteer application' : 'request'
 			} (reference <strong>${escapeHtml(input.reference)}</strong>) is now
 		 <strong style="color: #0e3b2e;">${escapeHtml(input.statusLabel)}</strong>.</p>
-		 ${paragraphs(input.publicDescription)}
-		 ${input.note?.trim() ? panel(paragraphs(input.note.trim())) : ''}
+		 ${prose(input.publicDescription)}
+		 ${hasRichText(input.note) ? panel(prose(input.note!.trim())) : ''}
 		 <p>Please quote your reference whenever you contact us about it.</p>`,
 	// Somebody reading a decision most often wants to ask about it.
 	action: { label: 'Get in touch', href: '/contact' }
@@ -550,9 +598,7 @@ export const formAcknowledgementTemplate = (input: {
 	subject: `We have your ${input.formTitle.toLowerCase()}: ${input.reference}`,
 	heading: 'We have your request',
 	body: `<p>Dear ${escapeHtml(input.name?.trim() || 'friend')},</p>
-		 ${paragraphs(
-				input.message?.trim() || 'We have your request. Someone will look at it and be in touch.'
-			)}
+		 ${prose(input.message?.trim() || 'We have your request. Someone will look at it and be in touch.')}
 		 ${referencePanel(input.reference)}
 		 <p>Please quote it whenever you contact us about this request.</p>`,
 	action: { label: 'Visit the Foundation', href: '/' }
@@ -589,10 +635,10 @@ export const replyTemplate = (input: {
 			: `Re: your message to the Shimeles Abera Foundation (${input.reference})`,
 	heading: 'A reply from the Foundation',
 	body: `<p>Dear ${escapeHtml(input.name?.trim() || 'friend')},</p>
-		 ${paragraphs(input.body)}
+		 ${prose(input.body)}
 		 ${referencePanel(input.reference)}
 		 ${footnote('You can reply to this email and it will reach us.')}`,
-	text: `Dear ${input.name?.trim() || 'friend'},\n\n${input.body}\n\nYour reference is ${
+	text: `Dear ${input.name?.trim() || 'friend'},\n\n${richTextToPlain(input.body)}\n\nYour reference is ${
 		input.reference
 	}.\nYou can reply to this email and it will reach us.`
 });

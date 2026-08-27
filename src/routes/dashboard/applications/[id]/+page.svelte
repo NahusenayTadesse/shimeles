@@ -7,7 +7,8 @@
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import { renderRichText } from '$lib/richtext';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
@@ -139,6 +140,17 @@
 			lastAction = { message: 'Saved.', at: Date.now() };
 		}
 	});
+
+	/**
+	 * Both boxes on this screen are editors, and an editor holds its own
+	 * document — `reset: true` cannot empty it, and a note left sitting in the
+	 * status box is a note that can be emailed to the applicant twice. Bumping
+	 * the key remounts the editor, which is what clearing it means here.
+	 */
+	let caseNote = $state('');
+	let noteKey = $state(0);
+	let statusNote = $state('');
+	let statusNoteKey = $state(0);
 
 	let statusId = $state<string>('');
 	let reviewerId = $state<string>('');
@@ -529,16 +541,24 @@
 					method="post"
 					action="?/addNote"
 					use:enhance={() =>
-						async ({ update }) =>
-							await update({ reset: true })}
+						async ({ update, result }) => {
+							await update({ reset: true });
+							if (result.type === 'success') {
+								caseNote = '';
+								noteKey += 1;
+							}
+						}}
 					class="mb-5 flex flex-col gap-2"
 				>
-					<Textarea
-						name="note"
-						rows={3}
-						placeholder="Write a note, or a reply to the applicant…"
-						required
-					/>
+					{#key noteKey}
+						<InputComp
+							label=""
+							name="note"
+							type="richtext"
+							bind:value={caseNote}
+							placeholder="Write a note, or a reply to the applicant…"
+						/>
+					{/key}
 					<div class="flex flex-wrap items-center gap-2">
 						<Button type="submit" size="sm" variant="secondary">
 							<MessageSquarePlus class="size-4" /> Save internal note
@@ -576,7 +596,9 @@
 									? 'border-primary/30 bg-primary/5'
 									: ''}"
 						>
-							<p class="whitespace-pre-wrap">{note.note}</p>
+							<!-- Written in the editor above, so it is HTML — and plain text on
+							     every note saved before that box became one. -->
+							<div class="prose-block">{@html renderRichText(note.note)}</div>
 							<p class="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 								<span>{note.authorName ?? 'System'} · {fmt(note.createdAt)}</span>
 								<!-- A reply that did not send is the case staff most need to
@@ -631,16 +653,25 @@
 					method="post"
 					action="?/setStatus"
 					use:enhance={() =>
-						async ({ update }) =>
-							await update({ reset: false })}
+						async ({ update, result }) => {
+							await update({ reset: false });
+							if (result.type === 'success') {
+								statusNote = '';
+								statusNoteKey += 1;
+							}
+						}}
 					class="mb-4 flex flex-col gap-2"
 				>
 					<SelectComp name="statusId" items={statusItems} bind:value={statusId} />
-					<Textarea
-						name="note"
-						rows={2}
-						placeholder="Why? (optional, saved as a case note — and sent if you notify)"
-					/>
+					{#key statusNoteKey}
+						<InputComp
+							label=""
+							name="note"
+							type="richtext"
+							bind:value={statusNote}
+							placeholder="Why? (optional, saved as a case note — and sent if you notify)"
+						/>
+					{/key}
 					<div class="flex flex-wrap gap-2">
 						<Button type="submit" size="sm">Update status</Button>
 						<!-- Same form, so the note above is the sentence that goes out.

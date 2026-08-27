@@ -12,6 +12,7 @@ import {
 import { requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { addContactReply } from '$lib/server/contact';
+import { normalizeRichText } from '$lib/richtext';
 import { audit } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -140,7 +141,10 @@ export const actions: Actions = {
 	reply: async (event) => {
 		const { access, id } = await guard(event as never);
 		const formData = await event.request.formData();
-		const body = String(formData.get('body') ?? '').trim();
+		// The reply box is an editor, so an untouched one posts `<p></p>` — a
+		// non-empty string that is not a reply. `normalizeRichText` reduces that
+		// to '' (and strips anything a paste dragged in) before the check below.
+		const body = normalizeRichText(String(formData.get('body') ?? ''));
 		const isInternal = String(formData.get('isInternal')) === 'true';
 		const channel = String(formData.get('channel') ?? 'email');
 

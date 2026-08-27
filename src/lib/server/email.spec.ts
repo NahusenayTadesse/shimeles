@@ -140,6 +140,46 @@ describe('replyTemplate', () => {
 		expect(reply.body).toContain('<p>Second paragraph.</p>');
 	});
 
+	it('sends what the editor wrote as formatting, not as tags', () => {
+		// The reply box in the dashboard is a rich text editor now, so the body
+		// arriving here is usually HTML. Run through `paragraphs` it would reach
+		// the applicant as literal <p> and <li>.
+		const rich = replyTemplate({
+			name: 'Sara',
+			body: '<p>We can help.</p><ul><li>Bring the letter</li></ul>',
+			reference: 'R',
+			about: 'request'
+		});
+
+		expect(rich.body).toContain('We can help.');
+		expect(rich.body).not.toContain('&lt;p&gt;');
+		// Mail clients strip a <style> block, so every tag carries its own.
+		expect(rich.body).toMatch(/<ul style="[^"]*padding-left/);
+		expect(rich.body).toMatch(/<p style="[^"]*font-size/);
+	});
+
+	it('strips a script tag out of an editor body', () => {
+		expect(
+			replyTemplate({
+				name: 'X',
+				body: '<p>Hi</p><script>alert(1)</script>',
+				reference: 'R',
+				about: 'message'
+			}).body
+		).not.toContain('alert(1)');
+	});
+
+	it('writes a plain-text part a text-only client can read', () => {
+		expect(
+			replyTemplate({
+				name: 'Sara',
+				body: '<p>We can help.</p><ul><li>Bring the letter</li></ul>',
+				reference: 'R',
+				about: 'request'
+			}).text
+		).toContain('We can help.\nBring the letter');
+	});
+
 	it('escapes what was typed, so a reply cannot inject markup', () => {
 		expect(
 			replyTemplate({ name: 'X', body: '<b>hi</b>', reference: 'R', about: 'message' }).body

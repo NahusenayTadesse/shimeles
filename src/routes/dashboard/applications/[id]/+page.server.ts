@@ -19,6 +19,7 @@ import {
 	user
 } from '$lib/server/db/schema';
 import { assertPillarAccess, can, requirePermission } from '$lib/server/permissions';
+import { normalizeRichText } from '$lib/richtext';
 import {
 	AUTO_NOTIFY_SETTING,
 	autoNotifyEnabled,
@@ -230,7 +231,13 @@ export const load: PageServerLoad = async (event) => {
 	};
 };
 
-const noteSchema = z.object({ note: z.string().trim().min(1).max(5000) });
+/**
+ * The note boxes post editor HTML now, so the length is markup as well as
+ * words — 5,000 characters was a page of prose and is barely a screen of it
+ * once every paragraph is wrapped. The words themselves are what `min` cares
+ * about, and `normalizeRichText` has already emptied a box nobody typed in.
+ */
+const noteSchema = z.object({ note: z.string().trim().min(1).max(30000) });
 
 /** Every action re-checks the pillar scope; none of them trust the page load. */
 async function guard(event: Parameters<PageServerLoad>[0], permission: 'submissions.write') {
@@ -254,7 +261,7 @@ export const actions: Actions = {
 		const { access, id } = await guard(event as never, 'submissions.write');
 		const formData = await event.request.formData();
 		const statusId = Number(formData.get('statusId'));
-		const note = String(formData.get('note') ?? '').trim();
+		const note = normalizeRichText(String(formData.get('note') ?? ''));
 
 		if (!Number.isFinite(statusId)) return fail(400, { error: 'Pick a status.' });
 
@@ -291,7 +298,7 @@ export const actions: Actions = {
 	notifyApplicant: async (event) => {
 		const { access, id } = await guard(event as never, 'submissions.write');
 		const formData = await event.request.formData();
-		const note = String(formData.get('note') ?? '').trim();
+		const note = normalizeRichText(String(formData.get('note') ?? ''));
 
 		const result = await notifyOfCurrentStatus(event, access, 'application', id, note || undefined);
 
@@ -398,7 +405,9 @@ export const actions: Actions = {
 	addNote: async (event) => {
 		const { access, id } = await guard(event as never, 'submissions.write');
 		const formData = await event.request.formData();
-		const parsed = noteSchema.safeParse({ note: formData.get('note') });
+		const parsed = noteSchema.safeParse({
+			note: normalizeRichText(String(formData.get('note') ?? ''))
+		});
 
 		if (!parsed.success) return fail(400, { error: 'Write something first.' });
 

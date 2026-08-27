@@ -99,7 +99,14 @@ export default defineConfig(
 		files: [
 			'src/lib/content/BlockRenderer.svelte',
 			'src/routes/programs/*/+page.svelte',
-			'src/routes/blog/*/+page.svelte'
+			'src/routes/blog/*/+page.svelte',
+			// The case screens, for the same reason: a reply, a case note and a
+			// decision note are written by staff in the same editor and are shown
+			// back to staff only. Each goes through `renderRichText` first, which
+			// is where the sanitizing lives.
+			'src/routes/dashboard/messages/*/+page.svelte',
+			'src/routes/dashboard/applications/*/+page.svelte',
+			'src/routes/dashboard/in-kind/*/+page.svelte'
 		],
 		rules: {
 			'svelte/no-at-html-tags': 'off'

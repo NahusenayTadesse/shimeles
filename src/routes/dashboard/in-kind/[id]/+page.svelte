@@ -10,6 +10,8 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
+	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import { renderRichText } from '$lib/richtext';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
@@ -65,9 +67,29 @@
 			if (form.notifyFailed) {
 				toast.error('Saved, but the email did not go out. Please ring them instead.');
 			}
-			open = null;
+			closeDialogs();
 		}
 	});
+
+	/** Closing a decision dialog throws away what was typed in it. */
+	function closeDialogs() {
+		open = null;
+		acceptNote = '';
+		declineNote = '';
+		intakeNote = '';
+	}
+
+	/**
+	 * What the coordinator types in each decision dialog.
+	 *
+	 * Held here rather than in the dialog because the dialog is destroyed when
+	 * it closes, and an editor bound to a variable that outlived it would come
+	 * back with last week's decline reason already written. Cleared with the
+	 * dialog instead — see the effect above, and `closeDialogs`.
+	 */
+	let acceptNote = $state('');
+	let declineNote = $state('');
+	let intakeNote = $state('');
 
 	/** Which of the step dialogs is open, if any. */
 	let open = $state<'decide' | 'decline' | 'schedule' | 'receive' | 'distribute' | 'cancel' | null>(
@@ -502,7 +524,7 @@
 								<dt class="text-xs tracking-wide text-muted-foreground uppercase">
 									On review{data.reviewerName ? ` · ${data.reviewerName}` : ''}
 								</dt>
-								<dd>{o.reviewNotes}</dd>
+								<dd class="prose-block">{@html renderRichText(o.reviewNotes)}</dd>
 							</div>
 						{/if}
 						{#if o.declineReason}
@@ -510,7 +532,7 @@
 								<dt class="text-xs tracking-wide text-muted-foreground uppercase">
 									Why it was declined
 								</dt>
-								<dd>{o.declineReason}</dd>
+								<dd class="prose-block">{@html renderRichText(o.declineReason)}</dd>
 							</div>
 						{/if}
 						{#if o.intakeNotes}
@@ -518,7 +540,7 @@
 								<dt class="text-xs tracking-wide text-muted-foreground uppercase">
 									At intake{data.receiverName ? ` · ${data.receiverName}` : ''}
 								</dt>
-								<dd>{o.intakeNotes}</dd>
+								<dd class="prose-block">{@html renderRichText(o.intakeNotes)}</dd>
 							</div>
 						{/if}
 						{#if o.distributionNotes}
@@ -644,7 +666,7 @@
 </div>
 
 <!-- ==================== Accept ==================== -->
-<Dialog.Root open={open === 'decide'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'decide'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Accept this gift</Dialog.Title>
@@ -656,15 +678,15 @@
 		<form method="post" action="?/decide" use:enhance class="flex flex-col gap-4">
 			<input type="hidden" name="outcome" value="accepted" />
 
-			<div class="flex flex-col gap-2">
-				<Label for="accept-note">Anything to note?</Label>
-				<Textarea
-					id="accept-note"
-					name="note"
-					rows={3}
-					placeholder="Taking the coats but not the mattress; storing at the Bole office."
-				/>
-			</div>
+			<!-- Emailed to the donor when the box below is ticked, so it is the
+			     same editor the rest of the dashboard writes letters in. -->
+			<InputComp
+				label="Anything to note?"
+				name="note"
+				type="richtext"
+				bind:value={acceptNote}
+				placeholder="Taking the coats but not the mattress; storing at the Bole office."
+			/>
 
 			{#if o.donorEmail}
 				<label class="flex items-center gap-2 text-sm">
@@ -679,14 +701,14 @@
 
 			<div class="flex gap-2">
 				<Button type="submit" class="flex-1"><CheckCircle2 class="size-4" /> Accept</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <!-- ==================== Decline ==================== -->
-<Dialog.Root open={open === 'decline'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'decline'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Decline this gift</Dialog.Title>
@@ -699,16 +721,17 @@
 		<form method="post" action="?/decide" use:enhance class="flex flex-col gap-4">
 			<input type="hidden" name="outcome" value="declined" />
 
-			<div class="flex flex-col gap-2">
-				<Label for="decline-note">Why?</Label>
-				<Textarea
-					id="decline-note"
-					name="note"
-					rows={3}
-					required
-					placeholder="We have no cold storage for fresh food this month, so it would spoil before it reached anybody."
-				/>
-			</div>
+			<!-- The reason is the letter. `decide` refuses an empty one, and an
+			     editor left untouched posts `<p></p>`, which the action treats as
+			     the empty it is. -->
+			<InputComp
+				label="Why?"
+				name="note"
+				type="richtext"
+				required
+				bind:value={declineNote}
+				placeholder="We have no cold storage for fresh food this month, so it would spoil before it reached anybody."
+			/>
 
 			{#if o.donorEmail}
 				<label class="flex items-center gap-2 text-sm">
@@ -721,14 +744,14 @@
 				<Button type="submit" variant="destructive" class="flex-1">
 					<Ban class="size-4" /> Decline
 				</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <!-- ==================== Schedule ==================== -->
-<Dialog.Root open={open === 'schedule'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'schedule'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Book the handover</Dialog.Title>
@@ -780,14 +803,14 @@
 
 			<div class="flex gap-2">
 				<Button type="submit" class="flex-1"><CalendarClock class="size-4" /> Book it</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <!-- ==================== Intake ==================== -->
-<Dialog.Root open={open === 'receive'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'receive'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-h-[85vh] max-w-lg overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>Count it in</Dialog.Title>
@@ -821,15 +844,13 @@
 				{/each}
 			</div>
 
-			<div class="flex flex-col gap-2">
-				<Label for="intakeNotes">Notes on the intake</Label>
-				<Textarea
-					id="intakeNotes"
-					name="intakeNotes"
-					rows={2}
-					placeholder="Stored in the back room; two boxes are damp and need drying out."
-				/>
-			</div>
+			<InputComp
+				label="Notes on the intake"
+				name="intakeNotes"
+				type="richtext"
+				bind:value={intakeNote}
+				placeholder="Stored in the back room; two boxes are damp and need drying out."
+			/>
 
 			{#if o.donorEmail}
 				<label class="flex items-center gap-2 text-sm">
@@ -840,14 +861,14 @@
 
 			<div class="flex gap-2">
 				<Button type="submit" class="flex-1"><PackageCheck class="size-4" /> Take it in</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <!-- ==================== Distribute ==================== -->
-<Dialog.Root open={open === 'distribute'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'distribute'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Record where it went</Dialog.Title>
@@ -871,14 +892,14 @@
 
 			<div class="flex gap-2">
 				<Button type="submit" class="flex-1"><Package class="size-4" /> Close this gift</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <!-- ==================== Withdrawn ==================== -->
-<Dialog.Root open={open === 'cancel'} onOpenChange={(value) => !value && (open = null)}>
+<Dialog.Root open={open === 'cancel'} onOpenChange={(value) => !value && closeDialogs()}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Mark as withdrawn</Dialog.Title>
@@ -897,7 +918,7 @@
 				<Button type="submit" variant="destructive" class="flex-1">
 					<Undo2 class="size-4" /> Mark withdrawn
 				</Button>
-				<Button type="button" variant="outline" onclick={() => (open = null)}>Cancel</Button>
+				<Button type="button" variant="outline" onclick={() => closeDialogs()}>Cancel</Button>
 			</div>
 		</form>
 	</Dialog.Content>
