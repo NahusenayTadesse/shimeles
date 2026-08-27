@@ -166,3 +166,17 @@ export interface RenderTestimonial {
 	photo: string | null;
 	pillar: { slug: string; name: string; color: string } | null;
 }
+
+/**
+ * A question the help panel answers, and its answer.
+ *
+ * The one shape here that is *not* language-resolved: the visitor holds the
+ * language switch, so the panel needs both columns and picks per topic.
+ */
+export interface RenderHelpTopic {
+	id: number;
+	question: string;
+	questionAm: string | null;
+	answer: string;
+	answerAm: string | null;
+}

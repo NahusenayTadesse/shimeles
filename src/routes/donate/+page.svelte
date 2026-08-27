@@ -18,6 +18,7 @@
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
+	import HelpPanel from '$lib/components/help-panel.svelte';
 	import { CircleCheck, Copy, HeartHandshake, Package } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
@@ -172,6 +173,13 @@
 				</Tabs.Trigger>
 			</Tabs.List>
 		</Tabs.Root>
+
+		<!-- Above the form, not below it. People were reaching the transfer step
+		     already unsure what the reference was for, and an answer they find
+		     after they have guessed is an answer that arrived too late. -->
+		{#if data.help?.length}
+			<HelpPanel topics={data.help} labels={data.helpLabels} contactHref="/contact" />
+		{/if}
 
 		{#if giftKind === 'goods'}
 			<Card.Root class="p-6">

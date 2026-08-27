@@ -1,6 +1,7 @@
 import {
 	BarChart3,
 	BookOpen,
+	CircleHelp,
 	ClipboardList,
 	FileText,
 	HandHeart,
@@ -199,6 +200,12 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 					title: 'Translations',
 					url: '/dashboard/translations',
 					icon: Languages,
+					permission: 'content.manage'
+				},
+				{
+					title: 'Help panel',
+					url: '/dashboard/help-topics',
+					icon: CircleHelp,
 					permission: 'content.manage'
 				},
 				{

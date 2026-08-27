@@ -169,6 +169,13 @@
       "when": 1787855038268,
       "tag": "0023_volunteer_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1787861526297,
+      "tag": "0024_help_topics",
+      "breakpoints": true
     }
   ]
 }

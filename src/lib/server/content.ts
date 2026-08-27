@@ -23,6 +23,7 @@ import {
 	contentBlocks,
 	donationCampaigns,
 	futureInitiatives,
+	helpTopics,
 	navigationItems,
 	pages,
 	pillars,
@@ -40,6 +41,7 @@ import type {
 	RenderBlogPost,
 	RenderBlogPostDetail,
 	RenderDonationCampaign,
+	RenderHelpTopic,
 	RenderNavItem,
 	RenderPage,
 	RenderPillar,
@@ -935,6 +937,40 @@ export async function getMediaByOwner(
 }
 
 /* ==========================================================================
+   Help topics
+   ========================================================================== */
+
+/**
+ * The questions the help panel on `context` answers, in the order staff put
+ * them in.
+ *
+ * The one query in this module that returns `*_am` alongside the English. The
+ * component decides which to show — the visitor is holding the switch, so this
+ * cannot resolve the language the way every other query here does.
+ */
+export async function getHelpTopics(context: string): Promise<RenderHelpTopic[]> {
+	return cached(`help:${context}`, () =>
+		db
+			.select({
+				id: helpTopics.id,
+				question: helpTopics.question,
+				questionAm: helpTopics.questionAm,
+				answer: helpTopics.answer,
+				answerAm: helpTopics.answerAm
+			})
+			.from(helpTopics)
+			.where(
+				and(
+					eq(helpTopics.context, context),
+					eq(helpTopics.isActive, true),
+					isNull(helpTopics.deletedAt)
+				)
+			)
+			.orderBy(asc(helpTopics.sortOrder), asc(helpTopics.id))
+	);
+}
+
+/* ==========================================================================
    Invalidation
    ========================================================================== */
 
@@ -957,7 +993,9 @@ export const CONTENT_CACHE_KEYS = {
 	// in one go — see the prefix rule in `$lib/server/cache`.
 	blog: ['blog', 'blog-categories', 'media:blog_post'],
 	testimonials: ['testimonials', 'media:testimonial'],
-	campaigns: ['donation-campaigns', 'media:campaign']
+	campaigns: ['donation-campaigns', 'media:campaign'],
+	// A prefix: one edit drops `help:donate` and every other page's panel too.
+	help: ['help']
 } as const;
 
 export type ContentCacheGroup = keyof typeof CONTENT_CACHE_KEYS;

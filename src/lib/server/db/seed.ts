@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { PERMISSIONS, ROLE_PERMISSIONS, ROLE } from '../../permissions';
 import { PRIVACY_POLICY_BODY, TERMS_AND_CONDITIONS_BODY } from './legal-content';
@@ -2849,7 +2849,7 @@ async function seedContact() {
    ========================================================================== */
 
 async function seedTranslations() {
-	const strings: { key: string; en: string; group: string }[] = [
+	const strings: { key: string; en: string; am?: string; group: string }[] = [
 		{ key: 'form.submit', en: 'Submit', group: 'form' },
 		{ key: 'form.sending', en: 'Sending', group: 'form' },
 		{ key: 'form.your_name', en: 'Your name', group: 'form' },
@@ -2919,6 +2919,22 @@ async function seedTranslations() {
 		},
 		{ key: 'donate.newsletter', en: 'Send me occasional updates', group: 'donate' },
 		{ key: 'donate.submit', en: 'Give', group: 'donate' },
+
+		// The help panel is the one place a visitor switches language, so these
+		// three carry their Amharic. Everything above still renders `en`.
+		{
+			key: 'help.button',
+			en: 'Not sure how this works?',
+			am: 'እንዴት እንደሚሠራ አልገባዎትም?',
+			group: 'help'
+		},
+		{ key: 'help.title', en: 'Questions people ask us', am: 'ሰዎች የሚጠይቁን ጥያቄዎች', group: 'help' },
+		{
+			key: 'help.footer',
+			en: 'Still stuck? Write to us and a person will answer.',
+			am: 'አሁንም ችግር አለ? ይጻፉልን፤ ሰው ይመልስልዎታል።',
+			group: 'help'
+		},
 		{ key: 'donate.sending', en: 'Recording your gift', group: 'donate' },
 
 		{ key: 'status.submitted', en: 'Submitted', group: 'status' },
@@ -2932,7 +2948,7 @@ async function seedTranslations() {
 	for (const string of strings) {
 		await db
 			.insert(schema.translations)
-			.values({ key: string.key, en: string.en, group: string.group })
+			.values({ key: string.key, en: string.en, am: string.am ?? null, group: string.group })
 			.onConflictDoNothing({ target: schema.translations.key });
 	}
 
@@ -2955,6 +2971,114 @@ async function seedTranslations() {
    ========================================================================== */
 
 const FILES_DIR = process.env.FILES_DIR ?? '.tempFiles';
+
+/* ==========================================================================
+   Help panel
+
+   The questions the donate page kept being asked out loud. Seeded rather than
+   written into the component so a fundraiser can rewrite an answer the same
+   afternoon somebody misreads it (§0).
+
+   The Amharic here is a first draft and should be read by a native speaker
+   before anyone treats it as final — but a blank column shows nobody the
+   language switch at all, and these are the sentences a confused donor is most
+   likely to need in their own language.
+   ========================================================================== */
+
+async function seedHelpTopics() {
+	const topics: {
+		question: string;
+		questionAm: string;
+		answer: string;
+		answerAm: string;
+	}[] = [
+		{
+			question: 'Does this page take my money now?',
+			questionAm: 'ገንዘቤ አሁን በዚህ ገጽ ላይ ይከፈላል?',
+			answer:
+				'No. The form records your gift and gives you a reference number. You then make the ' +
+				'transfer yourself, at the bank or from your phone, using that reference.',
+			answerAm:
+				'አይደለም። ቅጹ ስጦታዎን መዝግቦ የማመሳከሪያ ቁጥር ይሰጥዎታል። ከዚያ ዝውውሩን እርስዎ ራስዎ በባንክ ወይም በስልክዎ ' +
+				'ያንን ማመሳከሪያ ቁጥር ተጠቅመው ያደርጋሉ።'
+		},
+		{
+			question: 'What is the reference number for?',
+			questionAm: 'የማመሳከሪያ ቁጥሩ ለምንድን ነው?',
+			answer:
+				'It is how we match your transfer to your name. Write it in the reason or note field ' +
+				'when you transfer. Without it your gift still arrives, but it may take us longer to ' +
+				'thank you for it.',
+			answerAm:
+				'ዝውውርዎን ከስምዎ ጋር የምናገናኝበት ነው። ገንዘብ ሲልኩ በምክንያት ወይም በማስታወሻ ሳጥኑ ውስጥ ይጻፉት። ' +
+				'ባይኖርም ስጦታዎ ይደርሳል፤ ነገር ግን ልናመሰግንዎት ረዘም ያለ ጊዜ ሊወስድብን ይችላል።'
+		},
+		{
+			question: 'I chose monthly. Will I be charged automatically?',
+			questionAm: 'በየወሩ የሚል መርጫለሁ። በራሱ ይቆረጣል?',
+			answer:
+				'No. Bank transfers in Ethiopia cannot be charged automatically. Monthly means we send ' +
+				'you a reminder each month, and each transfer stays your own decision.',
+			answerAm:
+				'አይቆረጥም። በኢትዮጵያ የባንክ ዝውውር በራሱ ሊቆረጥ አይችልም። በየወሩ ማለት በየወሩ ማስታወሻ እንልክልዎታለን ማለት ነው፤ ' +
+				'እያንዳንዱ ዝውውር የእርስዎው ውሳኔ ሆኖ ይቀጥላል።'
+		},
+		{
+			question: 'I closed the page before transferring. Is my reference lost?',
+			questionAm: 'ሳልልክ ገጹን ዘጋሁት። ማመሳከሪያዬ ጠፍቷል?',
+			answer:
+				'No. Reopen this page on the same device within a week and your last reference comes ' +
+				'back at the top. If it does not, write to us and we will find it.',
+			answerAm:
+				'አልጠፋም። በተመሳሳይ መሣሪያ በአንድ ሳምንት ውስጥ ይህን ገጽ እንደገና ሲከፍቱ የመጨረሻው ማመሳከሪያዎ ከላይ ይመለሳል። ' +
+				'ካልተመለሰ ይጻፉልን፤ እኛ እናገኘዋለን።'
+		},
+		{
+			question: 'Can I give clothes, food or medicine instead of money?',
+			questionAm: 'ከገንዘብ ይልቅ ልብስ፣ ምግብ ወይም መድኃኒት መስጠት እችላለሁ?',
+			answer:
+				'Yes. Choose "Give goods" at the top of this page and tell us what you have. We will ' +
+				'arrange collection or a drop-off with you.',
+			answerAm:
+				'ይችላሉ። ከዚህ ገጽ ላይኛው ክፍል «እቃ ስጡ» የሚለውን ይምረጡና ያለዎትን ይንገሩን። አሰባሰቡን ወይም ' +
+				'የማስረከቢያ ቦታውን ከእርስዎ ጋር እናዘጋጃለን።'
+		},
+		{
+			question: 'Will my name be published?',
+			questionAm: 'ስሜ ይፋ ይሆናል?',
+			answer:
+				'Only if you allow it. Tick "Keep my gift anonymous" and your name stays inside the ' +
+				'Foundation, on the record that says the gift arrived.',
+			answerAm:
+				'እርስዎ ሲፈቅዱ ብቻ ነው። «ስጦታዬ ስም አልባ ይሁን» የሚለውን ምልክት ካደረጉ ስምዎ ስጦታው መድረሱን ' +
+				'ከሚያሳየው መዝገብ ላይ በፋውንዴሽኑ ውስጥ ብቻ ይቆያል።'
+		}
+	];
+
+	let created = 0;
+	for (const [index, topic] of topics.entries()) {
+		const existing = await db
+			.select({ id: schema.helpTopics.id })
+			.from(schema.helpTopics)
+			.where(
+				and(eq(schema.helpTopics.context, 'donate'), eq(schema.helpTopics.question, topic.question))
+			)
+			.limit(1);
+		if (existing.length) continue;
+
+		await db.insert(schema.helpTopics).values({
+			context: 'donate',
+			question: topic.question,
+			questionAm: topic.questionAm,
+			answer: topic.answer,
+			answerAm: topic.answerAm,
+			sortOrder: (index + 1) * 10
+		});
+		created += 1;
+	}
+
+	console.log(`✓ ${created} help topics`);
+}
 
 async function seedMedia() {
 	const filenames = [
@@ -3606,6 +3730,7 @@ async function main() {
 	await seedInKindCategories();
 	await seedContact();
 	await seedTranslations();
+	await seedHelpTopics();
 	await seedMedia();
 	await seedAboutPage();
 	await seedBlog();

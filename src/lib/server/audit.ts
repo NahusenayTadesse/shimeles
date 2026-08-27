@@ -47,6 +47,8 @@ export type AuditEntity =
 	| 'content_block'
 	| 'page'
 	| 'site_setting'
+	/** The questions and answers behind a public page's help panel. */
+	| 'help_topic'
 	| 'form_definition'
 	| 'form_field'
 	| 'pillar'

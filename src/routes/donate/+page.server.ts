@@ -17,10 +17,12 @@ import {
 	getMediaByOwner,
 	getInitiatives,
 	getPage,
+	getHelpTopics,
 	getPaymentOptions,
 	getPillars,
 	getRegions
 } from '$lib/server/content';
+import { stringPairs } from '$lib/server/settings';
 import { hydrateBlocks } from '$lib/server/pageData';
 import { getImpactMetrics } from '$lib/server/impact';
 import { createInKindOffer, getInKindCategories } from '$lib/server/inKind';
@@ -53,17 +55,31 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url }) => {
 	const requestedPillar = url.searchParams.get('pillar');
 
-	const [page, pillarRows, initiatives, payments, campaigns, metrics, goodsCategories, regionRows] =
-		await Promise.all([
-			getPage('donate'),
-			getPillars(),
-			getInitiatives(),
-			getPaymentOptions(),
-			getDonationCampaigns(),
-			getImpactMetrics(),
-			getInKindCategories(),
-			getRegions()
-		]);
+	const [
+		page,
+		pillarRows,
+		initiatives,
+		payments,
+		campaigns,
+		metrics,
+		goodsCategories,
+		regionRows,
+		help,
+		helpLabels
+	] = await Promise.all([
+		getPage('donate'),
+		getPillars(),
+		getInitiatives(),
+		getPaymentOptions(),
+		getDonationCampaigns(),
+		getImpactMetrics(),
+		getInKindCategories(),
+		getRegions(),
+		getHelpTopics('donate'),
+		// The panel's own labels, both languages: the visitor switches, not the
+		// server, so `strings` from the layout cannot answer this one.
+		stringPairs('help.')
+	]);
 
 	const blockData = page ? await hydrateBlocks(page.blocks) : null;
 
@@ -165,6 +181,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		// Per currency, never one figure — see `MoneyTotal` in `$lib/money.ts`.
 		moneyTotals: metrics.money,
 		blocks: blockData,
+		help,
+		helpLabels,
 		preselectedPillarId: preselected?.id ?? null,
 		form
 	};

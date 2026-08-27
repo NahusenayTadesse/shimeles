@@ -86,9 +86,10 @@ export const invalidateSettings = () => invalidate('settings');
  * rather than a static i18n JSON file, so fixing a wrong or clumsy button label
  * is a dashboard edit and not a deploy.
  *
- * v1 is English-only. The table keeps its `am` column and the dashboard screen
- * keeps writing to it, so adding Amharic back is a rendering change rather than
- * a migration and a re-translation — but nothing reads it today.
+ * v1 is English-only *by default*. The table keeps its `am` column, and the
+ * one component that lets a visitor ask for Amharic — the help panel — reads it
+ * through `stringPairs` below. Everything else renders `en`, so restoring the
+ * language properly stays a rendering change rather than a migration.
  *
  * Returns the key itself when a string is missing, which makes the gap obvious
  * on the page instead of rendering a blank button.
@@ -96,7 +97,7 @@ export const invalidateSettings = () => invalidate('settings');
 const loadStrings = () =>
 	cached('translations', () =>
 		db
-			.select({ key: translations.key, en: translations.en })
+			.select({ key: translations.key, en: translations.en, am: translations.am })
 			.from(translations)
 			.where(and(eq(translations.isActive, true), isNull(translations.deletedAt)))
 	);
@@ -115,6 +116,24 @@ export async function stringsMap(): Promise<Record<string, string>> {
 	const rows = await loadStrings();
 	const out: Record<string, string> = {};
 	for (const row of rows) out[row.key] = row.en || row.key;
+	return out;
+}
+
+/**
+ * The strings under a prefix, with their Amharic where somebody has written it.
+ *
+ * For the one place a visitor picks the language rather than the server: the
+ * help panel. Everywhere else reads `stringsMap`, which stays English — see
+ * *Language* in the README for what v1 does and does not switch.
+ */
+export async function stringPairs(
+	prefix: string
+): Promise<Record<string, { en: string; am: string | null }>> {
+	const rows = await loadStrings();
+	const out: Record<string, { en: string; am: string | null }> = {};
+	for (const row of rows) {
+		if (row.key.startsWith(prefix)) out[row.key] = { en: row.en || row.key, am: row.am };
+	}
 	return out;
 }
 

@@ -27,6 +27,7 @@ Concretely, none of the following is a string literal anywhere in `src`:
 | Regions                                         | `regions`                                                |
 | External giving platforms (PayPal, Zeffy)       | `donation_campaigns`                                     |
 | UI strings                                      | `translations`                                           |
+| Help-panel questions and answers                | `help_topics`                                            |
 
 The test applied to every decision: _if the Foundation's program manager wants to
 change this next year with no developer involved, can they?_
@@ -189,8 +190,18 @@ becomes a float, and floats lose cents. Convert only at the edges, through
 
 ### Language
 
-**v1 is English-only, and English is not switchable.** There is no language
-toggle, no `?lang=` parameter, no locale cookie, and `<html lang="en">` is fixed.
+**v1 is English-only, with one exception, and the page itself does not switch.**
+There is no language toggle in the chrome, no `?lang=` parameter, no locale
+cookie, and `<html lang="en">` is fixed.
+
+The exception is the **help panel** (`$lib/components/help-panel.svelte`, shown
+on `/donate`). Its questions are `help_topics` rows carrying both languages, and
+a visitor switches between them inside the panel. It is deliberately the
+smallest possible foothold: donors were arriving at the transfer step confused,
+and confusion is the one place a second language pays for itself before a full
+translation pass exists. Nothing outside the panel changes language with it, and
+a topic with no Amharic falls back to English rather than to a blank — the
+switch is offered only once some topic has been translated.
 
 What is kept, deliberately:
 
@@ -198,9 +209,11 @@ What is kept, deliberately:
   label is still a dashboard edit rather than a deploy — that was never really
   about translation.
 - Every `*_am` column in the schema, plus `preferred_language` on users, donors
-  and beneficiaries, and `language` on submissions. They are nullable, unwritten
-  and unread. §1 of the spec requires somewhere to put Amharic, and keeping the
-  columns makes restoring it a rendering change rather than a migration.
+  and beneficiaries, and `language` on submissions. Outside `help_topics` and
+  the three `help.*` strings the panel reads through `stringPairs`, they are
+  nullable, unwritten and unread. §1 of the spec requires somewhere to put
+  Amharic, and keeping the columns makes restoring it a rendering change rather
+  than a migration.
 
 What was removed: the toggle component, the language plumbing through
 `hooks.server.ts` and every `load`, the Amharic inputs on the dashboard forms,
@@ -276,8 +289,10 @@ Generic CRUD-generator screens unless marked otherwise.
   it as the source of truth for copy and tone. The seeded prose is written from
   §1 of the technical spec and is explicitly placeholder — replace it through the
   dashboard, which is the point of the content model.
-- **Amharic is deferred to a later version** at the client's request. See
-  _Language_ above for exactly what was removed and what was kept for it.
+- **Amharic is deferred to a later version** at the client's request, apart
+  from the donate page's help panel. See _Language_ above for what that reads
+  and what is still English. The seeded Amharic in `help_topics` is a first
+  draft and wants a native speaker's eye before anyone calls it finished.
 - **Sponsorship** is v2 per the spec. The schema does not conflict with it:
   `beneficiaries`, `households` and designated giving are all in place.
 - **Telegram notifications** are flagged as recommended rather than mandatory in
@@ -286,4 +301,5 @@ Generic CRUD-generator screens unless marked otherwise.
 - **Card and PayPal** are modelled (`payment_methods.kind`, `donations.provider_transaction_id`)
   but no provider is integrated — no keys, no webhook. Bank transfer and mobile
   money are the live paths.
+
 # shimeles

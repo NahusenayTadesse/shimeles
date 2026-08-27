@@ -198,6 +198,36 @@ export const translations = sqliteTable(
 	(table) => [index('translations_group_idx').on(table.group)]
 );
 
+/**
+ * A question a visitor keeps asking, with the answer, shown in the help panel
+ * on the page named by `context`.
+ *
+ * A separate table from `translations` because these are paragraphs a
+ * fundraiser writes, not interface labels: they are ordered, they are switched
+ * on and off, and there are a handful of them per page. Adding "can I give in
+ * dollars?" is a row on the dashboard, never a deploy (§0).
+ *
+ * This is also the one place Amharic is actually read. §1 wants it and the
+ * `*_am` columns have always been there; the donate flow is where a confused
+ * visitor loses the most, so it is where the second language earns its keep
+ * first. A blank `question_am` simply means the panel offers English only.
+ */
+export const helpTopics = sqliteTable(
+	'help_topics',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Which page's panel this belongs to: `donate`, `apply`, `volunteer`. */
+		context: text('context').default('donate').notNull(),
+		question: text('question').notNull(),
+		questionAm: text('question_am'),
+		answer: text('answer').notNull(),
+		answerAm: text('answer_am'),
+		sortOrder: integer('sort_order').default(0).notNull(),
+		...secureFields
+	},
+	(table) => [index('help_topics_context_idx').on(table.context, table.isActive, table.sortOrder)]
+);
+
 /* ==========================================================================
    3.2 PILLARS & PROGRAMS
    ========================================================================== */
