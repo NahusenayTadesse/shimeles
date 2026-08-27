@@ -140,6 +140,118 @@ relative paths no social crawler can resolve. Two things it depends on:
   why `db:seed` is the one script that does not use bun.
 - **Money is an integer in minor units.** Santim for ETB, cents for USD. SQLite
   has no `DECIMAL`. Convert only through `$lib/money.ts`.
+- **Never add two currencies together.** The Foundation banks birr locally and
+  dollars from the diaspora, and the minor units are not even the same size, so
+  `sum(amount)` over a mixed table is a quantity of nothing — it used to be
+  published on the homepage with a birr sign in front of it. Every total is a
+  `MoneyTotal[]`, one entry per currency: group by the currency column in SQL,
+  or use `sumByCurrency` / `toMoneyTotals` from `$lib/money.ts`, and render with
+  `$lib/dashboard/money-totals.svelte`. There is deliberately no conversion
+  anywhere — the Foundation does not record exchange rates, and a helper that
+  invented one would bury the assumption in a `<span>`.
+- **An email's absolute URLs come from `site.url`, never the request origin.**
+  Same rule as `$lib/seo.ts`, sharper reason: an email outlives its request and
+  is opened next week on a phone. `event.url.origin` would permanently bake in
+  whatever host served the form — `localhost:5173` for a pledge made in
+  development, a preview deployment, `www.` when the apex is canonical. Half
+  the mail here has no request behind it anyway (pledge reminders, the hourly
+  jobs). `email-templates.ts` falls back to the production origin so an unset
+  setting still renders a working logo.
+- **The email shell lives in `email-templates.ts`, which is dependency-free.**
+  No `$lib` alias, no `$env`, no database — that is what lets
+  `scripts/send-test-emails.ts` import it under tsx and put _the real design_
+  in an inbox. It once held a copy instead, and the copy drifted: it was still
+  sending terracotta after the app had gone green. `email.ts` re-exports it, so
+  callers only ever import `$lib/server/email`. Its colours come from
+  `layout.css` — green (`--clay`) leads, gold (`--olive`) accents.
+- **Email is one sender and many templates.** A template is a pure function
+  returning `EmailTemplate` — `{ subject, heading, body, action? }`, _not_
+  finished HTML — and knows nothing about SMTP; `sendEmail({ to, ...template })`
+  knows nothing about wording and wraps the body in the branded shell at send
+  time, because the shell needs the site origin and that is an awaited setting.
+  Adding an email is a function in the Templates section and no change to the
+  sender. Build the body with `paragraphs()` for anything a person typed (it
+  escapes as it goes, and dropping prose into a bare `<p>` collapses every
+  newline) and `panel()` for an inset note. `sendEmailToEach` sends staff notification lists as
+  separate messages so a shared `to` header cannot disclose the list. A missing
+  SMTP host or recipient returns `{ sent: false }` rather than throwing: a
+  stored submission must not fail because the mail server is down.
+- **Every dynamic form acknowledges its submitter, from one place.**
+  `acknowledgeSubmission` is called in `handleFormSubmission`, so the four
+  programme applications on `/programs/[slug]`, anything at `/forms/[slug]` and
+  any `form_embed` block are covered — and a fifth programme added from the
+  dashboard tomorrow is too, with no code change. The body is the form's own
+  `success_message`, so the confirmation on screen and the one in the inbox are
+  the same sentence. `/apply`, `/volunteer` and `/contact` have their own
+  submit paths and their own wording, so they do **not** come through here;
+  their `form_definitions` rows must keep `acknowledge_submitter` off or their
+  applicants get two emails.
+- **`acknowledge_submitter` is off for a low-barrier form, and that is
+  safeguarding, not preference.** Mental Wellness is designed so that asking
+  for help costs as little as possible; an unexpected email headed with the
+  Foundation's name, arriving on a shared device or a family address, is a
+  cost. Staff can still turn it on per form at Configuration → Forms.
+- **Staff notifications resolve through `staffRecipients()`**: a per-form
+  `notify_emails` list, then the `contact.email_primary` setting, then
+  `MAIL_ADMIN`/`SMTP_USER`. The last step exists because the fallback used to
+  be a placeholder on a domain the Foundation does not own — a fresh
+  installation quietly mailed a stranger on every contact submission. Never
+  give a notification its own fallback chain; the four had already drifted, and
+  one of them fell through to sending nothing at all.
+- **`magicLink({ disableSignUp: true })` is load-bearing, and it is not
+  enough on its own.** Without the flag the endpoint creates an account for any
+  address posted to it — a public signup route by another name, on a system
+  holding case data, which is the exact hole `handleBlockPublicSignup` closes
+  for email/password. But Better Auth enforces the flag at _verify_ time: the
+  send endpoint looks nothing up and mails a branded sign-in link to whatever
+  address it is given. `/magic-link`'s action therefore does its own account
+  lookup and stays silent when there is none, the way `requestPasswordReset`
+  does internally. Never call `auth.api.signInMagicLink` without that check.
+- **Every account-recovery endpoint answers with one fixed sentence.**
+  `/login`, `/forgot-password` and `/magic-link` are all reachable by anyone,
+  and a reply that differed for a known address would turn them into
+  account-enumeration oracles. The failure branch says exactly what the success
+  branch says; the difference goes to the server log and to `audit_log`
+  (`password_reset_requested`, `magic_link_requested`, with `matched: false` on
+  the misses — a run of those is what probing looks like).
+- **A reset link's origin is `ORIGIN`, not `site.url`.** The opposite of every
+  other email, and deliberately: the token at the end of it is verified by the
+  running server, so it has to be the origin actually serving the app. Set
+  `ORIGIN` correctly in production or every reset and sign-in link 404s.
+- **A case note and a reply are the same text; `is_internal` is the whole
+  difference.** `form_submission_notes.is_internal` defaults to **true** —
+  the opposite of `contact_message_replies.is_internal`, deliberately: a
+  message is a conversation whose rows are mostly sent, a case file is a
+  working record whose rows are mostly private, and a caseworker's assessment
+  of a family must never reach that family because a default leaned the wrong
+  way. Both are set from two separate submit buttons and never inferred from
+  whether an address exists. Go through `addSubmissionNote` — it sends before
+  stamping `sent_at`, so a bounced reply is recorded as unsent rather than
+  leaving the case looking answered.
+- **Which status changes email the applicant is a row, not an `if`.**
+  `status_options.notify_applicant` turns it on and `public_description` is
+  what the email says, both edited at Configuration → Statuses (§0). The send
+  lives in `setSubmissionStatus` / `setVolunteerStatus` in
+  `$lib/server/workflow.ts`, after the write and the audit row, and never
+  throws — a transition that succeeded must not be reported as failed because
+  SMTP is down. A status flagged to notify with no `public_description` sends
+  nothing and warns: an email whose body is a status label teaches the reader
+  to ignore the next one.
+- **`npm run mail:test -- you@example.com` renders every template to a real
+  inbox.** It sends real mail from the Foundation's real account, so it refuses
+  to run without an explicit recipient. `MAIL_TEST_ORIGIN` overrides the origin
+  its logo and links are built from.
+- **`npm run db:demo-money` fills the ledger with mixed currencies.** Demo
+  data, deliberately not part of `db:seed`, which creates no donations at all —
+  a real installation must never grow a fictional ledger. Everything it writes
+  is tagged (`DEMO-` references, `@demo.invalid` donors) and
+  `npx tsx scripts/demo-money.ts --clean` removes exactly that and nothing else.
+  Use it when working on a money screen: with one ETB donation in the database
+  every per-currency total looks identical to the single-figure version it
+  replaced.
+- **`donors.lifetime_total` is one currency only** — the donor's largest, named
+  by `lifetime_currency`. It is a sort key and a headline, not their giving
+  history; the donors screen reads the full breakdown off `donations`.
 - **`z.coerce.boolean()` is wrong for form fields.** An unticked checkbox and a
   `<select>` set to "No" both post the string `"false"`, and `Boolean("false")`
   is `true`. Use `flagField()` from `$lib/server/crud.ts`.

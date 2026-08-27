@@ -33,6 +33,12 @@
 			</p>
 		</div>
 
+		{#if data.reset}
+			<p class="mb-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm" role="status">
+				Your password has been changed. Sign in with it to continue.
+			</p>
+		{/if}
+
 		{#if data.suspended}
 			<p
 				class="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
@@ -76,7 +82,13 @@
 			</Button>
 		</form>
 
-		<p class="mt-6 text-center text-xs text-muted-foreground">
+		<p
+			class="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-xs text-muted-foreground"
+		>
+			<a href="/forgot-password" class="hover:text-foreground">Forgotten your password?</a>
+			<a href="/magic-link" class="hover:text-foreground">Email me a sign-in link</a>
+		</p>
+		<p class="mt-2 text-center text-xs text-muted-foreground">
 			<a href="/" class="hover:text-foreground">← Back to the public site</a>
 		</p>
 	</Card.Root>

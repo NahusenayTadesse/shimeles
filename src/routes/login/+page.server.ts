@@ -33,7 +33,11 @@ export const load: PageServerLoad = async (event) => {
 		form: await superValidate(zod4(loginSchema)),
 		// Set by `requireUser` when it signs a suspended account out. Signing in
 		// again will not help, so say why rather than leaving them to guess.
-		suspended: event.url.searchParams.has('suspended')
+		suspended: event.url.searchParams.has('suspended'),
+		// Set by `/reset-password` on its way out. Every session was revoked, so
+		// the form is expected — but arriving at a bare login screen after
+		// successfully choosing a password reads as though it did not work.
+		reset: event.url.searchParams.has('reset')
 	};
 };
 

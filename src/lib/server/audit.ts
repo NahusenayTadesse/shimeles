@@ -79,6 +79,15 @@ export type AuditAction =
 	| 'downloaded_document'
 	| 'completed_check'
 	| 'login'
+	/**
+	 * Account-recovery events, logged whether or not the address matched an
+	 * account — a run of these against addresses that do not exist is what
+	 * somebody probing the login form looks like, and that is only visible if
+	 * the misses are recorded too.
+	 */
+	| 'password_reset_requested'
+	| 'password_reset'
+	| 'magic_link_requested'
 	| 'permission_denied';
 
 interface AuditInput {
