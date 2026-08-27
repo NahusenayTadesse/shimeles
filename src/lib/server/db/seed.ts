@@ -386,6 +386,17 @@ async function seedSettings() {
 			group: 'footer',
 			hint: 'Shown as the registration line in the footer.',
 			value: 'Charity registration no. 8032'
+		},
+		{
+			key: 'workflow.notify_on_status_change',
+			label: 'Email people on every status change',
+			group: 'workflow',
+			valueType: 'boolean',
+			hint:
+				'When Yes, moving an application or a volunteer to any status emails them, not only the ' +
+				'statuses ticked under Configuration → Statuses. A status with nothing written in its ' +
+				'public description still sends nothing unless the caseworker adds a note. Off by default.',
+			value: 'false'
 		}
 	];
 

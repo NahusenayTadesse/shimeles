@@ -62,6 +62,19 @@ export async function settingNumber(key: string): Promise<number | null> {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * Boolean settings — the yes/no switches the settings screen renders as a
+ * select of `true`/`false`.
+ *
+ * Anything that is not an explicit yes is a no, including a missing row and a
+ * blank value. A switch that decides whether mail goes to a beneficiary must
+ * default to *not sending* when its value is unreadable, not to sending.
+ */
+export async function settingFlag(key: string): Promise<boolean> {
+	const raw = (await loadSettings()).get(key)?.value?.trim().toLowerCase();
+	return raw === 'true' || raw === '1' || raw === 'yes';
+}
+
 export const invalidateSettings = () => invalidate('settings');
 
 /* ==========================================================================

@@ -237,6 +237,19 @@ relative paths no social crawler can resolve. Two things it depends on:
   SMTP is down. A status flagged to notify with no `public_description` sends
   nothing and warns: an email whose body is a status label teaches the reader
   to ignore the next one.
+- **Three ways a status change reaches a person, and one rule about what it
+  says.** The per-status flag above; the global `workflow.notify_on_status_change`
+  switch (Settings → Workflow, or the checkbox on a case page, `settings.manage`
+  only) which makes *every* change notify, applications and volunteers alike;
+  and the "Notify applicant" button on a case, which goes through
+  `notifyOfCurrentStatus` and asks permission of neither. What all three send is
+  decided by `statusLetter` in `$lib/server/workflow.ts`: the status's
+  `public_description` leads with the caseworker's note after it, or the note
+  becomes the letter when the status has no wording of its own, or nothing is
+  sent. It never invents a sentence — no button can put words in front of a
+  family that nobody at the Foundation wrote. A manual send writes its own case
+  note and a `notified` audit row, because "who told this family, and when" is
+  not recoverable from the status history.
 - **`npm run mail:test -- you@example.com` renders every template to a real
   inbox.** It sends real mail from the Foundation's real account, so it refuses
   to run without an explicit recipient. `MAIL_TEST_ORIGIN` overrides the origin

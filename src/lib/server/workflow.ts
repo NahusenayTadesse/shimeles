@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, asc, count, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, eq, isNull, sql } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import {
@@ -15,6 +15,7 @@ import { audit } from '$lib/server/audit';
 import type { Access } from '$lib/server/permissions';
 import { assertPillarAccess } from '$lib/server/permissions';
 import { sendEmail, statusChangeTemplate } from '$lib/server/email';
+import { settingFlag } from '$lib/server/settings';
 
 /**
  * Workflow stages and the rules that gate them.
@@ -125,18 +126,130 @@ async function statusById(id: number): Promise<StatusRow | null> {
    ========================================================================== */
 
 /**
- * Emails whoever the record is about, when the status they landed on says to.
+ * The switch that makes every status change notify, not just the ticked ones.
  *
- * Two conditions, both of them data rather than code: the status has
- * `notify_applicant` ticked, and it has a `public_description` to say. A
- * status with the flag on and nothing to say sends nothing — an email whose
- * body is a status label teaches the reader to ignore the next one — and that
- * is worth a warning, because a coordinator who ticked the box is expecting
- * mail to go out.
+ * A second, blunter control alongside `status_options.notify_applicant`: the
+ * per-status flag is the considered setup, and this is the coordinator saying
+ * "tell people, always". Either one turning it on is enough; neither can force
+ * an email that has nothing to say (see `sendStatusEmail`).
+ *
+ * It lives in `site_settings` rather than in code because it is a policy the
+ * Foundation changes without us (§0), and it is read per send rather than
+ * cached in a module so that ticking the box takes effect on the next status
+ * change rather than the next deploy.
+ */
+export const AUTO_NOTIFY_SETTING = 'workflow.notify_on_status_change';
+
+export const autoNotifyEnabled = (): Promise<boolean> => settingFlag(AUTO_NOTIFY_SETTING);
+
+/**
+ * What became of an attempt to tell somebody their status changed.
+ *
+ * Returned rather than swallowed, because "we moved the case and emailed the
+ * family" and "we moved the case and the family has no idea" are different
+ * outcomes and the person who pressed the button is the one who needs to know
+ * which happened.
+ */
+export type NotifyResult =
+	| { sent: true }
+	| {
+			sent: false;
+			reason:
+				/** Neither the status nor the global switch asked for one. */
+				| 'not-requested'
+				/** Taken on paper or by phone — no address was ever given. */
+				| 'no-email'
+				/** No public description and no note: nothing to put in the letter. */
+				| 'nothing-to-say'
+				/** No SMTP configured on this deployment. */
+				| 'no-smtp'
+				| 'send-failed';
+	  };
+
+/**
+ * Decides what the letter actually says. Pure, and separated out because it is
+ * the one rule here worth reading on its own — and the one worth testing.
+ *
+ * Returns `null` when there is nothing to send, which is not a failure: it is
+ * the correct outcome for an internal status nobody wrote wording for.
+ */
+export function statusLetter(
+	publicDescription: string | null | undefined,
+	note: string | null | undefined
+): { body: string; note?: string } | null {
+	const described = publicDescription?.trim();
+	const written = note?.trim();
+
+	// The Foundation's wording leads, with the caseworker's note after it.
+	if (described) return { body: described, note: written || undefined };
+
+	// No wording for this status: the note becomes the letter, and must not
+	// then also be repeated in the panel underneath itself.
+	if (written) return { body: written };
+
+	return null;
+}
+
+/**
+ * Emails whoever the record is about that their status has changed.
+ *
+ * **What the letter says** is the one interesting decision here. The status's
+ * `public_description` is the Foundation's considered wording for "this is what
+ * being Approved means", so it leads whenever there is one, with the
+ * caseworker's note shown after it as a personal addition. When the status has
+ * no description — most of them do not, because most are internal steps — the
+ * note becomes the letter itself. That is what makes the manual button useful
+ * on a status like "Verified": a caseworker writes the sentence they would have
+ * said on the phone, and it goes out.
+ *
+ * With neither, nothing is sent. An email whose body is a status label teaches
+ * the reader to ignore the next one, and inventing a sentence here would put
+ * words the Foundation never wrote in front of a family.
  *
  * Never throws. A transition that succeeded must not be reported as failed
- * because the mail server is down, and the status change is already committed
- * and audited by the time this runs.
+ * because the mail server is down, and by the time this runs the status change
+ * is already committed and audited.
+ */
+async function sendStatusEmail(input: {
+	kind: 'application' | 'volunteer';
+	status: StatusRow;
+	email: string | null;
+	name: string | null;
+	reference: string;
+	note?: string;
+}): Promise<NotifyResult> {
+	// No address is not a failure: an application can be taken on paper or over
+	// the phone, and a volunteer's email is nullable for the same reason.
+	if (!input.email) return { sent: false, reason: 'no-email' };
+
+	const letter = statusLetter(input.status.publicDescription, input.note);
+	if (!letter) return { sent: false, reason: 'nothing-to-say' };
+
+	try {
+		const result = await sendEmail({
+			to: input.email,
+			...statusChangeTemplate({
+				name: input.name?.trim() || 'friend',
+				reference: input.reference,
+				statusLabel: input.status.label,
+				publicDescription: letter.body,
+				note: letter.note,
+				kind: input.kind
+			})
+		});
+
+		if (result.sent) return { sent: true };
+		return { sent: false, reason: result.reason === 'no-smtp-host' ? 'no-smtp' : 'send-failed' };
+	} catch (err) {
+		console.error('status change email failed', err);
+		return { sent: false, reason: 'send-failed' };
+	}
+}
+
+/**
+ * The automatic half: sends only if the status says to, or the global switch
+ * does. Pressing "Notify applicant" goes through `notifyOfCurrentStatus`
+ * instead, which asks for no permission from either.
  */
 async function notifyStatusChange(input: {
 	kind: 'application' | 'volunteer';
@@ -145,36 +258,109 @@ async function notifyStatusChange(input: {
 	name: string | null;
 	reference: string;
 	note?: string;
-}): Promise<void> {
-	if (!input.status.notifyApplicant) return;
+}): Promise<NotifyResult> {
+	const requested = input.status.notifyApplicant || (await autoNotifyEnabled());
+	if (!requested) return { sent: false, reason: 'not-requested' };
 
-	if (!input.status.publicDescription?.trim()) {
+	const result = await sendStatusEmail(input);
+
+	if (!result.sent && result.reason === 'nothing-to-say' && input.status.notifyApplicant) {
+		// Worth a warning: a coordinator who ticked the box is expecting mail to
+		// go out, and silence is indistinguishable from a broken mail server.
 		console.warn(
 			`status "${input.status.label}" is set to notify but has no public description, ` +
 				`so nothing was sent. Add one under Configuration → Statuses.`
 		);
-		return;
 	}
 
-	// No address is not a failure: an application can be taken on paper or over
-	// the phone, and a volunteer's email is nullable for the same reason.
-	if (!input.email) return;
+	return result;
+}
 
-	try {
-		await sendEmail({
-			to: input.email,
-			...statusChangeTemplate({
-				name: input.name?.trim() || 'friend',
-				reference: input.reference,
-				statusLabel: input.status.label,
-				publicDescription: input.status.publicDescription,
-				note: input.note,
-				kind: input.kind
-			})
+/**
+ * Sends the status email for the record's *current* status, on demand.
+ *
+ * The "Notify applicant" button. It ignores both the per-status flag and the
+ * global switch — a staff member pressing a button that says notify has said
+ * everything those two settings exist to say — but it cannot conjure a letter
+ * out of nothing, so a status with no public description still needs a note.
+ *
+ * Deliberately re-reads the record rather than taking a status from the
+ * caller: the button is pressed some time after the change, possibly by
+ * somebody else, and the applicant must be told where the case actually is
+ * rather than where a stale page thinks it is.
+ */
+export async function notifyOfCurrentStatus(
+	event: RequestEvent,
+	access: Access,
+	kind: 'application' | 'volunteer',
+	recordId: number,
+	note?: string
+): Promise<NotifyResult> {
+	const record =
+		kind === 'application'
+			? await db
+					.select({
+						pillarId: formSubmissions.pillarId,
+						statusId: formSubmissions.statusId,
+						reference: formSubmissions.referenceNumber,
+						name: formSubmissions.submittedByName,
+						email: formSubmissions.submittedByEmail
+					})
+					.from(formSubmissions)
+					.where(eq(formSubmissions.id, recordId))
+					.limit(1)
+					.then((rows) => rows[0])
+			: await db
+					.select({
+						pillarId: sql<number | null>`null`,
+						statusId: volunteerApplications.statusId,
+						reference: volunteerApplications.referenceNumber,
+						name: volunteerApplications.fullName,
+						email: volunteerApplications.email
+					})
+					.from(volunteerApplications)
+					.where(eq(volunteerApplications.id, recordId))
+					.limit(1)
+					.then((rows) => rows[0]);
+
+	if (!record) throw error(404, 'That record no longer exists.');
+	if (kind === 'application') assertPillarAccess(event, access, record.pillarId);
+
+	const status = record.statusId ? await statusById(record.statusId) : null;
+	if (!status) return { sent: false, reason: 'nothing-to-say' };
+
+	const result = await sendStatusEmail({
+		kind,
+		status,
+		email: record.email,
+		name: record.name,
+		reference: record.reference,
+		note
+	});
+
+	if (!result.sent) return result;
+
+	// A letter sent to a family belongs in the case file, not only in the log.
+	if (kind === 'application') {
+		await db.insert(formSubmissionNotes).values({
+			formSubmissionId: recordId,
+			authorId: access.userId,
+			note: `Notified ${record.email} that this is now "${status.label}".${note ? `\n${note}` : ''}`,
+			isSystem: true,
+			sentAt: new Date(),
+			createdAt: new Date()
 		});
-	} catch (err) {
-		console.error('status change email failed', err);
 	}
+
+	audit({
+		event,
+		action: 'notified',
+		entityType: kind === 'application' ? 'form_submission' : 'volunteer_application',
+		entityId: recordId,
+		metadata: { statusId: status.id, stage: status.stage, manual: true }
+	});
+
+	return result;
 }
 
 /* ==========================================================================
@@ -194,7 +380,7 @@ export async function setSubmissionStatus(
 	submissionId: number,
 	statusId: number,
 	note?: string
-): Promise<StatusRow> {
+): Promise<{ status: StatusRow; notification: NotifyResult }> {
 	const [submission] = await db
 		.select({
 			id: formSubmissions.id,
@@ -249,7 +435,7 @@ export async function setSubmissionStatus(
 
 	// After the write and the audit row, so a bounced email cannot leave the
 	// case looking like it never moved.
-	await notifyStatusChange({
+	const notification = await notifyStatusChange({
 		kind: 'application',
 		status: next,
 		email: submission.applicantEmail,
@@ -258,7 +444,7 @@ export async function setSubmissionStatus(
 		note
 	});
 
-	return next;
+	return { status: next, notification };
 }
 
 /* ==========================================================================
@@ -337,7 +523,7 @@ export async function setVolunteerStatus(
 	applicationId: number,
 	statusId: number,
 	note?: string
-): Promise<StatusRow> {
+): Promise<{ status: StatusRow; notification: NotifyResult }> {
 	const [application] = await db
 		.select({
 			id: volunteerApplications.id,
@@ -421,7 +607,7 @@ export async function setVolunteerStatus(
 		metadata: { from: previous?.stage ?? null, to: next.stage, note: note ?? null }
 	});
 
-	await notifyStatusChange({
+	const notification = await notifyStatusChange({
 		kind: 'volunteer',
 		status: next,
 		email: application.volunteerEmail,
@@ -430,7 +616,7 @@ export async function setVolunteerStatus(
 		note
 	});
 
-	return next;
+	return { status: next, notification };
 }
 
 /**

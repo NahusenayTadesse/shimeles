@@ -73,6 +73,14 @@ export type AuditAction =
 	| 'deleted'
 	| 'restored'
 	| 'updated_status'
+	/**
+	 * A letter went out to a beneficiary or a volunteer. Logged separately from
+	 * the status change that usually prompts it, because a staff member can
+	 * press "Notify applicant" at any time, more than once, and knowing that
+	 * somebody was emailed — and by whom — is not recoverable from the status
+	 * history alone.
+	 */
+	| 'notified'
 	| 'assigned'
 	| 'reconciled'
 	| 'exported_data'

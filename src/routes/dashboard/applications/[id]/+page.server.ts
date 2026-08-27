@@ -14,11 +14,19 @@ import {
 	formSubmissions,
 	pillars,
 	regions,
+	siteSettings,
 	statusOptions,
 	user
 } from '$lib/server/db/schema';
-import { assertPillarAccess, requirePermission } from '$lib/server/permissions';
-import { listStatuses, setSubmissionStatus } from '$lib/server/workflow';
+import { assertPillarAccess, can, requirePermission } from '$lib/server/permissions';
+import {
+	AUTO_NOTIFY_SETTING,
+	autoNotifyEnabled,
+	listStatuses,
+	notifyOfCurrentStatus,
+	setSubmissionStatus
+} from '$lib/server/workflow';
+import { invalidateSettings } from '$lib/server/settings';
 import { addSubmissionNote } from '$lib/server/submissions';
 import { linkBeneficiary } from '$lib/server/submissions';
 import { acceptApplication, getApplicationDetail } from '$lib/server/apply';
@@ -91,6 +99,7 @@ export const load: PageServerLoad = async (event) => {
 		notes,
 		documents,
 		statuses,
+		autoNotify,
 		reviewers,
 		beneficiary,
 		caseDisbursements,
@@ -153,6 +162,10 @@ export const load: PageServerLoad = async (event) => {
 
 		listStatuses('application'),
 
+		// Whether the global switch is on, so the Workflow card can show the
+		// checkbox in the state it is actually in rather than guessing.
+		autoNotifyEnabled(),
+
 		db.select({ id: user.id, name: user.name }).from(user),
 
 		submission.beneficiaryId
@@ -205,6 +218,10 @@ export const load: PageServerLoad = async (event) => {
 		notes,
 		documents,
 		statuses,
+		autoNotify,
+		// The switch is a coordinator's decision, not a caseworker's, so the
+		// checkbox is not shown to somebody who could not save it anyway.
+		canManageSettings: can(access, 'settings.manage'),
 		reviewers,
 		beneficiary,
 		disbursements: caseDisbursements,
@@ -243,8 +260,83 @@ export const actions: Actions = {
 
 		// The transition function writes the case note and the audit row, and
 		// applies the closed-at stamp — none of that is this action's business.
-		await setSubmissionStatus(event, access, id, statusId, note || undefined);
-		return { ok: true };
+		const { notification } = await setSubmissionStatus(
+			event,
+			access,
+			id,
+			statusId,
+			note || undefined
+		);
+
+		// Whether a letter went out is not a detail: a caseworker who thinks the
+		// family has been told, and a family that has heard nothing, is the gap
+		// this reporting exists to close. Silence when none was asked for — that
+		// is the normal case and not worth a message.
+		return {
+			ok: true,
+			notified: notification.sent,
+			notifyReason: notification.sent ? null : notification.reason
+		};
+	},
+
+	/**
+	 * The "Notify applicant" button.
+	 *
+	 * Sends the current status to the applicant on demand, whatever the status's
+	 * own flag and the global switch say — a staff member pressing a button
+	 * labelled notify has already made that decision. The note box is shared
+	 * with the status form above it, so a caseworker can write the sentence that
+	 * should go out and press this instead of moving the case anywhere.
+	 */
+	notifyApplicant: async (event) => {
+		const { access, id } = await guard(event as never, 'submissions.write');
+		const formData = await event.request.formData();
+		const note = String(formData.get('note') ?? '').trim();
+
+		const result = await notifyOfCurrentStatus(event, access, 'application', id, note || undefined);
+
+		if (result.sent) return { ok: true, notified: true };
+
+		return fail(400, {
+			error:
+				result.reason === 'no-email'
+					? 'This applicant gave no email address, so there is nobody to notify.'
+					: result.reason === 'nothing-to-say'
+						? 'This status has no public description, so there is nothing to send. Write a note above to send that instead, or add a description under Configuration → Statuses.'
+						: result.reason === 'no-smtp'
+							? 'No mail server is configured on this installation, so nothing could be sent.'
+							: 'The email could not be sent. Nothing was delivered.'
+		});
+	},
+
+	/**
+	 * The global switch, toggled from where its effect is felt.
+	 *
+	 * Gated on `settings.manage` rather than `submissions.write`: this changes
+	 * what happens on *every* case and every volunteer application, not just
+	 * this one, so it is a coordinator's decision and not a caseworker's. The
+	 * checkbox is hidden for anybody without it.
+	 */
+	setAutoNotify: async (event) => {
+		await requirePermission(event, 'settings.manage');
+		const formData = await event.request.formData();
+		const enabled = formData.get('enabled') === 'true';
+
+		await db
+			.update(siteSettings)
+			.set({ value: String(enabled), updatedAt: new Date() })
+			.where(eq(siteSettings.key, AUTO_NOTIFY_SETTING));
+
+		invalidateSettings();
+
+		audit({
+			event,
+			action: 'updated',
+			entityType: 'site_setting',
+			metadata: { key: AUTO_NOTIFY_SETTING, value: String(enabled) }
+		});
+
+		return { ok: true, autoNotify: enabled };
 	},
 
 	assign: async (event) => {

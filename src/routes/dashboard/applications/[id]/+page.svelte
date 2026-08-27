@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import ActionNote from '$lib/dashboard/action-note.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -65,11 +67,53 @@
 		)
 	);
 
+	/**
+	 * Why an automatic notification did not go out, in words a coordinator can
+	 * act on. Only reached when one was actually asked for.
+	 */
+	const NOTIFY_FAILURES: Record<string, string> = {
+		'no-email': 'this applicant gave no email address',
+		'nothing-to-say': 'that status has no public description and you left the note empty',
+		'no-smtp': 'no mail server is configured on this installation',
+		'send-failed': 'the mail server rejected it'
+	};
+
 	/** The last outcome, kept on screen after the toast has gone (§11). */
 	let lastAction = $state<{ message: string; at: number } | null>(null);
 
 	/** Whether a reply can be emailed at all. Drives the second button. */
 	const applicantEmail = $derived(s.email ?? null);
+
+	/**
+	 * Whether the status the case is on has wording of its own.
+	 *
+	 * It decides what "Notify applicant" will actually send — the Foundation's
+	 * description of this status, or just the caseworker's note — so the line
+	 * under the button says which, before it is pressed rather than after.
+	 */
+	const currentStatusDescribed = $derived(
+		Boolean(data.statuses.find((row) => row.id === s.statusId)?.publicDescription?.trim())
+	);
+
+	/**
+	 * The global "notify on every status change" switch.
+	 *
+	 * Held locally so the box moves the instant it is clicked, and posted by the
+	 * form it sits in. `tick()` matters: the hidden input carrying the new value
+	 * is rendered from this state, and submitting before Svelte has flushed the
+	 * change would post the old one — turning the switch into a no-op that looks
+	 * like it worked.
+	 */
+	let autoNotifyForm = $state<HTMLFormElement | null>(null);
+	// Writable derived: it follows the server's value on every load, and a click
+	// can move it ahead of that until the post comes back with the truth.
+	let autoNotify = $derived(data.autoNotify);
+
+	async function toggleAutoNotify(checked: boolean) {
+		autoNotify = checked;
+		await tick();
+		autoNotifyForm?.requestSubmit();
+	}
 
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
@@ -81,6 +125,15 @@
 		} else if (form?.emailed) {
 			toast.success('Reply sent to the applicant.');
 			lastAction = { message: 'Reply sent to the applicant.', at: Date.now() };
+		} else if (form?.notified) {
+			toast.success(`Emailed ${applicantEmail}.`);
+			lastAction = { message: `Emailed ${applicantEmail}.`, at: Date.now() };
+		} else if (form?.ok && form?.notifyReason && form.notifyReason !== 'not-requested') {
+			// The status moved but the letter did not go. Staff have to be told
+			// which of the two happened, or they will believe the family knows.
+			const why = NOTIFY_FAILURES[form.notifyReason] ?? 'it could not be sent';
+			toast.warning(`Status updated, but nothing was emailed: ${why}.`);
+			lastAction = { message: `Status updated. Nothing was emailed: ${why}.`, at: Date.now() };
 		} else if (form?.ok) {
 			toast.success('Saved');
 			lastAction = { message: 'Saved.', at: Date.now() };
@@ -547,6 +600,33 @@
 			<Card.Root class="p-5">
 				<h2 class="mb-3 font-heading text-base font-semibold">Workflow</h2>
 
+				{#if data.canManageSettings}
+					<!-- The standing policy, above the controls it governs. It applies to
+					     every case and every volunteer application, not only this one,
+					     which is why the label says so. -->
+					<form
+						method="post"
+						action="?/setAutoNotify"
+						bind:this={autoNotifyForm}
+						use:enhance={() =>
+							async ({ update }) =>
+								await update({ reset: false })}
+						class="mb-3 rounded-lg border bg-muted/30 p-3"
+					>
+						<input type="hidden" name="enabled" value={String(autoNotify)} />
+						<label class="flex items-start gap-2 text-sm">
+							<Checkbox checked={autoNotify} onCheckedChange={toggleAutoNotify} class="mt-0.5" />
+							<span>
+								Notify the applicant on all status changes
+								<span class="mt-0.5 block text-xs text-muted-foreground">
+									Applies to every application and volunteer, not just this one. A status with no
+									public description still sends nothing unless you write a note.
+								</span>
+							</span>
+						</label>
+					</form>
+				{/if}
+
 				<form
 					method="post"
 					action="?/setStatus"
@@ -556,8 +636,37 @@
 					class="mb-4 flex flex-col gap-2"
 				>
 					<SelectComp name="statusId" items={statusItems} bind:value={statusId} />
-					<Textarea name="note" rows={2} placeholder="Why? (optional, saved as a case note)" />
-					<Button type="submit" size="sm">Update status</Button>
+					<Textarea
+						name="note"
+						rows={2}
+						placeholder="Why? (optional, saved as a case note — and sent if you notify)"
+					/>
+					<div class="flex flex-wrap gap-2">
+						<Button type="submit" size="sm">Update status</Button>
+						<!-- Same form, so the note above is the sentence that goes out.
+						     `formaction` rather than a second form: a caseworker writing
+						     "your documents arrived, nothing more is needed" should be able
+						     to send exactly that without moving the case anywhere. -->
+						<Button
+							type="submit"
+							formaction="?/notifyApplicant"
+							size="sm"
+							variant="outline"
+							disabled={!applicantEmail}
+						>
+							<Mail class="size-4" /> Notify applicant
+						</Button>
+					</div>
+					<p class="text-xs text-muted-foreground">
+						{#if !applicantEmail}
+							No email address on this application, so nobody can be notified.
+						{:else if currentStatusDescribed}
+							Emails {applicantEmail} what "{s.statusLabel}" means, plus your note.
+						{:else}
+							Emails {applicantEmail} your note above — "{s.statusLabel}" has no public description
+							of its own.
+						{/if}
+					</p>
 				</form>
 
 				<Separator class="my-3" />
