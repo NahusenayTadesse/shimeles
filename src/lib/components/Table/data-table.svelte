@@ -13,6 +13,7 @@
 		type GlobalFilterColumn
 	} from '@tanstack/table-core';
 	import TableExport from './table-export.svelte';
+	import { selectColumn } from '$lib/dashboard/columns';
 
 	import { Input } from '$lib/components/ui/input/index.js';
 
@@ -31,7 +32,9 @@
 		emptyTitle = '',
 		emptyMessage = '',
 		emptyAction,
-		caseScoped = false
+		caseScoped = false,
+		selectable = false,
+		bulkActions
 	}: DataTableProps<TData, TValue> = $props();
 	// let filterSchema = $derived(
 	//   discoverFilterSchema(data).filter(meta => !filterBlacklist.includes(meta.key))
@@ -79,6 +82,20 @@
 		 * see. Set on the screens `pillarScope` applies to.
 		 */
 		caseScoped?: boolean;
+		/**
+		 * Prepends the tick-box column and shows the bulk bar.
+		 *
+		 * Opt-in per screen rather than always on: a column of checkboxes that
+		 * nothing can act on is a control that does nothing, and every table in
+		 * the dashboard would have grown one.
+		 */
+		selectable?: boolean;
+		/**
+		 * What can be done to a selection, rendered in a bar above the table
+		 * while anything is ticked. Receives the selected rows and a `clear`
+		 * callback, so an action can empty the selection once it has run.
+		 */
+		bulkActions?: Snippet<[{ rows: TData[]; clear: () => void }]>;
 	};
 
 	let sorting = $state<SortingState>([]);
@@ -160,11 +177,22 @@
 		return filterValue.includes(String(row.getValue(columnId)));
 	};
 
+	/**
+	 * The tick-box column is added here rather than by each screen, so
+	 * `selectable` is the whole of what a page has to say. It goes first,
+	 * before the running index.
+	 */
+	const allColumns = $derived(
+		selectable ? [selectColumn as ColumnDef<TData, TValue>, ...columns] : columns
+	);
+
 	const table = createSvelteTable({
 		get data() {
 			return data;
 		},
-		columns,
+		get columns() {
+			return allColumns;
+		},
 		defaultColumn: { filterFn: facetFilter },
 		state: {
 			get pagination() {
@@ -319,6 +347,15 @@
 			selected = selectedRows.map((row) => row.original);
 		});
 	}
+
+	/**
+	 * The selection, for the bulk bar. Read straight off the table rather than
+	 * from `selected`, which is an optional binding a screen may not have passed
+	 * — the bar has to work whether or not anybody is listening.
+	 */
+	const selectedRows = $derived(table.getSelectedRowModel().rows.map((row) => row.original));
+
+	const clearSelection = () => table.resetRowSelection();
 </script>
 
 <!-- min-h-0 is required for flex-child overflow -->
@@ -473,6 +510,20 @@
 					</div>
 				</ScrollArea>
 
+				{#if selectable && bulkActions && selectedRows.length}
+					<div
+						class="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 p-2"
+					>
+						<span class="px-2 text-sm font-medium">
+							{selectedRows.length} selected
+						</span>
+						{@render bulkActions({ rows: selectedRows, clear: clearSelection })}
+						<Button variant="ghost" size="sm" class="ml-auto" onclick={clearSelection}>
+							<X class="size-4" /> Clear
+						</Button>
+					</div>
+				{/if}
+
 				<div class="rounded-md border">
 					<Table.Root id={uniqueTableId} class="relative max-h-96">
 						<Table.Header>
@@ -514,7 +565,7 @@
 								</Table.Row>
 							{:else}
 								<Table.Row class="hover:bg-transparent">
-									<Table.Cell colspan={columns.length} class="py-12 text-center">
+									<Table.Cell colspan={allColumns.length} class="py-12 text-center">
 										<div class="mx-auto flex max-w-md flex-col items-center gap-2">
 											<div
 												class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import type { PersonGender } from '$lib/gender';
@@ -177,16 +177,28 @@ export async function getVolunteerProfessions(): Promise<ProfessionOption[]> {
 }
 
 /** Everything `/volunteer` needs to render its form, in one call. */
+/**
+ * The programmes a volunteer can offer to help with.
+ *
+ * Split out of `getVolunteerCatalog` because the public form asks for these and
+ * nothing else: the skills, time slots and professions belong to the details
+ * form, which is filled in later, and loading four catalogues to render five
+ * questions is four queries nobody reads.
+ */
+export async function getVolunteerPillars() {
+	return db
+		.select({ id: pillars.id, slug: pillars.slug, name: pillars.name, summary: pillars.summary })
+		.from(pillars)
+		.where(and(eq(pillars.isActive, true), isNull(pillars.deletedAt)))
+		.orderBy(asc(pillars.sortOrder), asc(pillars.id));
+}
+
 export async function getVolunteerCatalog() {
 	const [skills, timeSlots, professions, pillarRows, regionRows] = await Promise.all([
 		getVolunteerSkills(),
 		getVolunteerTimeSlots(),
 		getVolunteerProfessions(),
-		db
-			.select({ id: pillars.id, slug: pillars.slug, name: pillars.name, summary: pillars.summary })
-			.from(pillars)
-			.where(and(eq(pillars.isActive, true), isNull(pillars.deletedAt)))
-			.orderBy(asc(pillars.sortOrder), asc(pillars.id)),
+		getVolunteerPillars(),
 		db
 			.select({ id: regions.id, name: regions.name, isDefault: regions.isDefault })
 			.from(regions)
@@ -585,6 +597,359 @@ export async function createVolunteerApplication(
 	});
 
 	return { id: applicationId, referenceNumber };
+}
+
+/* ==========================================================================
+   The details, filled in afterwards
+   ========================================================================== */
+
+/**
+ * Everything the intake did not ask for. Every key optional, and an absent key
+ * means *not asked*: a coordinator who hid the availability section, or who is
+ * typing up a phone call that never covered it, must not blank a column that
+ * already holds an answer.
+ */
+export type VolunteerDetails = Partial<{
+	city: string | null;
+	regionId: number | null;
+	country: string | null;
+	dateOfBirth: string | null;
+	gender: PersonGender | null;
+	occupation: string | null;
+	organisationName: string | null;
+	emergencyContactName: string | null;
+	emergencyContactPhone: string | null;
+	emergencyContactRelationship: string | null;
+	skills: {
+		skillId: number;
+		proficiency: 'basic' | 'intermediate' | 'advanced' | 'professional';
+	}[];
+	otherSkills: string[];
+	timeSlotIds: number[];
+	availabilityNote: string | null;
+	hoursPerWeek: number | null;
+	commitmentMonths: number | null;
+	availableFrom: string | null;
+	heardAbout: string | null;
+	credentials: {
+		professionId: number | null;
+		otherProfession: string | null;
+		licenseNumber: string | null;
+		licensingBody: string | null;
+		specialization: string | null;
+		yearsExperience: number | null;
+		issuedOn: string | null;
+		expiresOn: string | null;
+	}[];
+	references: {
+		fullName: string;
+		relationship: string | null;
+		organization: string | null;
+		email: string | null;
+		phone: string | null;
+	}[];
+	hasPriorConviction: boolean | null;
+	priorConvictionDetail: string | null;
+	/**
+	 * Only ever true from the volunteer's own link. Staff filling in a file
+	 * cannot pass these — `adminDetailsSchema` does not carry them — because a
+	 * consent timestamp records the moment a person agreed, and nobody can
+	 * agree on their behalf.
+	 */
+	consentBackgroundCheck: boolean;
+	agreeCodeOfConduct: boolean;
+	declareAccurate: boolean;
+	acknowledgeNoGuarantee: boolean;
+}>;
+
+/**
+ * Fills in the rest of an existing volunteer application.
+ *
+ * The counterpart to `createVolunteerApplication`, and the write behind both
+ * the completion link and the staff edit screen. Three rules shape it:
+ *
+ * 1. **Absent means not asked.** Only the keys present in `input` are written.
+ * 2. **Ids are re-read against the live catalogue**, exactly as they are on
+ *    the create path — a posted skill or slot id that is not a live row is
+ *    dropped rather than written.
+ * 3. **Staff work is never destroyed.** The join tables are replaced rather
+ *    than merged, which is right for a volunteer correcting their own answers
+ *    — but a credential a safeguarding officer has already verified, or a
+ *    reference somebody has already telephoned, is *not* the volunteer's to
+ *    overwrite. Those rows survive the replacement, and the incoming set is
+ *    written alongside them. Getting this wrong would silently reset the
+ *    approval gate every time a volunteer reopened their link.
+ */
+export async function updateVolunteerDetails(
+	event: RequestEvent,
+	applicationId: number,
+	input: VolunteerDetails
+): Promise<void> {
+	const has = <K extends keyof VolunteerDetails>(key: K) => input[key] !== undefined;
+
+	const [validSkills, validSlots, validProfessions] = await Promise.all([
+		input.skills?.length
+			? db
+					.select({ id: volunteerSkills.id })
+					.from(volunteerSkills)
+					.where(
+						and(
+							inArray(
+								volunteerSkills.id,
+								input.skills.map((skill) => skill.skillId)
+							),
+							eq(volunteerSkills.isActive, true),
+							isNull(volunteerSkills.deletedAt)
+						)
+					)
+			: [],
+		input.timeSlotIds?.length
+			? db
+					.select({ id: volunteerTimeSlots.id })
+					.from(volunteerTimeSlots)
+					.where(
+						and(
+							inArray(volunteerTimeSlots.id, input.timeSlotIds),
+							eq(volunteerTimeSlots.isActive, true),
+							isNull(volunteerTimeSlots.deletedAt)
+						)
+					)
+			: [],
+		db
+			.select({ id: volunteerProfessions.id })
+			.from(volunteerProfessions)
+			.where(and(eq(volunteerProfessions.isActive, true), isNull(volunteerProfessions.deletedAt)))
+	]);
+
+	const skillIds = new Set(validSkills.map((row) => row.id));
+	const slotIds = new Set(validSlots.map((row) => row.id));
+	const professionIds = new Set(validProfessions.map((row) => row.id));
+
+	const credentials = (input.credentials ?? [])
+		.map((credential) => ({
+			...credential,
+			professionId:
+				credential.professionId && professionIds.has(credential.professionId)
+					? credential.professionId
+					: null
+		}))
+		.filter((credential) => credential.professionId || credential.otherProfession?.trim());
+
+	const now = new Date();
+
+	/* The columns. Built key by key so an absent one is never written. */
+	const columns: Record<string, unknown> = { updatedAt: now };
+	const copy = <K extends keyof VolunteerDetails>(key: K, column = key as string) => {
+		if (has(key)) columns[column] = input[key];
+	};
+
+	copy('city');
+	copy('regionId');
+	copy('country');
+	copy('dateOfBirth');
+	copy('gender');
+	copy('occupation');
+	copy('organisationName');
+	copy('emergencyContactName');
+	copy('emergencyContactPhone');
+	copy('emergencyContactRelationship');
+	copy('hoursPerWeek');
+	copy('commitmentMonths');
+	copy('availableFrom');
+	copy('heardAbout');
+	copy('hasPriorConviction');
+	copy('priorConvictionDetail');
+	// Legacy column names for two of them: `skills` holds the free-text extras
+	// and `availability` the free-text caveats. See §3.6.
+	if (has('otherSkills')) columns.skills = input.otherSkills;
+	if (has('availabilityNote')) columns.availability = input.availabilityNote;
+
+	// Stamped from the server clock, and only ever forward. Re-opening the link
+	// and submitting again must not move the moment consent was first given.
+	const existing = await db
+		.select({
+			backgroundCheckConsentAt: volunteerApplications.backgroundCheckConsentAt,
+			codeOfConductAgreedAt: volunteerApplications.codeOfConductAgreedAt,
+			declaredAccurateAt: volunteerApplications.declaredAccurateAt,
+			acknowledgedNoGuaranteeAt: volunteerApplications.acknowledgedNoGuaranteeAt
+		})
+		.from(volunteerApplications)
+		.where(eq(volunteerApplications.id, applicationId))
+		.limit(1);
+
+	const stamp = (
+		flag:
+			| 'consentBackgroundCheck'
+			| 'agreeCodeOfConduct'
+			| 'declareAccurate'
+			| 'acknowledgeNoGuarantee',
+		column:
+			| 'backgroundCheckConsentAt'
+			| 'codeOfConductAgreedAt'
+			| 'declaredAccurateAt'
+			| 'acknowledgedNoGuaranteeAt'
+	) => {
+		if (input[flag] === true && !existing[0]?.[column]) columns[column] = now;
+	};
+
+	stamp('consentBackgroundCheck', 'backgroundCheckConsentAt');
+	stamp('agreeCodeOfConduct', 'codeOfConductAgreedAt');
+	stamp('declareAccurate', 'declaredAccurateAt');
+	stamp('acknowledgeNoGuarantee', 'acknowledgedNoGuaranteeAt');
+
+	/* The join tables. Rows staff have acted on are kept; the rest are replaced. */
+	const keptCredentials = has('credentials')
+		? await db
+				.select({ id: volunteerCredentials.id })
+				.from(volunteerCredentials)
+				.where(
+					and(
+						eq(volunteerCredentials.volunteerApplicationId, applicationId),
+						ne(volunteerCredentials.verificationStatus, 'pending')
+					)
+				)
+		: [];
+
+	const keptReferences = has('references')
+		? await db
+				.select({ id: volunteerReferences.id })
+				.from(volunteerReferences)
+				.where(
+					and(
+						eq(volunteerReferences.volunteerApplicationId, applicationId),
+						ne(volunteerReferences.status, 'pending')
+					)
+				)
+		: [];
+
+	const keptCredentialIds = new Set(keptCredentials.map((row) => row.id));
+	const keptReferenceIds = new Set(keptReferences.map((row) => row.id));
+
+	db.transaction((tx) => {
+		tx.update(volunteerApplications)
+			.set(columns)
+			.where(eq(volunteerApplications.id, applicationId))
+			.run();
+
+		if (has('skills')) {
+			tx.delete(volunteerApplicationSkills)
+				.where(eq(volunteerApplicationSkills.volunteerApplicationId, applicationId))
+				.run();
+
+			const chosen = (input.skills ?? []).filter((skill) => skillIds.has(skill.skillId));
+			if (chosen.length) {
+				tx.insert(volunteerApplicationSkills)
+					.values(
+						chosen.map((skill) => ({
+							volunteerApplicationId: applicationId,
+							skillId: skill.skillId,
+							proficiency: skill.proficiency
+						}))
+					)
+					.run();
+			}
+		}
+
+		if (has('timeSlotIds')) {
+			tx.delete(volunteerAvailability)
+				.where(eq(volunteerAvailability.volunteerApplicationId, applicationId))
+				.run();
+
+			const chosen = (input.timeSlotIds ?? []).filter((slotId) => slotIds.has(slotId));
+			if (chosen.length) {
+				tx.insert(volunteerAvailability)
+					.values(
+						chosen.map((timeSlotId) => ({ volunteerApplicationId: applicationId, timeSlotId }))
+					)
+					.run();
+			}
+		}
+
+		if (has('credentials')) {
+			const stale = tx
+				.select({ id: volunteerCredentials.id })
+				.from(volunteerCredentials)
+				.where(eq(volunteerCredentials.volunteerApplicationId, applicationId))
+				.all()
+				.filter((row) => !keptCredentialIds.has(row.id))
+				.map((row) => row.id);
+
+			if (stale.length) {
+				tx.delete(volunteerCredentials).where(inArray(volunteerCredentials.id, stale)).run();
+			}
+
+			if (credentials.length) {
+				tx.insert(volunteerCredentials)
+					.values(
+						credentials.map((credential) => ({
+							volunteerApplicationId: applicationId,
+							professionId: credential.professionId,
+							otherProfession: credential.otherProfession,
+							licenseNumber: credential.licenseNumber,
+							licensingBody: credential.licensingBody,
+							specialization: credential.specialization,
+							yearsExperience: credential.yearsExperience,
+							issuedOn: credential.issuedOn,
+							expiresOn: credential.expiresOn
+							// `verificationStatus` defaults to `pending`. Nothing
+							// posted here can make it anything else.
+						}))
+					)
+					.run();
+			}
+		}
+
+		if (has('references')) {
+			const stale = tx
+				.select({ id: volunteerReferences.id })
+				.from(volunteerReferences)
+				.where(eq(volunteerReferences.volunteerApplicationId, applicationId))
+				.all()
+				.filter((row) => !keptReferenceIds.has(row.id))
+				.map((row) => row.id);
+
+			if (stale.length) {
+				tx.delete(volunteerReferences).where(inArray(volunteerReferences.id, stale)).run();
+			}
+
+			if (input.references?.length) {
+				tx.insert(volunteerReferences)
+					.values(
+						input.references.map((reference, index) => ({
+							volunteerApplicationId: applicationId,
+							fullName: reference.fullName,
+							relationship: reference.relationship,
+							organization: reference.organization,
+							email: reference.email,
+							phone: reference.phone,
+							sortOrder: keptReferenceIds.size + index
+						}))
+					)
+					.run();
+			}
+		}
+	});
+
+	// All three are derived columns with one writer each, and all three can have
+	// moved: a credential added, a reference replaced, a professional-only
+	// checklist item becoming relevant.
+	if (has('credentials')) await recomputeCredentials(applicationId);
+	if (has('references')) await recomputeReferences(applicationId);
+	await recomputeSafeguarding(applicationId);
+
+	audit({
+		event,
+		action: 'updated',
+		entityType: 'volunteer_application',
+		entityId: applicationId,
+		metadata: {
+			fields: Object.keys(columns).filter((key) => key !== 'updatedAt'),
+			skills: input.skills?.length,
+			slots: input.timeSlotIds?.length,
+			credentials: has('credentials') ? credentials.length : undefined,
+			references: input.references?.length
+		}
+	});
 }
 
 /* ==========================================================================

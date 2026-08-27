@@ -2369,6 +2369,62 @@ export const volunteerInterests = sqliteTable(
 	]
 );
 
+/* --------------------------------------------------------------------------
+   3.6e The completion link
+
+   `/volunteer` asks five questions. Everything else the safeguarding workflow
+   needs is collected afterwards, once somebody at the Foundation has spoken to
+   the volunteer and decided they are worth the paperwork — either typed in by
+   staff on the volunteer's file, or filled in by the volunteer through a link
+   staff send them. This table is that link.
+   -------------------------------------------------------------------------- */
+
+/**
+ * One completion link per volunteer application.
+ *
+ * `token` rather than the application id in the URL, for the same reason as
+ * `newsletter_subscribers.unsubscribe_token`: an id is guessable and this link
+ * opens a form that writes to somebody's file.
+ *
+ * `is_active` is the whole access control. A deactivated link 404s — the same
+ * response an unknown token gets, so the two are indistinguishable from
+ * outside — and a coordinator can turn it off the moment a phone call changes
+ * their mind, without the link having to be reissued if they change it back.
+ *
+ * `hidden_parts` is the coordinator's judgement about how much to ask of this
+ * particular person: a list of the form's optional parts to leave out, empty by
+ * default so a fresh link asks everything. It names *parts*, not columns —
+ * `$lib/volunteer-form-parts.ts` maps them onto fields — because the vocabulary
+ * a coordinator ticks should survive a column being renamed. The parts that
+ * carry safeguarding are not in that catalogue at all, so nothing stored here
+ * can remove them.
+ */
+export const volunteerInvites = sqliteTable(
+	'volunteer_invites',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		volunteerApplicationId: integer('volunteer_application_id')
+			.notNull()
+			.references(() => volunteerApplications.id, { onDelete: 'cascade' }),
+		token: text('token').notNull().unique(),
+		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+		/** Part keys from `VOLUNTEER_FORM_SECTIONS`. Empty means "ask everything". */
+		hiddenParts: text('hidden_parts', { mode: 'json' }).$type<string[]>().default([]).notNull(),
+		/** Last time the link was emailed. Null after a copy-and-paste send. */
+		sentAt: timestampMs('sent_at'),
+		/** Stamped by the volunteer's own submit, never by staff editing the file. */
+		completedAt: timestampMs('completed_at'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: timestampMs('created_at').default(nowMs).notNull(),
+		updatedAt: timestampMs('updated_at').default(nowMs).notNull()
+	},
+	(table) => [
+		// One per application. A second link would mean two sets of hidden parts
+		// for the same person and no way to say which one the email carried.
+		uniqueIndex('volunteer_invites_application_unique').on(table.volunteerApplicationId)
+	]
+);
+
 /* ==========================================================================
    3.7 CONTACT
 
@@ -2900,7 +2956,11 @@ export const volunteerApplicationsRelations = relations(volunteerApplications, (
 	availability: many(volunteerAvailability),
 	credentials: many(volunteerCredentials),
 	references: many(volunteerReferences),
-	interests: many(volunteerInterests)
+	interests: many(volunteerInterests),
+	invite: one(volunteerInvites, {
+		fields: [volunteerApplications.id],
+		references: [volunteerInvites.volunteerApplicationId]
+	})
 }));
 
 export const volunteerSafeguardingChecksRelations = relations(
@@ -2988,6 +3048,14 @@ export const volunteerReferencesRelations = relations(volunteerReferences, ({ on
 		fields: [volunteerReferences.contactedBy],
 		references: [user.id]
 	})
+}));
+
+export const volunteerInvitesRelations = relations(volunteerInvites, ({ one }) => ({
+	application: one(volunteerApplications, {
+		fields: [volunteerInvites.volunteerApplicationId],
+		references: [volunteerApplications.id]
+	}),
+	creator: one(user, { fields: [volunteerInvites.createdBy], references: [user.id] })
 }));
 
 export const volunteerInterestsRelations = relations(volunteerInterests, ({ one }) => ({

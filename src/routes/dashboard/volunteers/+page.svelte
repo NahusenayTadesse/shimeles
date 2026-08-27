@@ -1,14 +1,18 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import DataTable from '$lib/components/Table/data-table.svelte';
 	import FilterBar from '$lib/dashboard/filter-bar.svelte';
-	import StatusBadge from '$lib/dashboard/status-badge.svelte';
-	import BadgeCell from '$lib/dashboard/badge-cell.svelte';
-	import OpenLinkCell from '$lib/dashboard/open-link-cell.svelte';
-	import SafeguardingCell from './safeguarding-cell.svelte';
 	import { column, indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
+	import StatusCell from './status-cell.svelte';
+	import SafeguardingCell from './safeguarding-cell.svelte';
+	import CredentialsCell from './credentials-cell.svelte';
+	import ReferencesCell from './references-cell.svelte';
+	import ReviewerCell from './reviewer-cell.svelte';
+	import VolunteerSheet from './volunteer-sheet.svelte';
 	import { ShieldAlert, Stethoscope } from '@lucide/svelte';
 	import { formatDate } from '$lib/dates';
 
@@ -46,36 +50,84 @@
 		}))
 	]);
 
-	const columns = [
+	const statusItems = $derived(
+		data.statuses.map((status) => ({ value: String(status.id), name: status.label }))
+	);
+
+	const reviewerItems = $derived([
+		{ value: '', name: 'Unassigned' },
+		...data.reviewers.map((row) => ({ value: row.id, name: row.name }))
+	]);
+
+	/**
+	 * Every control a coordinator needs, in the row.
+	 *
+	 * The status, the checklist, the licences, the references and the reviewer
+	 * are all editable here; the eye opens what the volunteer actually wrote.
+	 * Nothing about the approval gate moved with them — `setVolunteerStatus`
+	 * refuses an approved stage exactly as it did when this was a page.
+	 */
+	const columns = $derived([
 		indexColumn,
 		column('reference', 'Reference'),
 		column('fullName', 'Name'),
 		{
 			id: 'status',
 			header: 'Status',
+			enableSorting: false,
 			cell: ({ row }: any) =>
-				renderComponent(StatusBadge, {
-					label: row.original.statusLabel,
-					color: row.original.statusColor
+				renderComponent(StatusCell, {
+					id: row.original.id,
+					statusId: row.original.statusId,
+					canApprove: row.original.canApprove,
+					statuses: data.statuses
 				})
 		},
 		{
 			id: 'safeguarding',
 			header: 'Safeguarding',
-			cell: ({ row }: any) =>
-				renderComponent(SafeguardingCell, { complete: row.original.safeguardingComplete })
-		},
-		{
-			id: 'professional',
-			header: 'Professional',
 			enableSorting: false,
 			cell: ({ row }: any) =>
-				row.original.credentials
-					? renderComponent(BadgeCell, {
-							label: row.original.credentialsVerified ? 'Verified' : 'Unverified',
-							variant: row.original.credentialsVerified ? 'outline' : 'destructive'
-						})
-					: '-'
+				renderComponent(SafeguardingCell, {
+					id: row.original.id,
+					complete: row.original.safeguardingComplete,
+					done: row.original.checksDone,
+					total: row.original.checksTotal,
+					checklist: row.original.checklist
+				})
+		},
+		{
+			id: 'licences',
+			header: 'Licences',
+			enableSorting: false,
+			cell: ({ row }: any) =>
+				renderComponent(CredentialsCell, {
+					id: row.original.id,
+					verified: row.original.credentialsVerified,
+					credentials: row.original.credentialRows
+				})
+		},
+		{
+			id: 'references',
+			header: 'References',
+			enableSorting: false,
+			cell: ({ row }: any) =>
+				renderComponent(ReferencesCell, {
+					id: row.original.id,
+					checked: row.original.referencesChecked,
+					references: row.original.referenceRows
+				})
+		},
+		{
+			id: 'reviewer',
+			header: 'Reviewer',
+			enableSorting: false,
+			cell: ({ row }: any) =>
+				renderComponent(ReviewerCell, {
+					id: row.original.id,
+					reviewerId: row.original.reviewerId,
+					reviewers: data.reviewers
+				})
 		},
 		{
 			id: 'createdAt',
@@ -83,13 +135,42 @@
 			cell: ({ row }: any) => fmt(row.original.createdAt)
 		},
 		{
-			id: 'actions',
+			id: 'open',
 			header: '',
 			enableSorting: false,
 			cell: ({ row }: any) =>
-				renderComponent(OpenLinkCell, { href: `/dashboard/volunteers/${row.original.id}` })
+				renderComponent(VolunteerSheet, {
+					row: row.original,
+					pillarOptions: data.pillarOptions
+				})
 		}
-	];
+	]);
+
+	/* --- The selection ---------------------------------------------------- */
+
+	let bulkStatusField: HTMLInputElement;
+	let bulkReviewerField: HTMLInputElement;
+
+	/**
+	 * A bulk post reports what it could not do. `bulkStatus` calls the gated
+	 * transition once per volunteer, so a selection of twelve can come back as
+	 * ten moved and two refused — and the two have to be named, or "it said
+	 * done" hides them.
+	 */
+	const bulkResult = () => {
+		return async ({ result, update }: any) => {
+			if (result.type === 'failure') {
+				toast.error(String(result.data?.error ?? 'That did not work.'));
+				return;
+			}
+			if (result.type === 'success' && result.data?.message) {
+				const skipped = (result.data.skipped ?? []) as string[];
+				if (skipped.length) toast.warning(String(result.data.message));
+				else toast.success(String(result.data.message));
+			}
+			await update({ reset: false });
+		};
+	};
 </script>
 
 <svelte:head><title>Volunteers · Dashboard</title></svelte:head>
@@ -98,8 +179,9 @@
 	<div>
 		<h1 class="font-heading text-2xl font-bold">Volunteers</h1>
 		<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-			Every volunteer application. Approval is blocked, on the server and not just in this
-			interface, until the safeguarding checklist is complete.
+			Everything about a volunteer is editable in the row: the status, the safeguarding checklist,
+			their licences, their references and who is reviewing them. Approval stays blocked, on the
+			server and not just in this interface, until the checklist is complete.
 		</p>
 	</div>
 
@@ -157,13 +239,97 @@
 		{/snippet}
 	</FilterBar>
 
-	{#key data.rows}
-		<DataTable
-			{columns}
-			data={data.rows}
-			search={false}
-			fileName="Volunteers"
-			emptyMessage="Applications arrive from the public /volunteer form."
-		/>
-	{/key}
+	<DataTable
+		{columns}
+		data={data.rows}
+		search={false}
+		selectable
+		fileName="Volunteers"
+		emptyMessage="Applications arrive from the public /volunteer form."
+	>
+		{#snippet bulkActions({ rows, clear })}
+			<!-- Status, reviewer and read/unread only. Ticking safeguarding checks
+			     across a selection is deliberately not offered: one click that
+			     cleared the approval gate for twenty people is the shape of
+			     mistake this workflow exists to prevent. -->
+			<form
+				method="post"
+				action="?/bulkStatus"
+				use:enhance={() => {
+					const handler = bulkResult();
+					return async (options: any) => {
+						await handler(options);
+						clear();
+					};
+				}}
+				class="flex items-center gap-1"
+			>
+				{#each rows as row (row.id)}
+					<input type="hidden" name="ids" value={row.id} />
+				{/each}
+				<input type="hidden" name="statusId" bind:this={bulkStatusField} value="" />
+				<div class="w-40">
+					<SelectComp
+						name="bulkStatusChoice"
+						items={statusItems}
+						searchable={false}
+						placeholder="Set status…"
+						triggerClass="h-8 w-full text-xs normal-case"
+						onValueChange={(value: string) => {
+							bulkStatusField.value = value;
+							bulkStatusField.form?.requestSubmit();
+						}}
+					/>
+				</div>
+			</form>
+
+			<form
+				method="post"
+				action="?/bulkAssign"
+				use:enhance={() => {
+					const handler = bulkResult();
+					return async (options: any) => {
+						await handler(options);
+						clear();
+					};
+				}}
+				class="flex items-center gap-1"
+			>
+				{#each rows as row (row.id)}
+					<input type="hidden" name="ids" value={row.id} />
+				{/each}
+				<input type="hidden" name="reviewerId" bind:this={bulkReviewerField} value="" />
+				<div class="w-40">
+					<SelectComp
+						name="bulkReviewerChoice"
+						items={reviewerItems}
+						searchable={false}
+						placeholder="Assign to…"
+						triggerClass="h-8 w-full text-xs normal-case"
+						onValueChange={(value: string) => {
+							bulkReviewerField.value = value;
+							bulkReviewerField.form?.requestSubmit();
+						}}
+					/>
+				</div>
+			</form>
+
+			<form
+				method="post"
+				action="?/markRead"
+				use:enhance={() => {
+					const handler = bulkResult();
+					return async (options: any) => {
+						await handler(options);
+						clear();
+					};
+				}}
+			>
+				{#each rows as row (row.id)}
+					<input type="hidden" name="ids" value={row.id} />
+				{/each}
+				<Button type="submit" variant="outline" size="sm">Mark read</Button>
+			</form>
+		{/snippet}
+	</DataTable>
 </div>

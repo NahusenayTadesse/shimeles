@@ -26,6 +26,8 @@ export type AuditEntity =
 	| 'volunteer_safeguarding_check'
 	| 'volunteer_credential'
 	| 'volunteer_reference'
+	/** The link a coordinator sends a volunteer to finish their application. */
+	| 'volunteer_invite'
 	/** The skills, time slots and professions the volunteer form is built from. */
 	| 'volunteer_catalog'
 	| 'contact_message'

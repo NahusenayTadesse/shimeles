@@ -491,7 +491,16 @@ export const inKindDecisionTemplate = (input: {
 	};
 };
 
-/** Tells a volunteer applicant their form arrived and what happens next. */
+/**
+ * Tells a volunteer applicant their form arrived and what happens next.
+ *
+ * Deliberately short on process. The form they just filled in asked five
+ * questions, and a reply describing safeguarding reviews and placement panels
+ * would be answering a commitment nobody has made yet — the rest of the
+ * application is asked later, once somebody here has spoken to them. What this
+ * promises is a person getting in touch, which is the thing that actually
+ * happens next.
+ */
 export const volunteerAcknowledgementTemplate = (
 	name: string,
 	reference: string
@@ -499,11 +508,40 @@ export const volunteerAcknowledgementTemplate = (
 	subject: `Thank you for offering to volunteer: ${reference}`,
 	heading: 'Thank you for offering to help',
 	body: `<p>Dear ${escapeHtml(name)},</p>
-		 <p>We have your volunteer application, reference <strong>${escapeHtml(reference)}</strong>.</p>
-		 <p>Because our volunteers work alongside people in vulnerable moments, every
-		 application goes through a safeguarding review before placement. We will be
-		 in touch about the next step.</p>`,
+		 <p>Thank you for offering to volunteer with the Shimeles Abera Foundation. We
+		 have your details, and someone from the team will contact you shortly to talk
+		 about how you would like to help.</p>
+		 <p>Your reference is <strong>${escapeHtml(reference)}</strong>. Keep it — it is
+		 how we find you if you get in touch.</p>`,
 	action: { label: 'Read about our work', href: '/' }
+});
+
+/**
+ * Invites a volunteer to finish their application through a link.
+ *
+ * Sent by a coordinator, by hand, after they have spoken to the person — so it
+ * can assume the conversation happened and does not have to introduce itself.
+ * What it has to do is explain why there is more to fill in, since the form
+ * they originally sent asked five questions and this one asks rather more.
+ *
+ * The URL is built from `ORIGIN` by `inviteUrl`, not from `site.url`: the token
+ * in it is verified by the running server. Same exception as the password-reset
+ * link, and the only two in this file.
+ */
+export const volunteerDetailsInviteTemplate = (input: {
+	name: string;
+	url: string;
+}): EmailTemplate => ({
+	subject: 'Finish your volunteer application',
+	heading: 'A few more questions',
+	body: `<p>Dear ${escapeHtml(input.name)},</p>
+		 <p>Thank you for talking to us about volunteering. To take things further we
+		 need a little more from you — how to reach someone if there is ever an
+		 emergency, when you are free, and two people who can speak for you.</p>
+		 <p>The link below opens a form with your details already on it. It takes a
+		 few minutes, and you can come back to it.</p>
+		 <p>If anything is unclear, reply to this email and we will help.</p>`,
+	action: { label: 'Finish my application', href: input.url }
 });
 
 /**

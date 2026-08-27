@@ -39,6 +39,62 @@ editable is the _vocabulary_: `volunteer_skills`, `volunteer_skill_categories`,
 `volunteer_time_slots` and `volunteer_professions`, all managed from
 Configuration → Volunteer setup. Adding a skill is a row, never a deploy.
 
+**`/volunteer` asks five questions; the rest is asked afterwards.** The public
+form takes a name, phone, email, a few words about why, and the programmes —
+somebody there is saying "I would like to help". Everything else the
+safeguarding workflow needs is collected once a coordinator has spoken to them,
+either on `/dashboard/volunteers/[id]/details` (staff type it in; nothing is
+required, because half a phone call is worth saving) or through a link the
+coordinator sends, `/volunteer/continue/[token]`. Both write through
+`updateVolunteerDetails`, and `src/routes/volunteer/schema.ts` holds the
+questions once: `intakeSchema`, `detailsSchema`, and `detailsSchemaFor(hidden)`
+for a form trimmed to one volunteer.
+
+Four rules hold that together, and each of them is a control:
+
+- **Absent means "not asked", never "cleared".** A hidden part's fields are
+  dropped from the schema rather than made optional, so they never reach the
+  writer. A field left merely optional would post an empty string and blank a
+  column somebody had already filled in.
+- **Three parts cannot be hidden**: the emergency contact, the two references
+  and the declarations. There is no key in `$lib/volunteer-form-parts.ts` that
+  could hide them, and `visibleFieldKeys()` adds them back whatever is stored.
+  Same §0 line as the form itself — a coordinator switching off the
+  background-check consent would be disabling a control, not shortening a form.
+- **Consent is the volunteer's own act.** `adminDetailsSchema` does not carry
+  the four declarations at all, so no staff screen can stamp
+  `background_check_consent_at` on someone's behalf; the staff page shows them
+  as facts. The stamps only ever move forward, so reopening the link does not
+  restate when consent was first given.
+- **Staff work survives a resubmission.** `updateVolunteerDetails` replaces the
+  join tables, except for credentials already verified and references already
+  contacted. Without that, a volunteer reopening their link would silently
+  reset the approval gate.
+
+A deactivated link, an unknown token and a deleted application all 404
+identically — a coordinator who switches a link off has withdrawn it, and
+"this was real once" says more than they chose to.
+
+**The volunteer workflow lives in the table, not on a page.** Status, the
+safeguarding checklist, licence verification, reference outcomes, the assigned
+reviewer and placements are all edited in the row on `/dashboard/volunteers`;
+the actions are on that route's `+page.server.ts`. A volunteer's own page is
+now only their form — what to ask them, the link, and sending it — plus a
+read-only summary, because that is the one job a row cannot hold.
+
+Moving the controls changed **nothing** about what is enforced.
+`setVolunteerStatus` is still the only path to a status and still refuses an
+approved stage while safeguarding is incomplete. The bulk action calls it once
+per volunteer for exactly that reason — a loop that wrote the column itself
+would be a second path to the thing §3.6 gives one path to — and it names the
+volunteers it could not move rather than reporting a clean success. Ticking
+safeguarding checks and verifying licences are deliberately **not** offered on
+a selection: one click that cleared the gate for twenty people is the shape of
+mistake the gate exists to prevent.
+
+`DataTable` takes `selectable` and a `bulkActions` snippet; the tick-box column
+is added by the component, so a screen only says `selectable`.
+
 **Three columns on `volunteer_applications` are derived and have exactly one
 writer each.** Set them anywhere else and the next recompute silently reverts
 you — while the approval gate reads them:
@@ -240,7 +296,7 @@ relative paths no social crawler can resolve. Two things it depends on:
 - **Three ways a status change reaches a person, and one rule about what it
   says.** The per-status flag above; the global `workflow.notify_on_status_change`
   switch (Settings → Workflow, or the checkbox on a case page, `settings.manage`
-  only) which makes *every* change notify, applications and volunteers alike;
+  only) which makes _every_ change notify, applications and volunteers alike;
   and the "Notify applicant" button on a case, which goes through
   `notifyOfCurrentStatus` and asks permission of neither. What all three send is
   decided by `statusLetter` in `$lib/server/workflow.ts`: the status's

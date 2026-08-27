@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 /**
  * Keeping a half-finished form alive.
  *
- * `/apply` and `/volunteer` take twenty minutes to fill in. Until now a back
+ * `/apply` takes twenty minutes to fill in. Until now a back
  * button, a mistyped URL or a phone deciding to reload the tab lost all of it
  * with no warning and nothing to recover. The unsaved-changes guard catches
  * some of that; it does not survive the tab actually going away.
