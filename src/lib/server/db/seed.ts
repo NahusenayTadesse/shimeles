@@ -269,19 +269,19 @@ async function seedSettings() {
 		// deciding whether to trust the page.
 		{
 			key: 'donation.notice_general',
-			label: 'Payment notice — the whole page',
+			label: 'Payment notice: the whole page',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown near the top of the donate page. Clear it to remove the notice.',
 			value:
 				'This website does not process payments. No card, bank or mobile-money details are ' +
 				'ever entered here, and none are held by us. The form on this page records your gift ' +
-				'and gives you a reference — the money itself moves at your bank, or on the payment ' +
+				'and gives you a reference. The money itself moves at your bank, or on the payment ' +
 				"provider's own site."
 		},
 		{
 			key: 'donation.notice_general_am',
-			label: 'Payment notice — the whole page (Amharic)',
+			label: 'Payment notice: the whole page (Amharic)',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown directly under the English. Clear it to show the English alone.',
@@ -292,7 +292,7 @@ async function seedSettings() {
 		},
 		{
 			key: 'donation.notice_bank',
-			label: 'Payment notice — bank and mobile money',
+			label: 'Payment notice: bank and mobile money',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown under the account details, wherever they are listed.',
@@ -303,7 +303,7 @@ async function seedSettings() {
 		},
 		{
 			key: 'donation.notice_bank_am',
-			label: 'Payment notice — bank and mobile money (Amharic)',
+			label: 'Payment notice: bank and mobile money (Amharic)',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown directly under the English. Clear it to show the English alone.',
@@ -314,25 +314,25 @@ async function seedSettings() {
 		},
 		{
 			key: 'donation.notice_card',
-			label: 'Payment notice — card and outside platforms',
+			label: 'Payment notice: card and outside platforms',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown under the PayPal and other platform buttons.',
 			value:
-				"These buttons take you to the platform's own secure checkout — PayPal, or whichever " +
-				'provider is named on the button. Your card details are entered there, on their site, ' +
-				'and are never seen by this website or by the Foundation. They send you their own ' +
-				'receipt, so you will not need a reference number from us.'
+				"These buttons take you to the platform's own secure checkout, whether PayPal or " +
+				'whichever provider is named on the button. Your card details are entered there, on ' +
+				'their site, and are never seen by this website or by the Foundation. They send you ' +
+				'their own receipt, so you will not need a reference number from us.'
 		},
 		{
 			key: 'donation.notice_card_am',
-			label: 'Payment notice — card and outside platforms (Amharic)',
+			label: 'Payment notice: card and outside platforms (Amharic)',
 			group: 'donation',
 			valueType: 'textarea',
 			hint: 'Shown directly under the English. Clear it to show the English alone.',
 			value:
-				'እነዚህ አዝራሮች ወደ አቅራቢው ራሱ ደኅንነቱ የተጠበቀ የክፍያ ገጽ — ወደ ፔይፓል ወይም በአዝራሩ ላይ ወደ ተጠቀሰው ' +
-				'አቅራቢ — ይወስዱዎታል። የካርድዎ መረጃ የሚገባው እዚያ በእነሱ ገጽ ላይ ነው፤ በዚህ ድረ ገጽም ሆነ በፋውንዴሽኑ ' +
+				'እነዚህ አዝራሮች ወደ ፔይፓል ወይም በአዝራሩ ላይ ወደ ተጠቀሰው አቅራቢ ራሱ ደኅንነቱ የተጠበቀ የክፍያ ገጽ ' +
+				'ይወስዱዎታል። የካርድዎ መረጃ የሚገባው እዚያ በእነሱ ገጽ ላይ ነው፤ በዚህ ድረ ገጽም ሆነ በፋውንዴሽኑ ' +
 				'ፈጽሞ አይታይም። ደረሰኙን እነሱ ራሳቸው ስለሚልኩልዎት ከእኛ ማመሳከሪያ ቁጥር አያስፈልግዎትም።'
 		},
 
