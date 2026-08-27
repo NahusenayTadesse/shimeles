@@ -8,6 +8,8 @@ import {
 	statusOptions
 } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
+import { toMoneyTotals, type MoneyTotal } from '$lib/money';
+import { isMoneyMetric } from '$lib/metrics';
 import { setting, settingNumber } from '$lib/server/settings';
 import { SUPPORTED_STAGES } from '$lib/server/workflow';
 
@@ -37,6 +39,17 @@ import { METRIC, type MetricKey } from '$lib/metrics';
 
 /** The `site_settings` key that overrides each metric, per §3.1. */
 const OVERRIDE_KEY = (metric: MetricKey) => `impact.override_${metric}`;
+
+/**
+ * Which currency a money metric's override is denominated in.
+ *
+ * The override is a bare integer in minor units, and minor units mean nothing
+ * without a currency — 150000 is 1,500 birr or 1,500 dollars depending on a
+ * fact that used to be assumed rather than stored. Absent or blank falls back
+ * to ETB, so an installation that predates this setting publishes what it
+ * always did.
+ */
+const OVERRIDE_CURRENCY_KEY = (metric: MetricKey) => `impact.override_${metric}_currency`;
 
 /**
  * Which pillar feeds the two per-pillar counters.
@@ -86,7 +99,10 @@ const supportedStatusIds = () =>
  * "recalculate" button. The write is a single transaction, so a concurrent
  * reader never sees a half-replaced set of counters.
  */
-export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number>> {
+export async function recomputeImpactMetrics(): Promise<{
+	counts: Record<string, number>;
+	money: Record<string, MoneyTotal[]>;
+}> {
 	const statusIds = await supportedStatusIds();
 	const supported = statusIds.length ? inArray(formSubmissions.statusId, statusIds) : sql`0 = 1`;
 
@@ -111,10 +127,15 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 			.from(formSubmissions)
 			.where(and(supported, isNull(formSubmissions.deletedAt))),
 
+		// One row per currency, never one row full stop. The Foundation banks
+		// birr locally and dollars from the diaspora, and a bare
+		// `sum(donations.amount)` added santim to cents and published the answer
+		// with a birr sign in front of it.
 		db
-			.select({ value: sum(donations.amount) })
+			.select({ currency: donations.currency, value: sum(donations.amount) })
 			.from(donations)
-			.where(and(eq(donations.status, 'completed'), isNull(donations.deletedAt))),
+			.where(and(eq(donations.status, 'completed'), isNull(donations.deletedAt)))
+			.groupBy(donations.currency),
 
 		// Contact-form messages carry no pillar and are not cases; counting them
 		// as "open" would inflate the number staff use to judge their backlog.
@@ -145,10 +166,16 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 	]);
 
 	const now = new Date();
+
+	/** The counts. A money metric is not one of these — see `moneyResults`. */
 	const results: Record<string, number> = {
 		[METRIC.FAMILIES_SUPPORTED]: Number(families[0]?.value ?? 0),
-		[METRIC.FUNDS_RAISED]: Number(funds[0]?.value ?? 0),
 		[METRIC.CASES_OPEN]: Number(openCases[0]?.value ?? 0)
+	};
+
+	/** Metric → one total per currency, which is the only honest shape for money. */
+	const moneyResults: Record<string, MoneyTotal[]> = {
+		[METRIC.FUNDS_RAISED]: toMoneyTotals(funds.map((row) => ({ ...row, amount: row.value })))
 	};
 
 	// The slugs that actually exist, to tell a misconfigured counter apart from a
@@ -183,9 +210,25 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 			pillarId: null,
 			regionId: null,
 			value,
-			currency: key === METRIC.FUNDS_RAISED ? 'ETB' : null,
+			currency: null,
 			computedAt: now
 		})),
+		/**
+		 * A money metric gets one cache row per currency, which is what the
+		 * `currency` column on this table was always for. A metric that has taken
+		 * nothing yet writes no row at all, and the read path renders that as a
+		 * zero rather than inventing a currency to be zero in.
+		 */
+		...Object.entries(moneyResults).flatMap(([key, totals]) =>
+			totals.map((total) => ({
+				key,
+				pillarId: null,
+				regionId: null,
+				value: total.amount,
+				currency: total.currency,
+				computedAt: now
+			}))
+		),
 		...byPillar.map((row) => ({
 			key: METRIC.FAMILIES_SUPPORTED,
 			pillarId: row.pillarId,
@@ -212,7 +255,7 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
 	});
 
 	invalidate('impact');
-	return results as Record<MetricKey, number>;
+	return { counts: results, money: moneyResults };
 }
 
 /* ==========================================================================
@@ -220,8 +263,18 @@ export async function recomputeImpactMetrics(): Promise<Record<MetricKey, number
    ========================================================================== */
 
 export interface ImpactMetrics {
-	/** Metric key → value. `funds_raised` is in ETB santim, like every amount. */
+	/**
+	 * Metric key → value, for the metrics that are counts of things.
+	 *
+	 * A money metric is deliberately absent here. It used to sit alongside the
+	 * counts as a single number, which meant every reader had one figure for
+	 * "funds raised" and no way to know it was santim and cents added together;
+	 * money lives in `money`, one total per currency, so there is nothing to
+	 * accidentally print.
+	 */
 	values: Record<string, number>;
+	/** Metric key → one total per currency, in that currency's minor units. */
+	money: Record<string, MoneyTotal[]>;
 	/** Which keys came from a staff override rather than the live data. */
 	overridden: string[];
 	computedAt: Date | null;
@@ -241,28 +294,49 @@ export const getImpactMetrics = (): Promise<ImpactMetrics> =>
 				.select({
 					key: impactMetricsCache.key,
 					value: impactMetricsCache.value,
+					currency: impactMetricsCache.currency,
 					computedAt: impactMetricsCache.computedAt
 				})
 				.from(impactMetricsCache)
 				.where(isNull(impactMetricsCache.pillarId));
 
 			const values: Record<string, number> = {};
+			const moneyRows: Record<string, { currency: string | null; amount: number }[]> = {};
 			let computedAt: Date | null = null;
 			for (const row of rows) {
-				values[row.key] = row.value;
+				// The `currency` column is what tells the two kinds of row apart —
+				// a money metric writes one row per currency, a count writes one
+				// row with a null currency.
+				if (row.currency) (moneyRows[row.key] ??= []).push({ ...row, amount: row.value });
+				else values[row.key] = row.value;
 				if (!computedAt || row.computedAt > computedAt) computedAt = row.computedAt;
 			}
+
+			const money: Record<string, MoneyTotal[]> = {};
+			for (const key of Object.keys(moneyRows)) money[key] = toMoneyTotals(moneyRows[key]);
 
 			const overridden: string[] = [];
 			for (const key of Object.values(METRIC)) {
 				const override = await settingNumber(OVERRIDE_KEY(key));
-				if (override != null) {
+				if (override == null) continue;
+				overridden.push(key);
+
+				if (isMoneyMetric(key)) {
+					/**
+					 * An overridden money figure replaces every currency, not just
+					 * the one it happens to be in. Staff reaching for the override
+					 * are publishing "the figure is this" — leaving the computed
+					 * dollars sitting next to a hand-entered birr total would
+					 * publish a number nobody chose.
+					 */
+					const currency = (await setting(OVERRIDE_CURRENCY_KEY(key))).trim() || 'ETB';
+					money[key] = [{ currency: currency.toUpperCase(), amount: override }];
+				} else {
 					values[key] = override;
-					overridden.push(key);
 				}
 			}
 
-			return { values, overridden, computedAt };
+			return { values, money, overridden, computedAt };
 		},
 		5 * 60_000
 	);

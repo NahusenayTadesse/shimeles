@@ -294,6 +294,8 @@
 					blocks={contentBlocks}
 					pillars={data.blocks?.pillars ?? []}
 					initiatives={data.blocks?.initiatives ?? []}
+					metrics={data.blocks?.metrics ?? {}}
+					moneyTotals={data.blocks?.moneyTotals ?? {}}
 					payments={data.blocks?.payments ?? []}
 					initiativeNotice={data.settings?.['initiatives.disclaimer'] ?? ''}
 				/>

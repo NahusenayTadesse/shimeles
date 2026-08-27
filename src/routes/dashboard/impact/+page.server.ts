@@ -4,6 +4,7 @@ import { disbursements, donations, formSubmissions, pillars, regions } from '$li
 import { requirePermission } from '$lib/server/permissions';
 import { getImpactMetrics, recomputeImpactMetrics } from '$lib/server/impact';
 import { loadSettings } from '$lib/server/settings';
+import { toMoneyTotals } from '$lib/money';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -49,42 +50,81 @@ export const load: PageServerLoad = async (event) => {
 			.where(isNull(regions.deletedAt))
 			.groupBy(regions.id, regions.name),
 
-		// Twelve months of confirmed giving. `strftime` on an epoch-ms column
-		// needs the /1000 and the 'unixepoch' modifier.
+		// Twelve months of confirmed giving, split by currency. `strftime` on an
+		// epoch-ms column needs the /1000 and the 'unixepoch' modifier.
+		//
+		// The limit is on months, not on rows, so it cannot be a `LIMIT 12` here
+		// any more — a month with birr and dollars in it is two rows, and twelve
+		// rows would silently be six months. The months are cut in JS below.
 		db
 			.select({
 				month: sql<string>`strftime('%Y-%m', ${donations.completedAt} / 1000, 'unixepoch')`,
+				currency: donations.currency,
 				total: sql<number>`coalesce(sum(${donations.amount}), 0)`,
 				gifts: count()
 			})
 			.from(donations)
 			.where(and(eq(donations.status, 'completed'), isNull(donations.deletedAt)))
-			.groupBy(sql`strftime('%Y-%m', ${donations.completedAt} / 1000, 'unixepoch')`)
-			.orderBy(desc(sql`strftime('%Y-%m', ${donations.completedAt} / 1000, 'unixepoch')`))
-			.limit(12),
+			.groupBy(
+				sql`strftime('%Y-%m', ${donations.completedAt} / 1000, 'unixepoch')`,
+				donations.currency
+			)
+			.orderBy(desc(sql`strftime('%Y-%m', ${donations.completedAt} / 1000, 'unixepoch')`)),
 
 		db
 			.select({
+				currency: disbursements.currency,
 				total: sql<number>`coalesce(sum(${disbursements.amount}), 0)`,
 				count: count()
 			})
 			.from(disbursements)
 			.where(isNull(disbursements.deletedAt))
+			.groupBy(disbursements.currency)
 	]);
 
+	/**
+	 * The monthly rows, folded into one entry per month carrying a total per
+	 * currency. The chart draws a bar per currency rather than one bar whose
+	 * height was santim added to cents.
+	 */
+	const months = [...new Set(monthly.map((row) => row.month))].slice(0, 12);
+	const byMonth = months
+		.map((month) => {
+			const rows = monthly.filter((row) => row.month === month);
+			return {
+				month,
+				gifts: rows.reduce((sum, row) => sum + row.gifts, 0),
+				totals: toMoneyTotals(rows.map((row) => ({ ...row, amount: row.total })))
+			};
+		})
+		.reverse();
+
+	// The `_currency` companions say what unit a money override is in, not that
+	// one is in force — listing them here would report an override on an
+	// installation that has never set one.
 	const overrides = [...settings.values()]
-		.filter((row) => row.key.startsWith('impact.override_') && row.value?.trim())
+		.filter(
+			(row) =>
+				row.key.startsWith('impact.override_') &&
+				!row.key.endsWith('_currency') &&
+				row.value?.trim()
+		)
 		.map((row) => row.label);
 
 	return {
 		metrics: metrics.values,
+		metricsMoney: metrics.money,
 		overridden: metrics.overridden,
 		overrideLabels: overrides,
 		computedAt: metrics.computedAt,
 		byPillar,
 		byRegion,
-		monthly: monthly.reverse(),
-		disbursed: topDisbursements[0] ?? { total: 0, count: 0 }
+		monthly: byMonth,
+		/** Every currency the Foundation has ordered a payment in, kept apart. */
+		disbursed: {
+			count: topDisbursements.reduce((sum, row) => sum + row.count, 0),
+			totals: toMoneyTotals(topDisbursements.map((row) => ({ ...row, amount: row.total })))
+		}
 	};
 };
 

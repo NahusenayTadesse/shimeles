@@ -19,6 +19,7 @@
 	pillars={data.pillars}
 	initiatives={data.initiatives}
 	metrics={data.metrics}
+	moneyTotals={data.moneyTotals}
 	payments={data.payments}
 	settings={data.settings}
 	testimonials={data.testimonials}

@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatMoney } from '$lib/money';
+	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { Info, RefreshCw } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import { formatDateTime, formatMonth } from '$lib/dates';
@@ -23,8 +24,38 @@
 		{ key: 'cases_open', label: 'Cases still open' }
 	];
 
-	/** Bar height as a share of the largest month, so one chart needs no library. */
-	const peak = $derived(Math.max(1, ...data.monthly.map((row) => Number(row.total))));
+	/**
+	 * The chart is one bar per currency per month, not one bar per month.
+	 *
+	 * Heights are a share of that currency's own biggest month, because there is
+	 * no shared scale between santim and cents to draw them against — a single
+	 * bar summing both was measuring nothing. Each currency therefore reads as
+	 * its own trend line, which is the question the chart is actually asked.
+	 */
+	const currencies = $derived([
+		...new Set(data.monthly.flatMap((row) => row.totals.map((total) => total.currency)))
+	]);
+
+	const peaks = $derived(
+		new Map(
+			currencies.map((currency) => [
+				currency,
+				Math.max(
+					1,
+					...data.monthly.map(
+						(row) => row.totals.find((total) => total.currency === currency)?.amount ?? 0
+					)
+				)
+			])
+		)
+	);
+
+	const amountIn = (row: (typeof data.monthly)[number], currency: string) =>
+		row.totals.find((total) => total.currency === currency)?.amount ?? 0;
+
+	/** Stable per-currency colour, so a bar means the same thing across months. */
+	const currencyBar = (currency: string) =>
+		['bg-primary/80', 'bg-olive/80', 'bg-plum/80', 'bg-sky/80'][currencies.indexOf(currency) % 4];
 
 	const accent = (color: string) =>
 		({ clay: 'bg-clay', olive: 'bg-olive', plum: 'bg-plum', sky: 'bg-sky' })[color] ?? 'bg-primary';
@@ -88,32 +119,52 @@
 			<div class="grid gap-4 sm:grid-cols-2">
 				<div>
 					<p class="text-xs tracking-wide text-muted-foreground uppercase">Raised (confirmed)</p>
-					<p class="mt-1 font-heading text-2xl font-semibold text-success">
-						{formatMoney(data.metrics.funds_raised ?? 0)}
-					</p>
+					<MoneyTotals
+						totals={data.metricsMoney.funds_raised ?? []}
+						class="mt-1 font-heading text-2xl font-semibold text-success"
+					/>
 				</div>
 				<div>
 					<p class="text-xs tracking-wide text-muted-foreground uppercase">Disbursed</p>
-					<p class="mt-1 font-heading text-2xl font-semibold">
-						{formatMoney(Number(data.disbursed.total))}
-					</p>
+					<MoneyTotals
+						totals={data.disbursed.totals}
+						class="mt-1 font-heading text-2xl font-semibold"
+					/>
 					<p class="text-xs text-muted-foreground">across {data.disbursed.count} payments</p>
 				</div>
 			</div>
 
 			{#if data.monthly.length}
 				<div class="mt-6">
-					<p class="mb-3 text-xs tracking-wide text-muted-foreground uppercase">
-						Confirmed giving by month
-					</p>
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<p class="text-xs tracking-wide text-muted-foreground uppercase">
+							Confirmed giving by month
+						</p>
+						<!-- Each currency is scaled to its own best month, so the legend has
+						     to say which bar is which; heights are not comparable across
+						     currencies and the chart does not pretend they are. -->
+						<div class="flex flex-wrap items-center gap-3">
+							{#each currencies as currency (currency)}
+								<span class="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+									<span class="size-2 rounded-full {currencyBar(currency)}"></span>
+									{currency}
+								</span>
+							{/each}
+						</div>
+					</div>
 					<div class="flex h-32 items-end gap-1.5">
 						{#each data.monthly as row (row.month)}
 							<div class="flex flex-1 flex-col items-center gap-1">
-								<div
-									class="w-full rounded-t bg-primary/80"
-									style={`height: ${Math.max(4, (Number(row.total) / peak) * 100)}%`}
-									title={`${row.month}: ${formatMoney(Number(row.total))}`}
-								></div>
+								<div class="flex h-full w-full items-end justify-center gap-0.5">
+									{#each currencies as currency (currency)}
+										{@const amount = amountIn(row, currency)}
+										<div
+											class="flex-1 rounded-t {currencyBar(currency)}"
+											style={`height: ${Math.max(4, (amount / (peaks.get(currency) ?? 1)) * 100)}%`}
+											title={`${row.month}: ${formatMoney(amount, currency)}`}
+										></div>
+									{/each}
+								</div>
 								<span class="text-[10px] text-muted-foreground">{monthLabel(row.month)}</span>
 							</div>
 						{/each}

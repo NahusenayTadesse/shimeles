@@ -11,7 +11,7 @@
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import { assetUrl } from '$lib/assets';
-	import { formatMoney } from '$lib/money';
+	import { formatMoney, sumByCurrency } from '$lib/money';
 	import { formatDateTime } from '$lib/dates';
 	import { genderLabel } from '$lib/gender';
 	import {
@@ -22,6 +22,7 @@
 		Mail,
 		MessageSquarePlus,
 		Phone,
+		Send,
 		ShieldCheck,
 		TriangleAlert,
 		UserRound
@@ -49,17 +50,38 @@
 	 */
 	const acceptable = $derived(['approved', 'active'].includes(s.statusStage ?? ''));
 
-	/** Only the needs that carry an estimate; the rest contribute nothing. */
+	/**
+	 * Only the needs that carry an estimate; the rest contribute nothing.
+	 *
+	 * One total per currency: a need priced in dollars and a need priced in
+	 * birr are two asks, and the assumed-ETB figure this used to render was
+	 * neither of them.
+	 */
 	const totalRequested = $derived(
-		data.needs.reduce((sum, need) => sum + (need.estimatedAmount ?? 0), 0)
+		sumByCurrency(
+			data.needs,
+			(need) => need.estimatedAmount,
+			(need) => need.currency
+		)
 	);
 
 	/** The last outcome, kept on screen after the toast has gone (§11). */
 	let lastAction = $state<{ message: string; at: number } | null>(null);
 
+	/** Whether a reply can be emailed at all. Drives the second button. */
+	const applicantEmail = $derived(s.email ?? null);
+
 	$effect(() => {
 		if (form?.error) toast.error(form.error);
-		else if (form?.ok) {
+		else if (form?.warning) {
+			// A reply that was saved but not sent is the one outcome staff must
+			// not read as success — it stays on screen rather than fading.
+			toast.warning(form.warning);
+			lastAction = { message: form.warning, at: Date.now() };
+		} else if (form?.emailed) {
+			toast.success('Reply sent to the applicant.');
+			lastAction = { message: 'Reply sent to the applicant.', at: Date.now() };
+		} else if (form?.ok) {
 			toast.success('Saved');
 			lastAction = { message: 'Saved.', at: Date.now() };
 		}
@@ -351,9 +373,11 @@
 				<Card.Root class="p-6">
 					<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
 						<h2 class="font-heading text-lg font-semibold">What they are asking for</h2>
-						{#if totalRequested > 0}
-							<Badge variant="outline">{formatMoney(totalRequested, 'ETB')} estimated</Badge>
-						{/if}
+						{#each totalRequested as total (total.currency)}
+							<Badge variant="outline">
+								{formatMoney(total.amount, total.currency)} estimated
+							</Badge>
+						{/each}
 					</div>
 
 					<div class="flex flex-col gap-2">
@@ -439,9 +463,14 @@
 				</Card.Root>
 			{/if}
 
-			<!-- Case notes -->
+			<!-- Case notes and replies -->
 			<Card.Root class="p-6">
-				<h2 class="mb-4 font-heading text-lg font-semibold">Case notes</h2>
+				<h2 class="mb-1 font-heading text-lg font-semibold">Case notes</h2>
+				<p class="mb-4 text-sm text-muted-foreground">
+					A note stays inside the Foundation. A reply is emailed to the applicant — the two buttons
+					are the only thing that decides which, so read what you wrote before pressing the second
+					one.
+				</p>
 
 				<form
 					method="post"
@@ -451,10 +480,38 @@
 							await update({ reset: true })}
 					class="mb-5 flex flex-col gap-2"
 				>
-					<Textarea name="note" rows={3} placeholder="Add an internal note…" required />
-					<Button type="submit" size="sm" class="w-fit">
-						<MessageSquarePlus class="size-4" /> Add note
-					</Button>
+					<Textarea
+						name="note"
+						rows={3}
+						placeholder="Write a note, or a reply to the applicant…"
+						required
+					/>
+					<div class="flex flex-wrap items-center gap-2">
+						<Button type="submit" size="sm" variant="secondary">
+							<MessageSquarePlus class="size-4" /> Save internal note
+						</Button>
+						<!-- `send` is what tells the action which button was pressed. It is
+						     never inferred from whether an address exists. -->
+						<Button
+							type="submit"
+							size="sm"
+							name="send"
+							value="true"
+							disabled={!applicantEmail}
+							title={applicantEmail
+								? `Emails ${applicantEmail}`
+								: 'This applicant gave no email address'}
+						>
+							<Send class="size-4" /> Send reply to applicant
+						</Button>
+						{#if applicantEmail}
+							<span class="text-xs text-muted-foreground">Replies go to {applicantEmail}</span>
+						{:else}
+							<span class="text-xs text-muted-foreground">
+								No email address on this application, so only notes are possible.
+							</span>
+						{/if}
+					</div>
 				</form>
 
 				<div class="flex flex-col gap-3">
@@ -462,11 +519,20 @@
 						<div
 							class="rounded-lg border p-3 text-sm {note.isSystem
 								? 'bg-muted/40 text-muted-foreground'
-								: ''}"
+								: !note.isInternal
+									? 'border-primary/30 bg-primary/5'
+									: ''}"
 						>
 							<p class="whitespace-pre-wrap">{note.note}</p>
-							<p class="mt-2 text-xs text-muted-foreground">
-								{note.authorName ?? 'System'} · {fmt(note.createdAt)}
+							<p class="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<span>{note.authorName ?? 'System'} · {fmt(note.createdAt)}</span>
+								<!-- A reply that did not send is the case staff most need to
+								     spot, so it is labelled rather than left looking sent. -->
+								{#if !note.isInternal}
+									<Badge variant={note.sentAt ? 'default' : 'destructive'} class="text-[10px]">
+										{note.sentAt ? `Emailed ${fmt(note.sentAt)}` : 'Not sent'}
+									</Badge>
+								{/if}
 							</p>
 						</div>
 					{:else}

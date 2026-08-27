@@ -2,7 +2,7 @@
 	import { reveal, stagger } from '$lib/actions/reveal';
 	import { countUp } from '$lib/actions/count-up';
 	import { assetUrl } from '$lib/assets';
-	import { formatCompact, formatMoney } from '$lib/money';
+	import { formatCompact, formatMoney, type MoneyTotal } from '$lib/money';
 	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import TrimBand from '$lib/components/trim-band.svelte';
@@ -43,6 +43,7 @@
 		pillars = [],
 		initiatives = [],
 		metrics = {},
+		moneyTotals = {},
 		payments = [],
 		forms = {},
 		testimonials = [],
@@ -53,7 +54,10 @@
 		blocks: RenderBlock[];
 		pillars?: RenderPillar[];
 		initiatives?: RenderInitiative[];
+		/** Count metrics only. Money arrives per currency in `moneyTotals`. */
 		metrics?: Record<string, number>;
+		/** Money metric key → one total per currency, in that currency's minor units. */
+		moneyTotals?: Record<string, MoneyTotal[]>;
 		payments?: {
 			accountId: number;
 			accountName: string;
@@ -175,27 +179,48 @@
 					>
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
-							{@const value = metrics[key] ?? 0}
 							<!-- Derived from the metric, never read from the block. A stat block
 							     saved without `is_money` used to render funds raised — stored in
 							     santim — through the plain compact formatter, so 1234567 published
 							     as "1.2M" rather than "ETB 12,345.67". -->
 							{@const money = isMoneyMetric(key)}
+							<!-- A money counter is a list, one line per currency, because the
+							     Foundation banks birr and dollars and neither total is a share
+							     of the other. A single figure here was santim added to cents.
+							     `moneyTotals` is empty until the cache is first warmed, so a
+							     cold homepage still shows a zero rather than a blank panel. -->
+							{@const totals = money ? (moneyTotals[key] ?? [{ currency: 'ETB', amount: 0 }]) : []}
 							<div
 								use:reveal={{ delay: stagger(statIndex, 80, 4), scale: 0.92 }}
 								class="group flex flex-col items-center gap-1.5 px-6 py-10 text-center"
 							>
-								<p
-									use:countUp={{
-										value,
-										format: money
-											? (n) => formatMoney(n)
-											: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
-									}}
-									class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
-								>
-									{money ? formatMoney(value) : `${formatCompact(value)}${stat.suffix ?? ''}`}
-								</p>
+								{#if money}
+									<div
+										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+									>
+										{#each totals as total (total.currency)}
+											<p
+												use:countUp={{
+													value: total.amount,
+													format: (n) => formatMoney(n, total.currency)
+												}}
+											>
+												{formatMoney(total.amount, total.currency)}
+											</p>
+										{/each}
+									</div>
+								{:else}
+									{@const value = metrics[key] ?? 0}
+									<p
+										use:countUp={{
+											value,
+											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
+										}}
+										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+									>
+										{`${formatCompact(value)}${stat.suffix ?? ''}`}
+									</p>
+								{/if}
 								<p class="text-sm text-[oklch(0.94_0.012_80)]/65">
 									{stat.label ?? key}
 								</p>

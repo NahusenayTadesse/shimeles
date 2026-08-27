@@ -15,7 +15,8 @@
 	import DonationActionsCell from './donation-actions-cell.svelte';
 	import { indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
-	import { formatMoney, toMajor } from '$lib/money';
+	import { formatMoney, toMajor, toMoneyTotals } from '$lib/money';
+	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { CheckCircle2 } from '@lucide/svelte';
 	import { formatDate } from '$lib/dates';
 
@@ -60,7 +61,19 @@
 		{ value: 'all', label: 'All' }
 	];
 
-	const summary = (status: string) => data.totals.find((row) => row.status === status);
+	/**
+	 * The totals rows now arrive one per status *per currency*, so a status has
+	 * a gift count and a list of totals rather than one figure. Adding the birr
+	 * and the dollar rows together would produce a number matching no bank
+	 * statement anywhere.
+	 */
+	const summary = (status: string) => {
+		const rows = data.totals.filter((row) => row.status === status);
+		return {
+			gifts: rows.reduce((sum, row) => sum + Number(row.total), 0),
+			totals: toMoneyTotals(rows)
+		};
+	};
 
 	const fmt = (value: Date | string | null) => formatDate(value, '-');
 
@@ -148,22 +161,24 @@
 		<Card.Root class="p-5">
 			<p class="text-xs tracking-wide text-muted-foreground uppercase">Awaiting matching</p>
 			<p class="mt-2 font-heading text-3xl font-semibold">
-				{summary('pending_reconciliation')?.total ?? 0}
+				{summary('pending_reconciliation').gifts}
 			</p>
-			<p class="text-xs text-muted-foreground">
-				{formatMoney(Number(summary('pending_reconciliation')?.amount ?? 0))} pledged
-			</p>
+			<div class="text-xs text-muted-foreground">
+				<span>Pledged</span>
+				<MoneyTotals totals={summary('pending_reconciliation').totals} />
+			</div>
 		</Card.Root>
 		<Card.Root class="p-5">
 			<p class="text-xs tracking-wide text-muted-foreground uppercase">Confirmed</p>
-			<p class="mt-2 font-heading text-3xl font-semibold text-success">
-				{formatMoney(Number(summary('completed')?.amount ?? 0))}
-			</p>
-			<p class="text-xs text-muted-foreground">{summary('completed')?.total ?? 0} gifts</p>
+			<MoneyTotals
+				totals={summary('completed').totals}
+				class="mt-2 font-heading text-3xl font-semibold text-success"
+			/>
+			<p class="text-xs text-muted-foreground">{summary('completed').gifts} gifts</p>
 		</Card.Root>
 		<Card.Root class="p-5">
 			<p class="text-xs tracking-wide text-muted-foreground uppercase">Never arrived</p>
-			<p class="mt-2 font-heading text-3xl font-semibold">{summary('failed')?.total ?? 0}</p>
+			<p class="mt-2 font-heading text-3xl font-semibold">{summary('failed').gifts}</p>
 			<p class="text-xs text-muted-foreground">Closed off, not chased</p>
 		</Card.Root>
 	</div>

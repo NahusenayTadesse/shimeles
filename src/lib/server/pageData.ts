@@ -46,6 +46,9 @@ export async function hydrateBlocks(blocks: RenderBlock[]) {
 		pillars,
 		initiatives,
 		metrics: metrics?.values ?? {},
+		// Money is counted per currency, so a stat counter gets a list of totals
+		// rather than a number. See `MoneyTotal` in `$lib/money.ts`.
+		moneyTotals: metrics?.money ?? {},
 		payments,
 		forms
 	};

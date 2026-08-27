@@ -12,6 +12,7 @@ import {
 import { auth } from '$lib/server/auth';
 import { requireUser, pillarScope } from '$lib/server/permissions';
 import { getImpactMetrics } from '$lib/server/impact';
+import { toMoneyTotals } from '$lib/money';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -88,13 +89,23 @@ export const load: PageServerLoad = async (event) => {
 					.then((rows) => rows[0]?.total ?? 0)
 			: 0,
 
+		// Grouped by currency: the backlog is "12 gifts, ETB 40,000 and USD 300
+		// pledged", and the one figure it used to show was santim added to cents.
 		canSeeMoney
 			? db
-					.select({ total: count(), amount: sql<number>`coalesce(sum(${donations.amount}), 0)` })
+					.select({
+						currency: donations.currency,
+						total: count(),
+						amount: sql<number>`coalesce(sum(${donations.amount}), 0)`
+					})
 					.from(donations)
 					.where(and(eq(donations.status, 'pending_reconciliation'), isNull(donations.deletedAt)))
-					.then((rows) => rows[0] ?? { total: 0, amount: 0 })
-			: { total: 0, amount: 0 },
+					.groupBy(donations.currency)
+					.then((rows) => ({
+						total: rows.reduce((sum, row) => sum + row.total, 0),
+						totals: toMoneyTotals(rows)
+					}))
+			: { total: 0, totals: [] },
 
 		getImpactMetrics()
 	]);
@@ -105,6 +116,7 @@ export const load: PageServerLoad = async (event) => {
 		volunteersAwaitingSafeguarding: volunteerCount,
 		pendingDonations,
 		metrics: metrics.values,
+		metricsMoney: metrics.money,
 		metricsComputedAt: metrics.computedAt
 	};
 };

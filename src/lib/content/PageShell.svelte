@@ -11,6 +11,7 @@
 	} from '$lib/content/types';
 	import type { RenderForm } from '$lib/forms/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
+	import type { MoneyTotal } from '$lib/money';
 
 	/**
 	 * The shell every content-driven public page shares: head tags, the page
@@ -23,6 +24,7 @@
 		pillars = [],
 		initiatives = [],
 		metrics = {},
+		moneyTotals = {},
 		payments = [],
 		settings = {},
 		forms = {},
@@ -36,6 +38,8 @@
 		pillars?: RenderPillar[];
 		initiatives?: RenderInitiative[];
 		metrics?: Record<string, number>;
+		/** Money metric key → one total per currency; birr and dollars never merge. */
+		moneyTotals?: Record<string, MoneyTotal[]>;
 		payments?: any[];
 		settings?: Record<string, string>;
 		forms?: Record<
@@ -85,6 +89,7 @@
 		{pillars}
 		{initiatives}
 		{metrics}
+		{moneyTotals}
 		{payments}
 		{forms}
 		{testimonials}

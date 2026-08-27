@@ -3,7 +3,7 @@
 	import BadgeCell from '$lib/dashboard/badge-cell.svelte';
 	import { column, indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
-	import { formatMoney } from '$lib/money';
+	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
@@ -28,7 +28,9 @@
 		{
 			id: 'lifetime',
 			header: 'Lifetime',
-			cell: ({ row }: any) => formatMoney(row.original.lifetimeTotal, row.original.lifetimeCurrency)
+			// Every currency this donor has given in, kept apart. Sorting still
+			// uses `lifetimeTotal`, which holds their largest single currency.
+			cell: ({ row }: any) => renderComponent(MoneyTotals, { totals: row.original.lifetimeTotals })
 		},
 		column('donationCount', 'Gifts'),
 		{

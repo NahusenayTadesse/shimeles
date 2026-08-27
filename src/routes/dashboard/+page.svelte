@@ -3,7 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
-	import { formatMoney } from '$lib/money';
+	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { ArrowRight, ClipboardList, HandHeart, HeartHandshake, Wallet } from '@lucide/svelte';
 
 	import type { Permission } from '$lib/permissions';
@@ -61,10 +61,11 @@
 					<Wallet class="size-4" />
 					<span class="text-xs tracking-wide uppercase">Raised</span>
 				</div>
-				<p class="mt-2 font-heading text-3xl font-semibold">
-					{formatMoney(data.metrics.funds_raised ?? 0)}
-				</p>
-				<p class="text-xs text-muted-foreground">Reconciled gifts only</p>
+				<MoneyTotals
+					totals={data.metricsMoney.funds_raised ?? []}
+					class="mt-2 font-heading text-3xl font-semibold"
+				/>
+				<p class="text-xs text-muted-foreground">Reconciled gifts only, per currency</p>
 			</Card.Root>
 
 			<Card.Root class="p-5">
@@ -73,9 +74,10 @@
 					<span class="text-xs tracking-wide uppercase">Awaiting matching</span>
 				</div>
 				<p class="mt-2 font-heading text-3xl font-semibold">{data.pendingDonations.total}</p>
-				<p class="text-xs text-muted-foreground">
-					{formatMoney(Number(data.pendingDonations.amount))} pledged
-				</p>
+				<div class="text-xs text-muted-foreground">
+					<span>Pledged</span>
+					<MoneyTotals totals={data.pendingDonations.totals} />
+				</div>
 			</Card.Root>
 		{/if}
 	</div>

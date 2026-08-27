@@ -162,6 +162,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			).map(([id, media]) => [id, media.videos])
 		),
 		metrics: metrics.values,
+		// Per currency, never one figure — see `MoneyTotal` in `$lib/money.ts`.
+		moneyTotals: metrics.money,
 		blocks: blockData,
 		preselectedPillarId: preselected?.id ?? null,
 		form
@@ -358,7 +360,7 @@ export const actions: Actions = {
 				);
 				// Non-blocking: the gift is already recorded, and a slow mail server
 				// must not turn a successful donation into an error page.
-				void sendEmail(email, mail.subject, mail.html).catch((err) =>
+				void sendEmail({ to: email, ...mail }).catch((err) =>
 					console.error('donation email failed', err)
 				);
 			}
@@ -500,7 +502,7 @@ export const actions: Actions = {
 			// slow mail server must not turn it into an error page.
 			if (email) {
 				const mail = inKindOfferTemplate(data.donorName, result.referenceCode, result.summary);
-				void sendEmail(email, mail.subject, mail.html).catch((err) =>
+				void sendEmail({ to: email, ...mail }).catch((err) =>
 					console.error('in-kind email failed', err)
 				);
 			}

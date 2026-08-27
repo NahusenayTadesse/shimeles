@@ -4,7 +4,8 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
-	import { formatMoney } from '$lib/money';
+	import { formatMoney, sumByCurrency } from '$lib/money';
+	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { ArrowLeft, Eye, Mail, Phone, Users } from '@lucide/svelte';
 	import { formatDate } from '$lib/dates';
 
@@ -12,7 +13,18 @@
 
 	const b = $derived(data.beneficiary);
 
-	const totalReceived = $derived(data.payments.reduce((sum, row) => sum + row.amount, 0));
+	/**
+	 * Per currency. A person helped with birr and with a diaspora dollar gift
+	 * has received two totals, and the single figure this used to add up was
+	 * santim plus cents printed with a birr sign in front.
+	 */
+	const totalReceived = $derived(
+		sumByCurrency(
+			data.payments,
+			(row) => row.amount,
+			(row) => row.currency
+		)
+	);
 
 	const fmt = (value: Date | string | null) => formatDate(value, '-');
 </script>
@@ -71,7 +83,7 @@
 			<Card.Root class="p-6">
 				<div class="mb-4 flex items-center justify-between gap-2">
 					<h2 class="font-heading text-lg font-semibold">Support given</h2>
-					<span class="font-heading text-lg font-semibold">{formatMoney(totalReceived)}</span>
+					<MoneyTotals totals={totalReceived} class="text-lg font-semibold" />
 				</div>
 				<div class="flex flex-col divide-y">
 					{#each data.payments as row (row.id)}
