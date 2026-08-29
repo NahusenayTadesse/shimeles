@@ -10,6 +10,7 @@
 		type SortingState,
 		type ColumnFiltersState,
 		type VisibilityState,
+		type ColumnSizingState,
 		type GlobalFilterColumn
 	} from '@tanstack/table-core';
 	import TableExport from './table-export.svelte';
@@ -40,8 +41,6 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ChevronDownIcon, Filter, Inbox, ListOrdered, Lock, SearchX, X } from '@lucide/svelte';
-	import * as Resizable from '$lib/components/ui/resizable/index.js';
-	import ResizableHandle from '../ui/resizable/resizable-handle.svelte';
 	import { isMobile } from '$lib/global.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -189,8 +188,16 @@
 		get columns() {
 			return allColumns;
 		},
-		defaultColumn: { filterFn: facetFilter },
+		defaultColumn: { filterFn: facetFilter, minSize: 64 },
+		enableColumnResizing: true,
+		columnResizeMode: 'onChange',
+		onColumnSizingChange: (updater) => {
+			columnSizing = typeof updater === 'function' ? updater(columnSizing) : updater;
+		},
 		state: {
+			get columnSizing() {
+				return columnSizing;
+			},
 			get pagination() {
 				return pagination;
 			},
@@ -344,6 +351,144 @@
 		});
 	}
 
+	/* ==========================================================================
+	   Widths
+
+	   Two drags, because they answer two different questions. The divider
+	   between two column headers widens the one column whose value is cut off
+	   — "https://ww…" in a link column is the actual complaint, and making the
+	   whole table wider never fixed it. The handle on the outer edge narrows
+	   the table itself, which is what someone reading a five-column table on a
+	   wide screen wants.
+
+	   Both are remembered per screen and both reset on a double-click. They
+	   are a convenience, so every storage call is wrapped: a private window or
+	   a browser set to block site data must give you a normal table, not a
+	   broken one.
+	   ========================================================================== */
+
+	let columnSizing = $state<ColumnSizingState>({});
+	/** null means "as wide as the page gives us", which is the default. */
+	let tableWidth = $state<number | null>(null);
+	let shell = $state<HTMLElement | null>(null);
+
+	const storeKey = $derived(`table-widths:${page.url.pathname}:${fileName}`);
+
+	/** Restores on arrival, and again whenever the screen changes under us. */
+	$effect(() => {
+		let saved: { columns?: ColumnSizingState; width?: number | null } | null = null;
+		try {
+			saved = JSON.parse(localStorage.getItem(storeKey) ?? 'null');
+		} catch {
+			saved = null;
+		}
+		columnSizing = saved?.columns ?? {};
+		tableWidth = saved?.width ?? null;
+	});
+
+	function persist() {
+		try {
+			if (!Object.keys(columnSizing).length && tableWidth === null) {
+				localStorage.removeItem(storeKey);
+			} else {
+				localStorage.setItem(
+					storeKey,
+					JSON.stringify({ columns: columnSizing, width: tableWidth })
+				);
+			}
+		} catch {
+			// Nothing to do about it, and nothing that needs saying.
+		}
+	}
+
+	/**
+	 * Hands over to TanStack, but seeds the column's real rendered width first.
+	 * Unsized columns report the library's default of 150 rather than what the
+	 * browser actually laid out, so without this the column jumps to 150px the
+	 * instant you touch the divider and then follows the mouse from there.
+	 */
+	function startColumnResize(event: MouseEvent | TouchEvent, header: any) {
+		const cell = (event.currentTarget as HTMLElement).closest('th');
+		if (cell && columnSizing[header.column.id] === undefined) {
+			columnSizing = {
+				...columnSizing,
+				[header.column.id]: Math.round(cell.getBoundingClientRect().width)
+			};
+		}
+		header.getResizeHandler()(event);
+		addEventListener('mouseup', persist, { once: true });
+		addEventListener('touchend', persist, { once: true });
+	}
+
+	const MIN_COLUMN = 64;
+
+	function resetColumn(id: string) {
+		const { [id]: _dropped, ...rest } = columnSizing;
+		columnSizing = rest;
+		persist();
+	}
+
+	/** The divider takes focus, so the arrow keys have to move it. */
+	function nudgeColumn(event: KeyboardEvent, header: any) {
+		const step = event.shiftKey ? 48 : 12;
+		const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+		if (!direction) return;
+		event.preventDefault();
+		const cell = (event.currentTarget as HTMLElement).closest('th');
+		const from =
+			columnSizing[header.column.id] ?? Math.round(cell?.getBoundingClientRect().width ?? 0);
+		columnSizing = {
+			...columnSizing,
+			[header.column.id]: Math.max(from + direction * step, MIN_COLUMN)
+		};
+		persist();
+	}
+
+	const MIN_TABLE = 320;
+
+	function shellBounds() {
+		const width = shell?.getBoundingClientRect().width ?? 0;
+		const max = shell?.parentElement?.getBoundingClientRect().width ?? width;
+		return { width, max };
+	}
+
+	function startShellResize(event: PointerEvent) {
+		const handle = event.currentTarget as HTMLElement;
+		const { width: startWidth, max } = shellBounds();
+		const startX = event.clientX;
+		handle.setPointerCapture(event.pointerId);
+
+		const move = (moved: PointerEvent) => {
+			tableWidth = Math.round(
+				Math.min(Math.max(startWidth + moved.clientX - startX, MIN_TABLE), max)
+			);
+		};
+		const done = () => {
+			handle.removeEventListener('pointermove', move);
+			handle.releasePointerCapture(event.pointerId);
+			persist();
+		};
+
+		handle.addEventListener('pointermove', move);
+		handle.addEventListener('pointerup', done, { once: true });
+		handle.addEventListener('pointercancel', done, { once: true });
+	}
+
+	function nudgeShell(event: KeyboardEvent) {
+		const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+		if (!direction) return;
+		event.preventDefault();
+		const { width, max } = shellBounds();
+		const step = event.shiftKey ? 96 : 24;
+		tableWidth = Math.round(Math.min(Math.max(width + direction * step, MIN_TABLE), max));
+		persist();
+	}
+
+	function resetWidths() {
+		tableWidth = null;
+		persist();
+	}
+
 	/**
 	 * The selection, for the bulk bar. Read straight off the table rather than
 	 * from `selected`, which is an optional binding a screen may not have passed
@@ -355,15 +500,17 @@
 </script>
 
 <!-- min-h-0 is required for flex-child overflow -->
-<Resizable.PaneGroup
-	direction="horizontal"
-	class="mt-4 flex w-full min-w-full gap-0 rounded-lg lg:w-fit lg:min-w-2xl {className}"
->
-	<Resizable.Pane
-		defaultSize={isMobile()
-			? 100
-			: table.getAllColumns().filter((col) => col.getIsVisible()).length * 20}
-		class="bg-background"
+<!--
+	The outer width used to be a pane in a two-pane group whose second pane was
+	empty, so the handle dragged the table against nothing and its starting
+	width was the visible column count times twenty. It is one element with a
+	handle on its edge now, and the width it is dragged to is kept.
+-->
+<div class="mt-4 w-full {className}">
+	<div
+		bind:this={shell}
+		class="relative rounded-lg bg-background"
+		style={tableWidth !== null && !isMobile() ? `width:${tableWidth}px` : undefined}
 	>
 		<ScrollArea orientation="vertical" class="w-full rounded-lg p-2">
 			<div class="flex min-w-full flex-col gap-2 rounded-md border-0 px-1">
@@ -459,7 +606,12 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 
-						{#if !serverSide}
+						<!--
+							Hidden unless there is a choice to make. A table of two rows
+							offered a menu holding "2", which is not a page size so much as
+							a statement of how many rows there are.
+						-->
+						{#if !serverSide && getTableBreakpoints(data).length > 1}
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
 									{#snippet child({ props })}
@@ -518,14 +670,17 @@
 				{/if}
 
 				<div class="rounded-md border">
-					<Table.Root id={uniqueTableId} class="relative max-h-96">
+					<Table.Root id={uniqueTableId} class="group/table relative max-h-96">
 						<Table.Header>
 							{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 								<Table.Row>
 									{#each headerGroup.headers as header, index (header.id)}
 										<Table.Head
 											colspan={header.colSpan}
-											class="{index === 1
+											style={columnSizing[header.column.id]
+												? `width:${columnSizing[header.column.id]}px`
+												: undefined}
+											class="relative {index === 1
 												? 'sticky left-0 z-10 bg-background'
 												: ''} p-0 px-2 text-start"
 										>
@@ -534,6 +689,23 @@
 													content={header.column.columnDef.header}
 													context={header.getContext()}
 												/>
+											{/if}
+
+											{#if header.column.getCanResize()}
+												<!--
+													A divider rather than an edge you have to find: it is
+													always faintly there, darkens under the cursor, and
+													takes focus so the arrow keys can move it too.
+												-->
+												<button
+													type="button"
+													aria-label="Resize {columnLabel(header.column.id)} column"
+													onmousedown={(event) => startColumnResize(event, header)}
+													ontouchstart={(event) => startColumnResize(event, header)}
+													ondblclick={() => resetColumn(header.column.id)}
+													onkeydown={(event) => nudgeColumn(event, header)}
+													class="absolute inset-y-1 -right-px z-20 w-1.5 cursor-col-resize touch-none rounded-full bg-border/60 opacity-0 transition-opacity group-hover/table:opacity-100 hover:bg-primary hover:opacity-100 focus-visible:bg-primary focus-visible:opacity-100 focus-visible:outline-none"
+												></button>
 											{/if}
 										</Table.Head>
 									{/each}
@@ -616,11 +788,25 @@
 				</div>
 			</div>
 		</ScrollArea>
-	</Resizable.Pane>
-	<ResizableHandle withHandle />
-	{#if isMobile()}
-		<Resizable.Pane defaultSize={0}></Resizable.Pane>
-	{:else}
-		<Resizable.Pane></Resizable.Pane>
-	{/if}
-</Resizable.PaneGroup>
+
+		<!--
+			Hidden on a phone, where the table already fills the screen and there
+			is nothing to give the width back to.
+		-->
+		{#if !isMobile()}
+			<button
+				type="button"
+				aria-label="Resize the table"
+				onpointerdown={startShellResize}
+				ondblclick={resetWidths}
+				onkeydown={nudgeShell}
+				title="Drag to resize. Double-click to fit the page."
+				class="group/handle absolute inset-y-0 -right-2 flex w-4 cursor-col-resize touch-none items-center justify-center focus-visible:outline-none"
+			>
+				<span
+					class="h-10 w-1 rounded-full bg-border transition-colors group-hover/handle:bg-primary group-focus-visible/handle:bg-primary"
+				></span>
+			</button>
+		{/if}
+	</div>
+</div>

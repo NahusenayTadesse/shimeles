@@ -36,15 +36,19 @@ export const column = (key: string, name: string) => ({
 export const longColumn = (key: string, name: string) => ({
 	accessorKey: key,
 	header: name,
-	cell: ({ row }: any) => renderComponent(BigText, { text: row.original[key] ?? '' })
+	cell: ({ row, column }: any) =>
+		renderComponent(BigText, { text: row.original[key] ?? '', width: column.getSize() })
 });
 
 /** A JSON string-array column, shown as a comma-joined summary. */
 export const listColumn = (key: string, name: string) => ({
 	accessorKey: key,
 	header: name,
-	cell: ({ row }: any) =>
-		renderComponent(BigText, { text: (row.original[key] ?? []).join(', ') || '-' })
+	cell: ({ row, column }: any) =>
+		renderComponent(BigText, {
+			text: (row.original[key] ?? []).join(', ') || '-',
+			width: column.getSize()
+		})
 });
 
 /** Thumbnail that opens the full image. */
