@@ -151,7 +151,7 @@
 
 	const emptyBody = $derived(
 		noPillarAccess
-			? 'Case screens only show the programmes your account covers. An administrator can assign you one under Configuration → Users.'
+			? 'Case screens only show the programmes your account covers. An administrator can assign you one under System → Users & roles.'
 			: filtered
 				? 'Nothing here matches what you are filtering by. Clearing the filters brings the whole list back.'
 				: emptyMessage

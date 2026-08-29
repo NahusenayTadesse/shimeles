@@ -165,7 +165,7 @@
 		variant="outline"
 		class="ml-auto"
 		disabled
-		title="Exporting needs the data-export permission. An administrator can grant it under Configuration → Users."
+		title="Exporting needs the data-export permission. An administrator can grant it under System → Users & roles."
 	>
 		<Download class="size-5" />
 		<span class="sr-only">Export (needs the data-export permission)</span>

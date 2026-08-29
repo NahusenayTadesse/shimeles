@@ -472,7 +472,7 @@ async function seedSettings() {
 			valueType: 'boolean',
 			hint:
 				'When Yes, moving an application or a volunteer to any status emails them, not only the ' +
-				'statuses ticked under Configuration → Statuses. A status with nothing written in its ' +
+				'statuses ticked under System → Workflow statuses. A status with nothing written in its ' +
 				'public description still sends nothing unless the caseworker adds a note. Off by default.',
 			value: 'false'
 		}
@@ -639,7 +639,7 @@ async function seedStatuses() {
 			// Only the moments that genuinely warrant a letter start out ticked:
 			// a decision, and the waitlist. Everything else is internal movement,
 			// and mailing somebody about it trains them to ignore the one that
-			// matters. Staff turn any of them on from Configuration → Statuses.
+			// matters. Staff turn any of them on from System → Workflow statuses.
 			notifyApplicant: 'notifyApplicant' in status ? status.notifyApplicant : false,
 			sortOrder: index
 		});
@@ -1254,7 +1254,7 @@ async function seedForms() {
 					 * for help costs as little as possible, and an unexpected email
 					 * headed with the Foundation's name arriving on a shared device
 					 * or a family address is a cost. Staff can turn it on per form
-					 * from Configuration → Forms.
+					 * from Website → Form builder.
 					 */
 					acknowledgeSubmitter: !form.isLowBarrier,
 					referencePrefix: form.referencePrefix,

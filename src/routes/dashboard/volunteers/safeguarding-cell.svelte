@@ -70,7 +70,7 @@
 
 		{#if total === 0}
 			<p class="text-xs text-muted-foreground">
-				No safeguarding checks have been set up. Add them under Configuration → Safeguarding
+				No safeguarding checks have been set up. Add them under Volunteers → Safeguarding checklist
 				checklist — without any, nobody can be approved.
 			</p>
 		{/if}

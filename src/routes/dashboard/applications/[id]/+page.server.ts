@@ -309,7 +309,7 @@ export const actions: Actions = {
 				result.reason === 'no-email'
 					? 'This applicant gave no email address, so there is nobody to notify.'
 					: result.reason === 'nothing-to-say'
-						? 'This status has no public description, so there is nothing to send. Write a note above to send that instead, or add a description under Configuration → Statuses.'
+						? 'This status has no public description, so there is nothing to send. Write a note above to send that instead, or add a description under System → Workflow statuses.'
 						: result.reason === 'no-smtp'
 							? 'No mail server is configured on this installation, so nothing could be sent.'
 							: 'The email could not be sent. Nothing was delivered.'

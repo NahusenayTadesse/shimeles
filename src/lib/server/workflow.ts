@@ -269,7 +269,7 @@ async function notifyStatusChange(input: {
 		// go out, and silence is indistinguishable from a broken mail server.
 		console.warn(
 			`status "${input.status.label}" is set to notify but has no public description, ` +
-				`so nothing was sent. Add one under Configuration → Statuses.`
+				`so nothing was sent. Add one under System → Workflow statuses.`
 		);
 	}
 
@@ -577,7 +577,7 @@ export async function setVolunteerStatus(
 			throw error(
 				422,
 				total === 0
-					? 'No safeguarding checks have been set up yet, and a volunteer cannot be approved without them. Add them under Configuration → Safeguarding checklist.'
+					? 'No safeguarding checks have been set up yet, and a volunteer cannot be approved without them. Add them under Volunteers → Safeguarding checklist.'
 					: 'This volunteer cannot be approved until every safeguarding check is complete.'
 			);
 		}

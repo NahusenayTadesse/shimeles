@@ -197,7 +197,7 @@ export async function recomputeImpactMetrics(): Promise<{
 		if (!livePillarSlugs.has(slug)) {
 			console.warn(
 				`impact: no pillar has the slug "${slug}", so ${metric} will publish 0. ` +
-					`Set "${source.key}" in Configuration → Site settings to the right slug.`
+					`Set "${source.key}" in System → Site settings to the right slug.`
 			);
 		}
 
