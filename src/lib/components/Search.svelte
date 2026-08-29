@@ -160,7 +160,12 @@
 	</Dialog.Trigger>
 	<Dialog.Content class="max-w-lg! gap-4 overflow-hidden">
 		<Dialog.Header>
-			<Dialog.Title class="flex items-center justify-between gap-2">
+			<!--
+				The shortcut sits beside the word, not across from it. Pushed to the
+				far end it landed under the dialog's own close button, so the one
+				hint that teaches the shortcut was the one thing covered up.
+			-->
+			<Dialog.Title class="flex items-center gap-2">
 				Search
 				<kbd
 					class="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
