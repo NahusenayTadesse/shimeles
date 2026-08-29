@@ -4,6 +4,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
+	import ChartCanvas from '$lib/components/chart.svelte';
 	import {
 		ArrowRight,
 		ClipboardList,
@@ -221,7 +222,13 @@
 			{#if has('submissions.read')}
 				<Card.Root class="p-5">
 					<h2 class="mb-3 font-heading text-lg font-semibold">By status</h2>
-					<div class="flex flex-col gap-2">
+					<!--
+						The ring answers "how much of the board is still waiting" at a
+						glance; the list under it keeps the exact figures, which is what
+						anybody actually writes down. Neither replaces the other.
+					-->
+					<ChartCanvas series={data.statusChart} kind="doughnut" height={200} showLegend={false} />
+					<div class="mt-3 flex flex-col gap-2">
 						{#each data.byStatus as row (row.statusId ?? 'none')}
 							<div class="flex items-center justify-between gap-2">
 								<StatusBadge label={row.label} color={row.color} />

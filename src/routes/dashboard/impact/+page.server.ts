@@ -5,6 +5,7 @@ import { requirePermission } from '$lib/server/permissions';
 import { getImpactMetrics, recomputeImpactMetrics } from '$lib/server/impact';
 import { loadSettings } from '$lib/server/settings';
 import { toMoneyTotals } from '$lib/money';
+import { kindsFor, type ChartSeries } from '$lib/charts/types';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -111,9 +112,93 @@ export const load: PageServerLoad = async (event) => {
 		)
 		.map((row) => row.label);
 
+	/*
+	 * The charts.
+	 *
+	 * `kindsFor` decides what each set of numbers may be drawn as, from the
+	 * numbers themselves, so the screen never has to re-argue it — and a month
+	 * series can never come back offering a pie.
+	 */
+	const casesByPillar: ChartSeries = {
+		id: 'pillars',
+		title: 'Cases by programme',
+		unit: 'cases',
+		points: byPillar.map((row) => ({ label: row.name, value: row.cases, color: row.color })),
+		kinds: kindsFor(byPillar.map((row) => ({ label: row.name, value: row.cases })))
+	};
+
+	const peopleByPillar: ChartSeries = {
+		id: 'people',
+		title: 'People reached by programme',
+		unit: 'people',
+		points: byPillar.map((row) => ({ label: row.name, value: row.people, color: row.color })),
+		kinds: kindsFor(byPillar.map((row) => ({ label: row.name, value: row.people })))
+	};
+
+	// Regions are a long tail — a dozen of them make an unreadable pie and a
+	// worse radar — so only the ones with cases, biggest first, and bars.
+	const regionPoints = byRegion
+		.filter((row) => row.cases > 0)
+		.sort((a, b) => b.cases - a.cases)
+		.map((row) => ({ label: row.name, value: row.cases }));
+
+	const casesByRegion: ChartSeries = {
+		id: 'regions',
+		title: 'Cases by region',
+		unit: 'cases',
+		points: regionPoints,
+		kinds: kindsFor(regionPoints)
+	};
+
+	/*
+	 * Money is one chart per currency, never one chart across them.
+	 *
+	 * There is no shared scale between santim and cents, so a bar summing both
+	 * measures nothing and a pie of both is worse. Each currency gets its own
+	 * ordered series, which is the question the chart is actually asked: is
+	 * giving in this currency going up or down.
+	 */
+	// "Aug 26" rather than "2026-08": short enough for an axis, and carrying the
+	// year, which a bare month name loses the moment the window spans one.
+	const MONTH_NAMES = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec'
+	];
+	const monthLabel = (month: string) => {
+		const [year, index] = month.split('-');
+		return `${MONTH_NAMES[Number(index) - 1] ?? month} ${year.slice(2)}`;
+	};
+
+	const currencies = [...new Set(monthly.map((row) => row.currency))].sort();
+	const givingByMonth: ChartSeries[] = currencies.map((currency) => {
+		const points = byMonth.map((row) => ({
+			label: monthLabel(row.month),
+			value: row.totals.find((total) => total.currency === currency)?.amount ?? 0
+		}));
+		return {
+			id: `giving-${currency.toLowerCase()}`,
+			title: `Confirmed giving, ${currency}`,
+			currency,
+			points,
+			// Ordered time: bars or a line, and nothing that implies a whole.
+			kinds: kindsFor(points, { ordered: true })
+		};
+	});
+
 	return {
 		metrics: metrics.values,
 		metricsMoney: metrics.money,
+		charts: { casesByPillar, peopleByPillar, casesByRegion, givingByMonth },
 		overridden: metrics.overridden,
 		overrideLabels: overrides,
 		computedAt: metrics.computedAt,

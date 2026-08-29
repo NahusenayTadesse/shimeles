@@ -13,6 +13,7 @@ import { auth } from '$lib/server/auth';
 import { requireUser, pillarScope } from '$lib/server/permissions';
 import { getImpactMetrics } from '$lib/server/impact';
 import { toMoneyTotals } from '$lib/money';
+import type { ChartSeries } from '$lib/charts/types';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -139,8 +140,29 @@ export const load: PageServerLoad = async (event) => {
 			getImpactMetrics()
 		]);
 
+	/**
+	 * The status split, as a chart.
+	 *
+	 * Where the caseload sits is a proportion question — how much of the board
+	 * is still waiting on somebody — and a column of numbers makes you do that
+	 * arithmetic in your head. Fixed as a doughnut: this is a small card, and a
+	 * shape picker on it would be more control than the panel is worth.
+	 */
+	const statusChart: ChartSeries = {
+		id: 'status',
+		title: 'Cases by status',
+		unit: 'cases',
+		kinds: ['doughnut'],
+		points: byStatus.map((row) => ({
+			label: row.label ?? 'No status',
+			value: row.total,
+			color: row.color
+		}))
+	};
+
 	return {
 		byStatus,
+		statusChart,
 		recent,
 		recentVolunteers,
 		volunteersAwaitingSafeguarding: volunteerCount,

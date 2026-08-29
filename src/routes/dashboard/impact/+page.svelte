@@ -5,11 +5,13 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatMoney } from '$lib/money';
 	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
 	import { Info, RefreshCw } from '@lucide/svelte';
-	import { cn } from '$lib/utils';
-	import { formatDateTime, formatMonth } from '$lib/dates';
+	import { formatDateTime } from '$lib/dates';
+	import { page } from '$app/state';
+	import ChartCanvas from '$lib/components/chart.svelte';
+	import ChartSwitcher from '$lib/charts/chart-switcher.svelte';
+	import { resolveKind, type ChartSeries } from '$lib/charts/types';
 
 	let { data, form } = $props();
 
@@ -25,46 +27,13 @@
 	];
 
 	/**
-	 * The chart is one bar per currency per month, not one bar per month.
+	 * The shape each chart is currently drawn as.
 	 *
-	 * Heights are a share of that currency's own biggest month, because there is
-	 * no shared scale between santim and cents to draw them against — a single
-	 * bar summing both was measuring nothing. Each currency therefore reads as
-	 * its own trend line, which is the question the chart is actually asked.
+	 * Read from the URL rather than held in state, so a link to this screen
+	 * carries the view somebody chose — and so the back button undoes a change
+	 * of shape like it undoes everything else here.
 	 */
-	const currencies = $derived([
-		...new Set(data.monthly.flatMap((row) => row.totals.map((total) => total.currency)))
-	]);
-
-	const peaks = $derived(
-		new Map(
-			currencies.map((currency) => [
-				currency,
-				Math.max(
-					1,
-					...data.monthly.map(
-						(row) => row.totals.find((total) => total.currency === currency)?.amount ?? 0
-					)
-				)
-			])
-		)
-	);
-
-	const amountIn = (row: (typeof data.monthly)[number], currency: string) =>
-		row.totals.find((total) => total.currency === currency)?.amount ?? 0;
-
-	/** Stable per-currency colour, so a bar means the same thing across months. */
-	const currencyBar = (currency: string) =>
-		['bg-primary/80', 'bg-olive/80', 'bg-plum/80', 'bg-sky/80'][currencies.indexOf(currency) % 4];
-
-	const accent = (color: string) =>
-		({ clay: 'bg-clay', olive: 'bg-olive', plum: 'bg-plum', sky: 'bg-sky' })[color] ?? 'bg-primary';
-
-	const monthLabel = (month: string) => {
-		const [year, m] = month.split('-');
-		// Just the month: the chart's own axis carries the year.
-		return formatMonth(new Date(Number(year), Number(m) - 1, 1)).split(' ')[0];
-	};
+	const kindOf = (series: ChartSeries) => resolveKind(series, page.url.searchParams.get(series.id));
 
 	const fmt = (value: Date | string | null) => formatDateTime(value, 'never');
 </script>
@@ -134,76 +103,66 @@
 				</div>
 			</div>
 
-			{#if data.monthly.length}
-				<div class="mt-6">
-					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs tracking-wide text-muted-foreground uppercase">
-							Confirmed giving by month
-						</p>
-						<!-- Each currency is scaled to its own best month, so the legend has
-						     to say which bar is which; heights are not comparable across
-						     currencies and the chart does not pretend they are. -->
-						<div class="flex flex-wrap items-center gap-3">
-							{#each currencies as currency (currency)}
-								<span class="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-									<span class="size-2 rounded-full {currencyBar(currency)}"></span>
-									{currency}
-								</span>
-							{/each}
-						</div>
-					</div>
-					<div class="flex h-32 items-end gap-1.5">
-						{#each data.monthly as row (row.month)}
-							<div class="flex flex-1 flex-col items-center gap-1">
-								<div class="flex h-full w-full items-end justify-center gap-0.5">
-									{#each currencies as currency (currency)}
-										{@const amount = amountIn(row, currency)}
-										<div
-											class="flex-1 rounded-t {currencyBar(currency)}"
-											style={`height: ${Math.max(4, (amount / (peaks.get(currency) ?? 1)) * 100)}%`}
-											title={`${row.month}: ${formatMoney(amount, currency)}`}
-										></div>
-									{/each}
-								</div>
-								<span class="text-[10px] text-muted-foreground">{monthLabel(row.month)}</span>
+			{#if data.charts.givingByMonth.length}
+				<!--
+					One chart per currency, never one across them. There is no shared
+					scale between santim and cents, so a single series summing both
+					would be measuring nothing — and each currency read on its own is
+					the question anybody actually asks of this panel.
+				-->
+				<div class="mt-6 flex flex-col gap-6">
+					{#each data.charts.givingByMonth as series (series.id)}
+						<div>
+							<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+								<p class="text-xs tracking-wide text-muted-foreground uppercase">
+									{series.title}
+								</p>
+								<ChartSwitcher {series} />
 							</div>
-						{/each}
-					</div>
+							<ChartCanvas {series} kind={kindOf(series)} height={200} />
+						</div>
+					{/each}
 				</div>
 			{/if}
 		</Card.Root>
 
-		<Card.Root class="p-5">
-			<h2 class="mb-4 font-heading text-lg font-semibold">By programme</h2>
-			<div class="flex flex-col gap-3">
-				{#each data.byPillar as row (row.pillarId)}
-					<div>
-						<div class="mb-1 flex items-center justify-between gap-2 text-sm">
-							<span class="font-medium">{row.name}</span>
-							<span class="text-muted-foreground">
-								{row.cases}
-								{row.cases === 1 ? 'case' : 'cases'} · {row.people} people
-							</span>
-						</div>
-						<div class="h-2 overflow-hidden rounded-full bg-muted">
-							<div
-								class={cn('h-full rounded-full', accent(row.color))}
-								style={`width: ${Math.min(100, (row.cases / Math.max(1, ...data.byPillar.map((p) => p.cases))) * 100)}%`}
-							></div>
-						</div>
-					</div>
-				{/each}
+		<Card.Root class="flex flex-col gap-6 p-5">
+			<!--
+				Cases and people are two different questions of the same programmes —
+				a programme can carry many cases for few people, or the reverse, and
+				that gap is the interesting part. Both offer every shape the numbers
+				can bear, because a handful of programmes summing to a whole is the
+				one dataset here that genuinely reads as a pie or a radar.
+			-->
+			<div>
+				<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+					<h2 class="font-heading text-lg font-semibold">Cases by programme</h2>
+					<ChartSwitcher series={data.charts.casesByPillar} />
+				</div>
+				<ChartCanvas series={data.charts.casesByPillar} kind={kindOf(data.charts.casesByPillar)} />
 			</div>
 
-			<h2 class="mt-6 mb-3 font-heading text-lg font-semibold">By region</h2>
-			<div class="flex flex-col gap-2 text-sm">
-				{#each data.byRegion as row (row.name)}
-					<div class="flex items-center justify-between gap-2">
-						<span>{row.name}</span>
-						<span class="text-muted-foreground">{row.cases}</span>
-					</div>
-				{/each}
+			<div>
+				<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+					<h2 class="font-heading text-lg font-semibold">People reached</h2>
+					<ChartSwitcher series={data.charts.peopleByPillar} />
+				</div>
+				<ChartCanvas
+					series={data.charts.peopleByPillar}
+					kind={kindOf(data.charts.peopleByPillar)}
+				/>
 			</div>
+
+			{#if data.charts.casesByRegion.points.length}
+				<!--
+					Regions are a long tail: a dozen slices is an unreadable pie and a
+					worse radar, so this one is bars and stays bars.
+				-->
+				<div>
+					<h2 class="mb-3 font-heading text-lg font-semibold">Cases by region</h2>
+					<ChartCanvas series={data.charts.casesByRegion} kind="bar" height={200} />
+				</div>
+			{/if}
 		</Card.Root>
 	</div>
 
