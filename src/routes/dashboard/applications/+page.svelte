@@ -61,15 +61,31 @@
 
 	const fmtDate = (value: Date | string | null) => formatDateShort(value, '');
 
-	const hasFilters = $derived(
-		Boolean(
-			data.filters.search ||
-			data.filters.statusId ||
-			data.filters.pillarId ||
-			data.filters.needId ||
-			data.filters.mine ||
-			data.filters.untriaged
-		)
+	/** Named for the chips above the table, so the board says why it is short. */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.statusId && {
+				key: 'status',
+				label:
+					data.statuses.find((status) => String(status.id) === data.filters.statusId)?.label ??
+					'A status'
+			},
+			data.filters.pillarId && {
+				key: 'pillar',
+				label:
+					data.pillarOptions.find((pillar) => String(pillar.id) === data.filters.pillarId)?.name ??
+					'A programme'
+			},
+			data.filters.needId && {
+				key: 'need',
+				label:
+					data.needOptions.find((need) => String(need.id) === data.filters.needId)?.name ??
+					'A kind of help'
+			},
+			data.filters.mine && { key: 'mine', label: 'Assigned to me' },
+			data.filters.untriaged && { key: 'untriaged', label: 'No programme yet' }
+		].filter(Boolean) as { key: string; label: string }[]
 	);
 
 	const tableColumns = $derived([
@@ -154,7 +170,7 @@
 		</div>
 	</div>
 
-	<FilterBar bind:search placeholder="Reference, name, phone or email…" {hasFilters}>
+	<FilterBar bind:search placeholder="Reference, name, phone or email…" active={activeFilters}>
 		{#snippet children({ applyFilter })}
 			{#each data.pillarOptions as pillar (pillar.id)}
 				<Button

@@ -2,23 +2,14 @@
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
 	import { renderRichText } from '$lib/richtext';
-	import {
-		ArrowLeft,
-		Clock,
-		Lock,
-		Mail,
-		Phone,
-		Send,
-		StickyNote,
-		TriangleAlert
-	} from '@lucide/svelte';
+	import { Clock, Lock, Mail, Phone, Send, StickyNote, TriangleAlert } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import { formatDateTime } from '$lib/dates';
 
@@ -115,13 +106,6 @@
 <svelte:head><title>{m.fullName} · Messages</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/messages"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to messages
-	</a>
-
 	<div class="flex flex-col gap-2">
 		<div class="flex flex-wrap items-center gap-2">
 			<span class="font-mono text-sm text-muted-foreground">{m.reference}</span>

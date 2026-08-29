@@ -119,6 +119,8 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
+		/** Names this page in the breadcrumb above it. */
+		crumb: beneficiary.fullName,
 		beneficiary,
 		submissions,
 		payments,

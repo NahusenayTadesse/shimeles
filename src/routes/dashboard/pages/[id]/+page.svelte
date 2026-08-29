@@ -15,7 +15,6 @@
 	import FileUpload from '$lib/formComponents/FileUpload.svelte';
 	import { yesNo } from '$lib/dashboard/options';
 	import {
-		ArrowLeft,
 		ChevronDown,
 		ChevronUp,
 		ExternalLink,
@@ -146,13 +145,6 @@
 <svelte:head><title>{data.page.title} · Content</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/pages"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to pages
-	</a>
-
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="font-heading text-2xl font-bold">{data.page.title}</h1>

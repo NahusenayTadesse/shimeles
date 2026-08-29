@@ -67,6 +67,21 @@
 	 * and the dollar rows together would produce a number matching no bank
 	 * statement anywhere.
 	 */
+	/**
+	 * Named for the chips above the table. "Awaiting matching" is where the
+	 * screen opens rather than something anybody chose, so it gets no chip.
+	 */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.status &&
+				data.filters.status !== 'pending_reconciliation' && {
+					key: 'status',
+					label: statusTabs.find((tab) => tab.value === data.filters.status)?.label ?? 'A status'
+				}
+		].filter(Boolean) as { key: string; label: string }[]
+	);
+
 	const summary = (status: string) => {
 		const rows = data.totals.filter((row) => row.status === status);
 		return {
@@ -186,7 +201,7 @@
 	<FilterBar
 		bind:search
 		placeholder="Reference code, donor name, email or phone…"
-		hasFilters={Boolean(data.filters.search)}
+		active={activeFilters}
 	>
 		{#snippet children({ applyFilter })}
 			{#each statusTabs as tab (tab.value)}

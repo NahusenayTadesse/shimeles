@@ -109,6 +109,7 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
+		crumb: [application.reference, application.fullName].filter(Boolean).join(' · '),
 		application,
 		interests: interests.map((row) => row.name),
 		skills: skills.map((row) => row.name),

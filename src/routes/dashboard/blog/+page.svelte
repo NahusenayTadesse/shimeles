@@ -54,14 +54,28 @@
 		'sortOrder'
 	];
 
-	const hasFilters = $derived(
-		Boolean(
-			data.filters.search ||
-			data.filters.category ||
-			data.filters.createdBy ||
-			data.filters.from ||
-			data.filters.to
-		)
+	/** Named for the chips above the table, so a short archive says why. */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.category && {
+				key: 'category',
+				label:
+					data.categories.find((category) => String(category.id) === data.filters.category)?.name ??
+					'A category'
+			},
+			data.filters.createdBy && {
+				key: 'createdBy',
+				label:
+					data.creators.find((creator) => creator.id === data.filters.createdBy)?.name ??
+					'An author'
+			},
+			// One control owns both ends of the range, so one chip takes both off.
+			(data.filters.from || data.filters.to) && {
+				key: ['from', 'to'],
+				label: `Published ${data.filters.from ?? 'any time'} to ${data.filters.to ?? 'now'}`
+			}
+		].filter(Boolean) as { key: string | string[]; label: string }[]
 	);
 
 	/** Sorting is a URL parameter, not a client-side reorder — see `ServerSort`. */
@@ -116,7 +130,12 @@
 
 	<!-- Filtering and paging happen in SQL, so this screen stays usable however
 	     long the archive gets. Everything but the search box is a click. -->
-	<FilterBar bind:search placeholder="Title, excerpt, slug or author…" {hasFilters} resetsPage>
+	<FilterBar
+		bind:search
+		placeholder="Title, excerpt, slug or author…"
+		active={activeFilters}
+		resetsPage
+	>
 		{#snippet children({ applyFilter })}
 			<DateRange from={data.filters.from} to={data.filters.to} label="Any publish date" />
 

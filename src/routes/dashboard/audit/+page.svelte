@@ -61,8 +61,23 @@
 
 	const fmt = (value: Date | string | null) => formatDateTime(value, '');
 
-	const hasFilters = $derived(
-		Boolean(data.filters.action || data.filters.entityType || data.filters.search)
+	/**
+	 * Named for the chips above the table. The date window is deliberately not
+	 * one: it is always in force, one of its four buttons is always lit, and a
+	 * chip that can never be removed is furniture.
+	 */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.action && {
+				key: 'action',
+				label: data.filters.action.replace(/_/g, ' ')
+			},
+			data.filters.entityType && {
+				key: 'entity',
+				label: data.filters.entityType.replace(/_/g, ' ')
+			}
+		].filter(Boolean) as { key: string; label: string }[]
 	);
 
 	const columns = [
@@ -123,7 +138,7 @@
 		</Alert.Description>
 	</Alert.Root>
 
-	<FilterBar bind:search placeholder="Staff name or record id…" {hasFilters} resetsPage>
+	<FilterBar bind:search placeholder="Staff name or record id…" active={activeFilters} resetsPage>
 		{#snippet children({ applyFilter })}
 			{#each ranges as range (range.value)}
 				<Button

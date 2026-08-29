@@ -114,7 +114,15 @@ export const load: PageServerLoad = async (event) => {
 			.where(eq(contactMessages.id, id));
 	}
 
-	return { message, replies, statuses, subjects, staff };
+	return {
+		/** Names this page in the breadcrumb above it. */
+		crumb: [message.reference, message.fullName].filter(Boolean).join(' · '),
+		message,
+		replies,
+		statuses,
+		subjects,
+		staff
+	};
 };
 
 async function guard(event: Parameters<PageServerLoad>[0]) {

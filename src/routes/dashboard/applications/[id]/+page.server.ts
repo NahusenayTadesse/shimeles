@@ -214,6 +214,8 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	return {
+		/** Names this page in the breadcrumb above it. */
+		crumb: [submission.reference, submission.name].filter(Boolean).join(' · '),
 		submission,
 		fields,
 		notes,

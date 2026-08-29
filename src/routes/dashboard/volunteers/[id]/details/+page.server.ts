@@ -128,6 +128,13 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
+		crumbs: [
+			{
+				label: [application.referenceNumber, application.fullName].filter(Boolean).join(' · '),
+				url: `/dashboard/volunteers/${application.id}`
+			},
+			{ label: 'What they wrote' }
+		],
 		form,
 		catalog,
 		application: {

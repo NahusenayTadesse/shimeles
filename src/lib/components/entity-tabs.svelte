@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { ChevronRight } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import { activeChild, currentEntity, visibleSections } from '$lib/dashboard/nav';
 	import type { Permission } from '$lib/permissions';
@@ -26,6 +27,31 @@
 	const sections = $derived(visibleSections(counts, permissions));
 	const entity = $derived(currentEntity(sections, page.url.pathname));
 	const current = $derived(activeChild(entity?.items, page.url.pathname));
+	const tab = $derived(entity?.items?.find((item) => item.url === current));
+
+	/**
+	 * A record's own page — a volunteer, an application, one blog post — sits
+	 * below a tab rather than on it. The tab bar alone cannot say that: it
+	 * highlights "All volunteers" whether you are looking at the list or at
+	 * somebody inside it, and it never says who.
+	 *
+	 * So a page deeper than its tab draws a trail. What it is called has to
+	 * come from the page, which is the only thing that knows a reference
+	 * number from a name, so a load returns `crumb` (or `crumbs`, for a page
+	 * two levels down). A page that returns neither still gets the way back.
+	 */
+	const isDeep = $derived(current !== null && page.url.pathname !== current);
+
+	type Crumb = { label: string; url?: string };
+
+	const crumbs = $derived.by<Crumb[]>(() => {
+		const supplied =
+			(page.data as Record<string, unknown>)?.crumbs ??
+			(page.data as Record<string, unknown>)?.crumb;
+		if (typeof supplied === 'string') return supplied ? [{ label: supplied }] : [];
+		if (Array.isArray(supplied)) return supplied.filter((entry) => entry && entry.label);
+		return [];
+	});
 </script>
 
 {#if entity}
@@ -61,5 +87,23 @@
 				{/each}
 			</nav>
 		</div>
+
+		{#if isDeep && current}
+			<div class="flex flex-wrap items-center gap-1 px-2 pt-1 pb-2 text-xs text-muted-foreground">
+				<a href={current} class="no-underline hover:text-foreground hover:underline">
+					{tab?.title ?? entity.title}
+				</a>
+				{#each crumbs as crumb, index (crumb.label + index)}
+					<ChevronRight class="size-3 shrink-0 opacity-60" />
+					{#if crumb.url && index < crumbs.length - 1}
+						<a href={crumb.url} class="no-underline hover:text-foreground hover:underline">
+							{crumb.label}
+						</a>
+					{:else}
+						<span class="font-medium text-foreground">{crumb.label}</span>
+					{/if}
+				{/each}
+			</div>
+		{/if}
 	</div>
 {/if}

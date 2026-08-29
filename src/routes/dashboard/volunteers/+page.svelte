@@ -24,17 +24,6 @@
 
 	const blockedCount = $derived(data.rows.filter((row) => !row.safeguardingComplete).length);
 
-	const hasFilters = $derived(
-		Boolean(
-			data.filters.search ||
-			data.filters.statusId ||
-			data.filters.blocked ||
-			data.filters.skillId ||
-			data.filters.slotId ||
-			data.filters.professional
-		)
-	);
-
 	const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 	const skillItems = $derived([
@@ -52,6 +41,31 @@
 
 	const statusItems = $derived(
 		data.statuses.map((status) => ({ value: String(status.id), name: status.label }))
+	);
+
+	/** Named for the chips above the table, so a near-empty list says why. */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.statusId && {
+				key: 'status',
+				label:
+					data.statuses.find((status) => String(status.id) === data.filters.statusId)?.label ??
+					'A status'
+			},
+			data.filters.blocked && { key: 'blocked', label: 'Safeguarding incomplete' },
+			data.filters.skillId && {
+				key: 'skill',
+				label:
+					data.skillOptions.find((skill) => String(skill.id) === data.filters.skillId)?.name ??
+					'A skill'
+			},
+			data.filters.slotId && {
+				key: 'slot',
+				label: slotItems.find((slot) => slot.value === data.filters.slotId)?.name ?? 'A time slot'
+			},
+			data.filters.professional && { key: 'professional', label: 'Licensed professionals' }
+		].filter(Boolean) as { key: string; label: string }[]
 	);
 
 	const reviewerItems = $derived([
@@ -185,7 +199,7 @@
 		</p>
 	</div>
 
-	<FilterBar bind:search placeholder="Name, reference, email or phone…" {hasFilters}>
+	<FilterBar bind:search placeholder="Name, reference, email or phone…" active={activeFilters}>
 		{#snippet children({ applyFilter })}
 			{#each data.statuses as status (status.id)}
 				<Button

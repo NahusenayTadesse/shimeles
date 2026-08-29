@@ -51,6 +51,23 @@
 		{ value: 'all', label: 'All' }
 	];
 
+	/**
+	 * Named for the chips above the table. "Open" is where the screen starts
+	 * rather than something anybody chose, so it gets no chip.
+	 */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.status &&
+				data.filters.status !== 'open' && {
+					key: 'status',
+					label: statusTabs.find((tab) => tab.value === data.filters.status)?.label ?? 'A status'
+				},
+			data.filters.handover === 'pickup' && { key: 'handover', label: 'Needs collecting' },
+			data.filters.perishable && { key: 'perishable', label: 'Perishable' }
+		].filter(Boolean) as { key: string; label: string }[]
+	);
+
 	const summary = (status: string) => data.totals.find((row) => row.status === status);
 
 	const openCount = $derived(
@@ -193,7 +210,7 @@
 	<FilterBar
 		bind:search
 		placeholder="Reference, donor, organisation, what was offered, or town…"
-		hasFilters={Boolean(data.filters.search || data.filters.handover || data.filters.perishable)}
+		active={activeFilters}
 	>
 		{#snippet children({ applyFilter })}
 			{#each statusTabs as tab (tab.value)}

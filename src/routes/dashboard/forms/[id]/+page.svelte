@@ -14,7 +14,6 @@
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import {
-		ArrowLeft,
 		ChevronDown,
 		ChevronUp,
 		ExternalLink,
@@ -88,13 +87,6 @@
 <svelte:head><title>{data.definition.name} · Form builder</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/forms"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to forms
-	</a>
-
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="font-heading text-2xl font-bold">{data.definition.name}</h1>

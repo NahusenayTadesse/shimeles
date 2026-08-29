@@ -61,7 +61,8 @@ export const load: PageServerLoad = async (event) => {
 
 	audit({ event, action: 'viewed', entityType: 'blog_post', entityId: id });
 
-	return { post, gallery, videos };
+	/** `crumb` names this page in the breadcrumb above it. */
+	return { crumb: post.title, post, gallery, videos };
 };
 
 const bodySchema = z.object({ body: z.string().max(200000).optional() });

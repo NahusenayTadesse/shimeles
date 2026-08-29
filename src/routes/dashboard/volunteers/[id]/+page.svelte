@@ -8,7 +8,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { ArrowLeft, Copy, Link2Off, Lock, Mail, Phone, RefreshCw, Send } from '@lucide/svelte';
+	import { Copy, Link2Off, Lock, Mail, Phone, RefreshCw, Send } from '@lucide/svelte';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import { VOLUNTEER_FORM_SECTIONS, LOCKED_SECTIONS } from '$lib/volunteer-form-parts';
 	import { formatDate } from '$lib/dates';
@@ -63,13 +63,6 @@
 <svelte:head><title>{data.application.fullName} · Volunteers</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/volunteers"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to volunteers
-	</a>
-
 	<div class="flex flex-col gap-2">
 		<div class="flex flex-wrap items-center gap-2">
 			<span class="font-mono text-sm text-muted-foreground">{data.application.reference}</span>

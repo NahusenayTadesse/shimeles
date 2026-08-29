@@ -4,7 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import ActionNote from '$lib/dashboard/action-note.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
@@ -18,7 +18,6 @@
 	import { formatDateTime } from '$lib/dates';
 	import { genderLabel } from '$lib/gender';
 	import {
-		ArrowLeft,
 		FileText,
 		Image as ImageIcon,
 		Link2,
@@ -218,13 +217,6 @@
 {/if}
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/applications"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to applications
-	</a>
-
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div class="flex flex-col gap-2">
 			<div class="flex flex-wrap items-center gap-2">

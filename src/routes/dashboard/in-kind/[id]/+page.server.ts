@@ -213,6 +213,8 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
+		/** Names this page in the breadcrumb above it. */
+		crumb: [offer.reference, offer.summary].filter(Boolean).join(' · '),
 		offer,
 		items,
 		photos,

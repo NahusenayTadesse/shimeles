@@ -1,12 +1,11 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import StatusBadge from '$lib/dashboard/status-badge.svelte';
 	import { formatMoney, sumByCurrency } from '$lib/money';
 	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
-	import { ArrowLeft, Eye, Mail, Phone, Users } from '@lucide/svelte';
+	import { Eye, Mail, Phone, Users } from '@lucide/svelte';
 	import { formatDate } from '$lib/dates';
 
 	let { data } = $props();
@@ -32,13 +31,6 @@
 <svelte:head><title>{b.fullName} · Beneficiaries</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/beneficiaries"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to beneficiaries
-	</a>
-
 	<div>
 		<h1 class="font-heading text-2xl font-bold">{b.fullName}</h1>
 		<p class="mt-1 text-sm text-muted-foreground">

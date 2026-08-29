@@ -29,17 +29,30 @@
 
 	let search = $state(data.filters.search);
 
-	const hasFilters = $derived(
-		Boolean(
-			data.filters.search ||
-			data.filters.statusId ||
-			data.filters.subjectId ||
-			data.filters.unread ||
-			data.filters.unanswered ||
-			data.filters.mine ||
-			data.filters.spam
-		)
+	/** Named for the chips above the table, so a near-empty list says why. */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.statusId && {
+				key: 'status',
+				label:
+					data.statuses.find((status) => String(status.id) === data.filters.statusId)?.label ??
+					'A status'
+			},
+			data.filters.subjectId && {
+				key: 'subject',
+				label:
+					data.subjects.find((subject) => String(subject.id) === data.filters.subjectId)?.name ??
+					'A topic'
+			},
+			data.filters.unread && { key: 'unread', label: 'Unread' },
+			data.filters.unanswered && { key: 'unanswered', label: 'Not yet answered' },
+			data.filters.mine && { key: 'mine', label: 'Assigned to me' },
+			data.filters.spam && { key: 'spam', label: 'Spam' }
+		].filter(Boolean) as { key: string; label: string }[]
 	);
+
+	const hasFilters = $derived(activeFilters.length > 0);
 
 	const unansweredCount = $derived(data.rows.filter((row) => !row.firstRespondedAt).length);
 
@@ -76,7 +89,7 @@
 		</p>
 	</div>
 
-	<FilterBar bind:search placeholder="Name, reference, email or message…" {hasFilters}>
+	<FilterBar bind:search placeholder="Name, reference, email or message…" active={activeFilters}>
 		{#snippet children({ applyFilter })}
 			{#each data.statuses as status (status.id)}
 				<Button

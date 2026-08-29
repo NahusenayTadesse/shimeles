@@ -44,6 +44,8 @@ export const load: PageServerLoad = async (event) => {
 	audit({ event, action: 'viewed', entityType: 'form_definition', entityId: id });
 
 	return {
+		/** Names this page in the breadcrumb above it. */
+		crumb: definition.name,
 		definition,
 		fields,
 		// The preview is built through the same loader the public route uses, so

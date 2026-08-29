@@ -3,13 +3,13 @@
 	import { toast } from 'svelte-sonner';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
 	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import DetailsFields from '$lib/volunteer/DetailsFields.svelte';
-	import { ArrowLeft, ShieldCheck } from '@lucide/svelte';
+	import { ShieldCheck } from '@lucide/svelte';
 	import { ALWAYS_ASKED, VOLUNTEER_FORM_SECTIONS } from '$lib/volunteer-form-parts';
 	import { formatDate } from '$lib/dates';
 
@@ -65,13 +65,6 @@
 <svelte:head><title>Their details · {data.application.fullName}</title></svelte:head>
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/volunteers/{data.application.id}"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to {data.application.fullName}
-	</a>
-
 	<div class="flex flex-col gap-2">
 		<span class="font-mono text-sm text-muted-foreground">{data.application.reference}</span>
 		<h1 class="font-heading text-2xl font-bold">{data.application.fullName}'s details</h1>

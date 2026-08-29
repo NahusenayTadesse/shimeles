@@ -19,10 +19,6 @@
 
 	let search = $state(data.filters.search);
 
-	const hasFilters = $derived(
-		Boolean(data.filters.search || data.filters.source || data.filters.state !== 'active')
-	);
-
 	const SOURCE_LABELS: Record<string, string> = {
 		homepage: 'Homepage',
 		footer: 'Footer',
@@ -30,6 +26,24 @@
 		contact_form: 'Contact form',
 		manual: 'Added by staff'
 	};
+
+	/**
+	 * Named for the chips above the table. "Subscribed" is the default rather
+	 * than a filter, so only the other two states earn a chip — and they earn
+	 * it loudly, since a list of unsubscribed people looks exactly like a list
+	 * of subscribers until you notice.
+	 */
+	const activeFilters = $derived(
+		[
+			data.filters.search && { key: 'q', label: `Matching "${data.filters.search}"` },
+			data.filters.source && {
+				key: 'source',
+				label: SOURCE_LABELS[data.filters.source] ?? data.filters.source
+			},
+			data.filters.state === 'unsubscribed' && { key: 'state', label: 'Unsubscribed only' },
+			data.filters.state === 'all' && { key: 'state', label: 'Subscribed and unsubscribed' }
+		].filter(Boolean) as { key: string; label: string }[]
+	);
 
 	const fmt = (value: Date | string | null) => formatDate(value, '');
 
@@ -97,7 +111,7 @@
 		{/each}
 	</div>
 
-	<FilterBar bind:search placeholder="Email or name…" {hasFilters}>
+	<FilterBar bind:search placeholder="Email or name…" active={activeFilters}>
 		{#snippet children({ applyFilter })}
 			<Button
 				variant={data.filters.state === 'active' ? 'default' : 'outline'}

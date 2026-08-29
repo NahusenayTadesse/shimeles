@@ -5,7 +5,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -31,7 +31,6 @@
 		VALUATION_LABELS
 	} from '$lib/inKind';
 	import {
-		ArrowLeft,
 		Ban,
 		CalendarClock,
 		CheckCircle2,
@@ -162,13 +161,6 @@
 {/if}
 
 <div class="flex flex-col gap-4">
-	<a
-		href="/dashboard/in-kind"
-		class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-fit' })}
-	>
-		<ArrowLeft class="size-4" /> Back to gifts in kind
-	</a>
-
 	<div class="flex flex-col gap-2">
 		<div class="flex flex-wrap items-center gap-2">
 			<span class="font-mono text-sm text-muted-foreground">{o.reference}</span>

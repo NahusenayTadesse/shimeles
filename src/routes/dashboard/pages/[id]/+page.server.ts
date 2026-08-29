@@ -44,7 +44,8 @@ export const load: PageServerLoad = async (event) => {
 
 	audit({ event, action: 'viewed', entityType: 'page', entityId: id });
 
-	return { page, blocks };
+	/** `crumb` names this page in the breadcrumb above it. */
+	return { crumb: page.title, page, blocks };
 };
 
 const BLOCK_TYPES = [
