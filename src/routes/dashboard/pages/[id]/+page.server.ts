@@ -9,6 +9,7 @@ import { invalidateContent } from '$lib/server/content';
 import { savePublicImage } from '$lib/server/upload';
 import { audit } from '$lib/server/audit';
 import { METRIC_LABELS, isMetricKey, isMoneyMetric } from '$lib/metrics';
+import { PUBLIC_CHARTS, isPublicChartKey } from '$lib/server/charts';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -45,13 +46,20 @@ export const load: PageServerLoad = async (event) => {
 	audit({ event, action: 'viewed', entityType: 'page', entityId: id });
 
 	/** `crumb` names this page in the breadcrumb above it. */
-	return { crumb: page.title, page, blocks };
+	return {
+		crumb: page.title,
+		page,
+		blocks,
+		/** The series a chart block may point at, for the editor's dropdown. */
+		chartOptions: Object.entries(PUBLIC_CHARTS).map(([value, name]) => ({ value, name }))
+	};
 };
 
 const BLOCK_TYPES = [
 	'rich_text',
 	'image',
 	'stat_counter',
+	'impact_chart',
 	'quote',
 	'cta_button',
 	'pillar_grid',
@@ -80,6 +88,8 @@ const blockSchema = z.object({
 	alt: z.string().max(300).optional(),
 	caption: z.string().max(500).optional(),
 	slug: z.string().max(120).optional(),
+	/** `impact_chart` only: which named public series to draw. */
+	series: z.string().max(60).optional(),
 	/** `stats` and `values` are edited as JSON — they are lists of objects. */
 	json: z.string().max(20000).optional(),
 	/** In Memoriam only. */
@@ -113,6 +123,18 @@ async function buildContent(
 			return {
 				content: { src, alt: trim(data.alt) ?? '', caption: trim(data.caption) }
 			};
+		}
+
+		case 'impact_chart': {
+			// The series name is checked against the allow-list rather than stored
+			// as typed: a block pointing at a key nothing serves would publish a
+			// caption over a hole.
+			const series = trim(data.series);
+			if (!isPublicChartKey(series)) return { content: {}, error: 'Choose what to chart.' };
+			// No `heading` here: the block's own "heading above the block" field is
+			// rendered by the wrapper for every type, and storing a second one only
+			// gave the chart two chances to say the same thing.
+			return { content: { series, caption: trim(data.caption) } };
 		}
 
 		case 'quote':

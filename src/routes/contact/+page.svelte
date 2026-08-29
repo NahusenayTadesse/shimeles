@@ -108,6 +108,7 @@
 				blocks={contentBlocks}
 				pillars={data.blocks?.pillars ?? []}
 				initiatives={data.blocks?.initiatives ?? []}
+				charts={data.blocks?.charts ?? {}}
 				payments={data.blocks?.payments ?? []}
 			/>
 		{/if}

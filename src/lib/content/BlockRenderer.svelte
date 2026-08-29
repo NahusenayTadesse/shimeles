@@ -24,6 +24,8 @@
 		RenderTestimonial
 	} from '$lib/content/types';
 	import type { RenderForm } from '$lib/forms/types';
+	import ChartCanvas from '$lib/components/chart.svelte';
+	import type { ChartSeries } from '$lib/charts/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
 
 	/**
@@ -43,6 +45,7 @@
 		blocks,
 		pillars = [],
 		initiatives = [],
+		charts = {},
 		metrics = {},
 		moneyTotals = {},
 		payments = [],
@@ -56,6 +59,8 @@
 		blocks: RenderBlock[];
 		pillars?: RenderPillar[];
 		initiatives?: RenderInitiative[];
+		/** Named chart series, keyed by the name an `impact_chart` block asks for. */
+		charts?: Record<string, ChartSeries>;
 		/** Count metrics only. Money arrives per currency in `moneyTotals`. */
 		metrics?: Record<string, number>;
 		/** Money metric key → one total per currency, in that currency's minor units. */
@@ -236,6 +241,33 @@
 						{/each}
 					</div>
 				</div>
+			{:else if block.type === 'impact_chart'}
+				<!--
+					`{ series, heading, caption }`. `series` names one of the allow-listed
+					public charts; the data is fetched in `pageData.ts` only for the keys
+					a page actually asks for.
+
+					One shape, chosen by the data, and no picker. The dashboard offers a
+					switcher because staff are interrogating figures they already know; a
+					donor is being told something, and four ways to redraw the same ring
+					is a question they did not ask.
+				-->
+				{@const series = charts[String(block.content.series ?? '')]}
+				{#if series}
+					<!--
+						No heading of its own: every block already renders the one a staff
+						member typed into "heading above the block", and a second one drew
+						the same words twice.
+					-->
+					<div use:reveal class="max-w-2xl">
+						{#if block.content.caption}
+							<p class="text-muted-foreground">{block.content.caption}</p>
+						{/if}
+						<div class="mt-6">
+							<ChartCanvas {series} kind={series.kinds[0]} height={320} />
+						</div>
+					</div>
+				{/if}
 			{:else if block.type === 'quote'}
 				<!-- `{ text, attribution }` -->
 				<div class="mx-auto flex max-w-2xl justify-center">

@@ -126,6 +126,7 @@ export const contentBlocks = sqliteTable(
 				'rich_text',
 				'image',
 				'stat_counter',
+				'impact_chart',
 				'quote',
 				'cta_button',
 				'pillar_grid',

@@ -581,6 +581,7 @@
 			blocks={data.page.blocks}
 			pillars={data.blocks.pillars}
 			initiatives={data.blocks.initiatives}
+			charts={data.blocks?.charts ?? {}}
 			metrics={data.metrics}
 			moneyTotals={data.moneyTotals}
 			payments={data.blocks.payments}

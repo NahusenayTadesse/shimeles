@@ -39,6 +39,7 @@
 		{ value: 'quote', name: 'Quote' },
 		{ value: 'cta_button', name: 'Button' },
 		{ value: 'stat_counter', name: 'Impact counters' },
+		{ value: 'impact_chart', name: 'Impact chart' },
 		{ value: 'values_list', name: 'Values list' },
 		{ value: 'pillar_grid', name: 'Pillar grid' },
 		{ value: 'initiative_grid', name: 'Future initiatives grid' },
@@ -122,6 +123,11 @@
 				return 'Renders the payment accounts';
 			case 'stat_counter':
 				return `${((block.content as any)?.stats ?? []).length} counters`;
+			case 'impact_chart':
+				return (
+					data.chartOptions.find((option) => option.value === content(block, 'series'))?.name ??
+					'No chart chosen'
+				);
 			case 'values_list':
 				return `${((block.content as any)?.values ?? []).length} values`;
 			case 'memoriam':
@@ -368,6 +374,34 @@
 							id="label"
 							name="label"
 							value={content(editingBlock ?? ({ content: {} } as never), 'label')}
+						/>
+					</div>
+				{:else if blockType === 'impact_chart'}
+					<!--
+						A dropdown of named series, not a free field: the list is the
+						allow-list the server checks against, so a page cannot be pointed
+						at an aggregate nobody decided to publish.
+					-->
+					<div class="flex flex-col gap-2">
+						<Label for="series">What to chart</Label>
+						<SelectComp
+							name="series"
+							items={data.chartOptions}
+							value={content(editingBlock ?? ({ content: {} } as never), 'series')}
+							placeholder="Choose a chart"
+						/>
+						<p class="text-xs text-muted-foreground">
+							Drawn as a ring, with the figures beneath it for anyone using a screen reader. The
+							chart is left off the page entirely while there is nothing to show.
+						</p>
+					</div>
+					<div class="flex flex-col gap-2">
+						<Label for="caption">Line under the heading</Label>
+						<Input
+							id="caption"
+							name="caption"
+							placeholder="Where your giving went last year."
+							value={content(editingBlock ?? ({ content: {} } as never), 'caption')}
 						/>
 					</div>
 				{:else if blockType === 'stat_counter'}

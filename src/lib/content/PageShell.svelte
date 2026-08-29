@@ -9,6 +9,7 @@
 		RenderPillar,
 		RenderTestimonial
 	} from '$lib/content/types';
+	import type { ChartSeries } from '$lib/charts/types';
 	import type { RenderForm } from '$lib/forms/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import type { MoneyTotal } from '$lib/money';
@@ -23,6 +24,7 @@
 		page,
 		pillars = [],
 		initiatives = [],
+		charts = {},
 		metrics = {},
 		moneyTotals = {},
 		payments = [],
@@ -37,6 +39,7 @@
 		page: RenderPage;
 		pillars?: RenderPillar[];
 		initiatives?: RenderInitiative[];
+		charts?: Record<string, ChartSeries>;
 		metrics?: Record<string, number>;
 		/** Money metric key → one total per currency; birr and dollars never merge. */
 		moneyTotals?: Record<string, MoneyTotal[]>;
@@ -88,6 +91,7 @@
 		blocks={page.blocks}
 		{pillars}
 		{initiatives}
+		{charts}
 		{metrics}
 		{moneyTotals}
 		{payments}

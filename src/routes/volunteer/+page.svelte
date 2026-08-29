@@ -111,6 +111,7 @@
 					blocks={contentBlocks}
 					pillars={data.blocks?.pillars ?? []}
 					initiatives={data.blocks?.initiatives ?? []}
+					charts={data.blocks?.charts ?? {}}
 					metrics={data.blocks?.metrics ?? {}}
 					moneyTotals={data.blocks?.moneyTotals ?? {}}
 					payments={data.blocks?.payments ?? []}

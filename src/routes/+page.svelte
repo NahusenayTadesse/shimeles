@@ -18,6 +18,7 @@
 	page={data.page}
 	pillars={data.pillars}
 	initiatives={data.initiatives}
+	charts={data.charts}
 	metrics={data.metrics}
 	moneyTotals={data.moneyTotals}
 	payments={data.payments}
