@@ -10,8 +10,6 @@ import {
 	LayoutDashboard,
 	LayoutTemplate,
 	Languages,
-	Landmark,
-	LifeBuoy,
 	Mail,
 	ListChecks,
 	MapPin,
@@ -42,6 +40,14 @@ export type NavSection = { section: string | null; items: NavEntry[] };
  * The dashboard's full navigation tree — one definition shared by the
  * sidebar (`app-sidebar.svelte`) and the command palette (`Search.svelte`),
  * so a new route only needs adding here.
+ *
+ * Organised by *thing*, not by kind of screen: everything about volunteers —
+ * the applications, the safeguarding checklist, and the vocabulary the public
+ * form is built from — sits under Volunteers, and the same holds for
+ * applications, messages, donations and gifts. A coordinator setting up their
+ * corner of the site never has to know that "setup" used to live somewhere
+ * else. Only config that belongs to no single entity (statuses, regions,
+ * users, the audit log) sits apart, under System.
  */
 export function dashboardSections(counts: Record<string, number> = {}): NavSection[] {
 	return [
@@ -49,43 +55,68 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 			section: null,
 			items: [
 				{ title: 'Overview', url: '/dashboard', icon: LayoutDashboard },
+				{ title: 'Impact', url: '/dashboard/impact', icon: BarChart3 }
+			]
+		},
+		{
+			section: 'Case work',
+			items: [
 				{
 					title: 'Applications',
 					url: '/dashboard/applications',
 					icon: ClipboardList,
 					counter: counts.newApplications,
-					permission: 'submissions.read'
+					permission: 'submissions.read',
+					items: [
+						{ title: 'All applications', url: '/dashboard/applications' },
+						{
+							title: 'Kinds of help',
+							url: '/dashboard/assistance-needs',
+							permission: 'settings.manage'
+						},
+						{
+							title: 'Need groups',
+							url: '/dashboard/assistance-needs/categories',
+							permission: 'settings.manage'
+						},
+						{ title: 'Languages', url: '/dashboard/languages', permission: 'settings.manage' }
+					]
 				},
 				{
 					title: 'Volunteers',
 					url: '/dashboard/volunteers',
 					icon: HandHeart,
 					counter: counts.newVolunteers,
-					permission: 'volunteers.read'
+					permission: 'volunteers.read',
+					items: [
+						{ title: 'All volunteers', url: '/dashboard/volunteers' },
+						{
+							title: 'Safeguarding checklist',
+							url: '/dashboard/safeguarding',
+							permission: 'volunteers.safeguarding'
+						},
+						{
+							title: 'Skills',
+							url: '/dashboard/volunteer-skills',
+							permission: 'volunteers.write'
+						},
+						{
+							title: 'Skill groups',
+							url: '/dashboard/volunteer-skills/categories',
+							permission: 'volunteers.write'
+						},
+						{
+							title: 'Time slots',
+							url: '/dashboard/volunteer-availability',
+							permission: 'volunteers.write'
+						},
+						{
+							title: 'Professions',
+							url: '/dashboard/volunteer-professions',
+							permission: 'volunteers.write'
+						}
+					]
 				},
-				{
-					title: 'Messages',
-					url: '/dashboard/messages',
-					icon: ScrollText,
-					counter: counts.newMessages,
-					permission: 'submissions.read'
-				},
-				{
-					title: 'Newsletter',
-					url: '/dashboard/newsletter',
-					icon: Mail,
-					permission: 'submissions.read'
-				},
-				{
-					title: 'Impact',
-					url: '/dashboard/impact',
-					icon: BarChart3
-				}
-			]
-		},
-		{
-			section: 'People',
-			items: [
 				{
 					title: 'Beneficiaries',
 					url: '/dashboard/beneficiaries',
@@ -95,6 +126,32 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 						{ title: 'Beneficiaries', url: '/dashboard/beneficiaries' },
 						{ title: 'Households', url: '/dashboard/households' }
 					]
+				},
+				{
+					title: 'Messages',
+					url: '/dashboard/messages',
+					icon: ScrollText,
+					counter: counts.newMessages,
+					permission: 'submissions.read',
+					items: [
+						{ title: 'All messages', url: '/dashboard/messages' },
+						{
+							title: 'Enquiry topics',
+							url: '/dashboard/contact-subjects',
+							permission: 'settings.manage'
+						},
+						{
+							title: 'Offices',
+							url: '/dashboard/contact-offices',
+							permission: 'settings.manage'
+						}
+					]
+				},
+				{
+					title: 'Newsletter',
+					url: '/dashboard/newsletter',
+					icon: Mail,
+					permission: 'submissions.read'
 				}
 			]
 		},
@@ -110,7 +167,22 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 					items: [
 						{ title: 'Reconciliation', url: '/dashboard/donations' },
 						{ title: 'Donors', url: '/dashboard/donors' },
-						{ title: 'Recurring pledges', url: '/dashboard/pledges' }
+						{ title: 'Recurring pledges', url: '/dashboard/pledges' },
+						{
+							title: 'Payment methods',
+							url: '/dashboard/payment-methods',
+							permission: 'settings.manage'
+						},
+						{
+							title: 'Payment accounts',
+							url: '/dashboard/payment-accounts',
+							permission: 'settings.manage'
+						},
+						{
+							title: 'Donation links',
+							url: '/dashboard/donation-links',
+							permission: 'settings.manage'
+						}
 					]
 				},
 				{
@@ -118,24 +190,21 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 					url: '/dashboard/in-kind',
 					icon: Package,
 					counter: counts.newInKind,
-					permission: 'inkind.read'
+					permission: 'inkind.read',
+					items: [
+						{ title: 'Offers of goods', url: '/dashboard/in-kind' },
+						{
+							title: 'Gift categories',
+							url: '/dashboard/gift-categories',
+							permission: 'settings.manage'
+						}
+					]
 				},
 				{
 					title: 'Disbursements',
 					url: '/dashboard/disbursements',
 					icon: Wallet,
 					permission: 'disbursements.read'
-				},
-				{
-					title: 'Payment details',
-					url: '/dashboard/payment-methods',
-					icon: Landmark,
-					permission: 'settings.manage',
-					items: [
-						{ title: 'Methods', url: '/dashboard/payment-methods' },
-						{ title: 'Accounts', url: '/dashboard/payment-accounts' },
-						{ title: 'Donation links', url: '/dashboard/donation-links' }
-					]
 				}
 			]
 		},
@@ -207,84 +276,32 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 					url: '/dashboard/help-topics',
 					icon: CircleHelp,
 					permission: 'content.manage'
-				},
+				}
+			]
+		},
+		{
+			section: 'System',
+			items: [
 				{
 					title: 'Site settings',
 					url: '/dashboard/settings',
 					icon: Settings,
 					permission: 'settings.manage'
-				}
-			]
-		},
-		{
-			section: 'Configuration',
-			items: [
+				},
 				{
+					// Shared by applications, volunteers, donations and messages
+					// alike, so it belongs to none of them.
 					title: 'Workflow statuses',
 					url: '/dashboard/statuses',
 					icon: ListChecks,
 					permission: 'settings.manage'
 				},
 				{
-					title: 'Safeguarding checklist',
-					url: '/dashboard/safeguarding',
-					icon: ListChecks,
-					permission: 'volunteers.safeguarding'
-				},
-				{
-					// The vocabulary the public volunteer form is built from. Grouped
-					// under one item because a coordinator adding a skill, a shift and
-					// a profession is doing one job, not three.
-					title: 'Volunteer setup',
-					url: '/dashboard/volunteer-skills',
-					icon: HandHeart,
-					permission: 'volunteers.write',
-					items: [
-						{ title: 'Skills', url: '/dashboard/volunteer-skills' },
-						{ title: 'Skill groups', url: '/dashboard/volunteer-skills/categories' },
-						{ title: 'Time slots', url: '/dashboard/volunteer-availability' },
-						{ title: 'Professions', url: '/dashboard/volunteer-professions' }
-					]
-				},
-				{
-					// The vocabulary behind `/apply`: what someone can ask for, how it
-					// is grouped, and the languages they may write in.
-					title: 'Apply setup',
-					url: '/dashboard/assistance-needs',
-					icon: LifeBuoy,
-					permission: 'settings.manage',
-					items: [
-						{ title: 'Kinds of help', url: '/dashboard/assistance-needs' },
-						{ title: 'Need groups', url: '/dashboard/assistance-needs/categories' },
-						{ title: 'Languages', url: '/dashboard/languages' }
-					]
-				},
-				{
-					// The topics the contact form offers and where each one is routed,
-					// plus the addresses shown beside it.
-					title: 'Contact setup',
-					url: '/dashboard/contact-subjects',
-					icon: MessageSquareQuote,
-					permission: 'settings.manage',
-					items: [
-						{ title: 'Enquiry topics', url: '/dashboard/contact-subjects' },
-						{ title: 'Offices', url: '/dashboard/contact-offices' }
-					]
-				},
-				{
-					// The categories the public goods form is built from, and the
-					// questions each one brings with it.
-					title: 'Gift categories',
-					url: '/dashboard/gift-categories',
-					icon: Package,
+					title: 'Regions',
+					url: '/dashboard/regions',
+					icon: MapPin,
 					permission: 'settings.manage'
 				},
-				{ title: 'Regions', url: '/dashboard/regions', icon: MapPin, permission: 'settings.manage' }
-			]
-		},
-		{
-			section: 'Administration',
-			items: [
 				{
 					title: 'Users & roles',
 					url: '/dashboard/users',

@@ -23,14 +23,37 @@
 		closeSidebar: () => void;
 	} = $props();
 
-	function isActive(url: string): boolean {
+	/**
+	 * A link owns the current page when it is that page or a page beneath it —
+	 * compared segment by segment, so `/dashboard/donations` never claims
+	 * `/dashboard/donation-links`.
+	 */
+	function matches(url: string): boolean {
 		const p = page.url.pathname;
 		if (url === '/dashboard') return p === '/dashboard';
-		return p.startsWith(url) && p !== '/dashboard';
+		return p === url || p.startsWith(url + '/');
 	}
 
-	function isExact(url: string): boolean {
-		return page.url.pathname === url;
+	/**
+	 * A group's children no longer live under its own URL — Volunteers holds
+	 * the skills and the safeguarding checklist too — so a group is open and
+	 * highlighted when it, or any child it shows, owns the page.
+	 */
+	function groupActive(item: { url: string; items?: { url: string }[] }): boolean {
+		return matches(item.url) || (item.items ?? []).some((sub) => matches(sub.url));
+	}
+
+	/**
+	 * Only the most specific child lights up: on `/dashboard/volunteer-skills/categories`
+	 * that is "Skill groups", not "Skills".
+	 */
+	function activeSub(items: { url: string }[] = []): string | null {
+		return items
+			.filter((sub) => matches(sub.url))
+			.reduce<string | null>(
+				(best, sub) => (best && best.length >= sub.url.length ? best : sub.url),
+				null
+			);
 	}
 
 	const formatCount = (count: number): string => (count > 99 ? '99+' : String(count));
@@ -64,7 +87,8 @@
 			{#each items as item (item.title)}
 				{#if item.items}
 					<!-- Collapsible group -->
-					<Collapsible.Root open={isActive(item.url)} class="group/collapsible">
+					{@const activeChild = activeSub(item.items)}
+					<Collapsible.Root open={groupActive(item)} class="group/collapsible">
 						{#snippet child({ props })}
 							<div {...props}>
 								<!-- Parent trigger -->
@@ -73,7 +97,7 @@
 										goto(item.url);
 										closeSidebar();
 									}}
-									class={linkClass(isActive(item.url))}
+									class={linkClass(groupActive(item))}
 								>
 									{#if item.icon}
 										<item.icon class="h-3.75 w-3.75 shrink-0 opacity-80" />
@@ -121,7 +145,7 @@
 												onclick={closeSidebar}
 												class={cn(
 													'flex items-center gap-2 rounded-md px-2 py-[5px] text-[12px] no-underline transition-colors duration-150',
-													isExact(sub.url)
+													activeChild === sub.url
 														? 'bg-sidebar-primary font-medium text-sidebar-primary-foreground'
 														: 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
 												)}
@@ -129,7 +153,7 @@
 												<span
 													class={cn(
 														'h-1 w-1 shrink-0 rounded-full transition-colors',
-														isExact(sub.url)
+														activeChild === sub.url
 															? 'bg-sidebar-primary-foreground'
 															: 'bg-sidebar-foreground/40'
 													)}
@@ -145,7 +169,7 @@
 				{:else}
 					<!-- Plain link -->
 					<div class="relative">
-						<a href={item.url} onclick={closeSidebar} class={linkClass(isActive(item.url))}>
+						<a href={item.url} onclick={closeSidebar} class={linkClass(matches(item.url))}>
 							{#if item.icon}
 								<item.icon class="h-[15px] w-[15px] shrink-0 opacity-80" />
 							{/if}
