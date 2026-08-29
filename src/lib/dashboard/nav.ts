@@ -322,3 +322,84 @@ export function dashboardSections(counts: Record<string, number> = {}): NavSecti
 		}
 	];
 }
+
+/* ==========================================================================
+   Reading the tree
+   ========================================================================== */
+
+/**
+ * A link owns a path when it is that path or a page beneath it — compared
+ * segment by segment, so `/dashboard/donations` never claims
+ * `/dashboard/donation-links`. Overview is exact: everything is beneath it.
+ */
+export function ownsPath(url: string, pathname: string): boolean {
+	if (url === '/dashboard') return pathname === '/dashboard';
+	return pathname === url || pathname.startsWith(url + '/');
+}
+
+/**
+ * A group's children no longer live under its own URL — Volunteers holds the
+ * skills and the safeguarding checklist too — so a group owns the page when
+ * it, or any child it shows, does.
+ */
+export function groupOwnsPath(
+	item: { url: string; items?: { url: string }[] },
+	pathname: string
+): boolean {
+	return (
+		ownsPath(item.url, pathname) || (item.items ?? []).some((sub) => ownsPath(sub.url, pathname))
+	);
+}
+
+/**
+ * The most specific child of a group, or null. On
+ * `/dashboard/volunteer-skills/categories` that is "Skill groups", not
+ * "Skills"; on a volunteer's own record it is "All volunteers".
+ */
+export function activeChild(items: { url: string }[] = [], pathname: string): string | null {
+	return items
+		.filter((sub) => ownsPath(sub.url, pathname))
+		.reduce<string | null>(
+			(best, sub) => (best && best.length >= sub.url.length ? best : sub.url),
+			null
+		);
+}
+
+/**
+ * The tree with everything the user may not open removed, and any group left
+ * empty by that dropped whole.
+ *
+ * This is presentation only: the routes themselves each call
+ * `requirePermission`, which is the actual control. Hiding a link a user would
+ * get a 403 from is a courtesy, not a lock.
+ */
+export function visibleSections(
+	counts: Record<string, number> = {},
+	permissions: Permission[] = []
+): NavSection[] {
+	const granted = new Set(permissions);
+	const has = (permission?: Permission) => !permission || granted.has(permission);
+
+	return dashboardSections(counts)
+		.map((section) => ({
+			...section,
+			items: section.items
+				.filter((item) => has(item.permission))
+				.map((item) => ({ ...item, items: item.items?.filter((sub) => has(sub.permission)) }))
+		}))
+		.filter((section) => section.items.length > 0);
+}
+
+/**
+ * The entity the current page belongs to, if it belongs to one with siblings
+ * worth showing. A group of a single visible child is no navigation at all, so
+ * it returns null rather than a bar with one tab on it.
+ */
+export function currentEntity(sections: NavSection[], pathname: string): NavEntry | null {
+	for (const section of sections) {
+		for (const item of section.items) {
+			if ((item.items?.length ?? 0) > 1 && groupOwnsPath(item, pathname)) return item;
+		}
+	}
+	return null;
+}

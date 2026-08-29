@@ -5,6 +5,7 @@
 	import Search from '$lib/components/Search.svelte';
 	import AvatarSettings from '$lib/components/AvatarSettings.svelte';
 	import BackupButton from '$lib/components/BackupButton.svelte';
+	import EntityTabs from '$lib/components/entity-tabs.svelte';
 
 	let { children, data } = $props();
 </script>
@@ -36,6 +37,7 @@
 		</div>
 
 		<div class="p-2 pt-24 pb-24 lg:pt-4 lg:pb-4">
+			<EntityTabs permissions={data.access.permissions} counts={data.counts} />
 			{@render children?.()}
 		</div>
 	</main>

@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { scale } from 'svelte/transition';
 	import { cn } from '$lib/utils';
+	import { activeChild, groupOwnsPath, ownsPath } from '$lib/dashboard/nav';
 
 	let {
 		sections,
@@ -23,38 +24,11 @@
 		closeSidebar: () => void;
 	} = $props();
 
-	/**
-	 * A link owns the current page when it is that page or a page beneath it —
-	 * compared segment by segment, so `/dashboard/donations` never claims
-	 * `/dashboard/donation-links`.
-	 */
-	function matches(url: string): boolean {
-		const p = page.url.pathname;
-		if (url === '/dashboard') return p === '/dashboard';
-		return p === url || p.startsWith(url + '/');
-	}
-
-	/**
-	 * A group's children no longer live under its own URL — Volunteers holds
-	 * the skills and the safeguarding checklist too — so a group is open and
-	 * highlighted when it, or any child it shows, owns the page.
-	 */
-	function groupActive(item: { url: string; items?: { url: string }[] }): boolean {
-		return matches(item.url) || (item.items ?? []).some((sub) => matches(sub.url));
-	}
-
-	/**
-	 * Only the most specific child lights up: on `/dashboard/volunteer-skills/categories`
-	 * that is "Skill groups", not "Skills".
-	 */
-	function activeSub(items: { url: string }[] = []): string | null {
-		return items
-			.filter((sub) => matches(sub.url))
-			.reduce<string | null>(
-				(best, sub) => (best && best.length >= sub.url.length ? best : sub.url),
-				null
-			);
-	}
+	const path = $derived(page.url.pathname);
+	const matches = (url: string) => ownsPath(url, path);
+	const groupActive = (item: { url: string; items?: { url: string }[] }) =>
+		groupOwnsPath(item, path);
+	const activeSub = (items?: { url: string }[]) => activeChild(items, path);
 
 	const formatCount = (count: number): string => (count > 99 ? '99+' : String(count));
 

@@ -3,16 +3,18 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import type { ComponentProps } from 'svelte';
 	import NavMain from './NavMain.svelte';
-	import { dashboardSections, type NavEntry } from '$lib/dashboard/nav';
+	import { visibleSections } from '$lib/dashboard/nav';
 	import type { Permission } from '$lib/permissions';
 
 	/**
 	 * The dashboard sidebar.
 	 *
-	 * Every entry declares the permission it needs, and the list is filtered
-	 * before it renders — a volunteer coordinator never sees a Finance link they
-	 * would only get a 403 from. This is presentation only: the routes
-	 * themselves each call `requirePermission`, which is the actual control.
+	 * Every entry declares the permission it needs, and `visibleSections`
+	 * filters the tree before it renders — a volunteer coordinator never sees a
+	 * Finance link they would only get a 403 from, and a group left with
+	 * nothing they may open collapses away entirely. This is presentation only:
+	 * the routes themselves each call `requirePermission`, which is the actual
+	 * control.
 	 */
 	let {
 		permissions = [],
@@ -23,27 +25,7 @@
 		counts?: Record<string, number>;
 	} = $props();
 
-	const granted = $derived(new Set(permissions));
-	const has = (permission?: Permission) => !permission || granted.has(permission);
-
-	const sections: { section: string | null; items: NavEntry[] }[] = $derived(
-		dashboardSections(counts)
-	);
-
-	/** Sections with nothing the user may open collapse away entirely. */
-	const visible = $derived(
-		sections
-			.map((section) => ({
-				...section,
-				items: section.items
-					.filter((item) => has(item.permission))
-					.map((item) => ({
-						...item,
-						items: item.items?.filter((sub) => has(sub.permission))
-					}))
-			}))
-			.filter((section) => section.items.length > 0)
-	);
+	const visible = $derived(visibleSections(counts, permissions));
 
 	const sidebar = useSidebar();
 	const closeSidebar = () => {
