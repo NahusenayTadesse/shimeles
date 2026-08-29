@@ -25,10 +25,18 @@ const sortHeader =
 	({ column }: any) =>
 		renderComponent(DataTableSort, { name, onclick: column.getToggleSortingHandler() });
 
-/** A plain, sortable text column. */
+/**
+ * A plain, sortable text column.
+ *
+ * `meta.label` carries the human name separately from the header, which is a
+ * component here rather than a string — the phone layout has no header row to
+ * read from, and labelling a value "Category Id" off its column key is how you
+ * end up with a card that reads worse than the table it replaced.
+ */
 export const column = (key: string, name: string) => ({
 	accessorKey: key,
 	header: sortHeader(name),
+	meta: { label: name },
 	sortable: true
 });
 
@@ -36,6 +44,7 @@ export const column = (key: string, name: string) => ({
 export const longColumn = (key: string, name: string) => ({
 	accessorKey: key,
 	header: name,
+	meta: { label: name },
 	cell: ({ row, column }: any) =>
 		renderComponent(BigText, { text: row.original[key] ?? '', width: column.getSize() })
 });
@@ -44,6 +53,7 @@ export const longColumn = (key: string, name: string) => ({
 export const listColumn = (key: string, name: string) => ({
 	accessorKey: key,
 	header: name,
+	meta: { label: name },
 	cell: ({ row, column }: any) =>
 		renderComponent(BigText, {
 			text: (row.original[key] ?? []).join(', ') || '-',
@@ -55,6 +65,7 @@ export const listColumn = (key: string, name: string) => ({
 export const imageColumn = (key = 'image', name = 'Image') => ({
 	accessorKey: key,
 	header: name,
+	meta: { label: name },
 	enableSorting: false,
 	cell: ({ row }: any) => renderComponent(ImageViewer, { src: row.original[key] ?? '', alt: name })
 });

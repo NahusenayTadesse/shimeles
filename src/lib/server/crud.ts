@@ -350,10 +350,78 @@ export function contentCrud({
 
 				dropCaches();
 				audit({ event, action: 'deleted', entityType: entity, entityId: id });
-				return message(form, { type: 'success', text: `${label} deleted` });
+				return message(form, {
+					type: 'success',
+					text: `${label} deleted`,
+					// Present only when the row is still there to bring back, which
+					// is what lets the toast decide whether to offer Undo. A screen
+					// with its own delete action sends no such field and gets no
+					// button, rather than one that would 404.
+					undo: supportsSoftDelete && !hardDelete ? id : undefined
+				});
 			} catch (err) {
 				console.error(`Failed to delete ${label}:`, err);
 				return message(form, { type: 'error', text: `Could not delete ${label}` }, { status: 500 });
+			}
+		},
+
+		/**
+		 * Puts a soft-deleted row back.
+		 *
+		 * Deleting has always been a tombstone rather than a removal, and until
+		 * now nothing in the dashboard could act on that: the row was still in
+		 * the database and only a developer could reach it. One mistyped click
+		 * on the wrong row meant an email to whoever had shell access.
+		 *
+		 * The same permission as deleting, and the same pillar scope, because
+		 * restoring is undeleting and not a lesser act.
+		 */
+		restore: async (event: RequestEvent) => {
+			const access = await requirePermission(event, permission);
+			const form = await superValidate(event.request, zod4(idSchema));
+			if (!form.valid) {
+				return message(form, { type: 'error', text: 'Invalid request' }, { status: 400 });
+			}
+
+			if (!supportsSoftDelete || hardDelete) {
+				return message(
+					form,
+					{ type: 'error', text: `A deleted ${label.toLowerCase()} cannot be brought back` },
+					{ status: 400 }
+				);
+			}
+
+			const { id } = form.data as FormData;
+
+			// The scope check reads the deleted row, so it cannot go through
+			// `existingRow`, which filters tombstones out.
+			if (pillarName) {
+				const [existing] = await db.select().from(table).where(eq(table.id, id)).limit(1);
+				if (!existing) return message(form, { type: 'error', text: 'Not found' }, { status: 404 });
+				assertInScope(event, access, existing[pillarName]);
+			}
+
+			try {
+				await db
+					.update(table)
+					.set({ deletedAt: null, ...('deletedBy' in table ? { deletedBy: null } : {}) })
+					.where(eq(table.id, id));
+
+				dropCaches();
+				audit({ event, action: 'restored', entityType: entity, entityId: id });
+				return message(form, { type: 'success', text: `${label} restored` });
+			} catch (err) {
+				// Most likely a unique index: something with the same name or slug
+				// has been added since, and two live rows cannot both hold it.
+				console.error(`Failed to restore ${label}:`, err);
+				return message(
+					form,
+					{
+						type: 'error',
+						text: `Could not bring that ${label.toLowerCase()} back — something added since may be using its name`
+					},
+					{ status: 500 }
+				);
 			}
 		}
 	};

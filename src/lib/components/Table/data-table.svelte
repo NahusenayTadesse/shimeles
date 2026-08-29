@@ -41,7 +41,7 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ChevronDownIcon, Filter, Inbox, ListOrdered, Lock, SearchX, X } from '@lucide/svelte';
-	import { isMobile } from '$lib/global.svelte';
+	import { phone } from '$lib/global.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import type { Snippet } from 'svelte';
@@ -302,6 +302,47 @@
 		);
 	});
 
+	/* ==========================================================================
+	   The phone layout
+
+	   Ten columns on a four-inch screen means dragging sideways to reach the
+	   Edit button, and reading a row by scrolling back and forth between the
+	   header and the value. So on a phone each row becomes a card: the first
+	   real column is its heading, the rest are labelled underneath, and the
+	   row's controls sit along the bottom where a thumb can reach them.
+
+	   Which cells are which is decided by column id, and anything unrecognised
+	   falls through to a labelled line — an unknown column shows up plainly
+	   rather than disappearing.
+	   ========================================================================== */
+
+	const ACTION_COLUMNS = new Set(['edit', 'delete', 'open', 'view', 'actions', 'remove']);
+
+	/**
+	 * What to call a value on a card. The column's own name if it declared one,
+	 * the header if it is plain text, and only then the key it is stored under.
+	 */
+	const cardLabel = (cell: any) => {
+		const definition = cell.column.columnDef;
+		if (typeof definition.meta?.label === 'string') return definition.meta.label;
+		if (typeof definition.header === 'string') return definition.header;
+		return columnLabel(cell.column.id);
+	};
+
+	const cardCells = (row: any) => {
+		const cells = row.getVisibleCells();
+		const select = cells.find((cell: any) => cell.column.id === 'select');
+		const index = cells.find((cell: any) => cell.column.id === 'index');
+		const actions = cells.filter((cell: any) => ACTION_COLUMNS.has(cell.column.id));
+		const rest = cells.filter(
+			(cell: any) =>
+				cell.column.id !== 'select' &&
+				cell.column.id !== 'index' &&
+				!ACTION_COLUMNS.has(cell.column.id)
+		);
+		return { select, index, actions, heading: rest[0], fields: rest.slice(1) };
+	};
+
 	const activeFilterCount = $derived(columnFilters.length);
 
 	/** Column ids are camelCase keys; the dropdown wants them readable. */
@@ -500,6 +541,35 @@
 </script>
 
 <!-- min-h-0 is required for flex-child overflow -->
+{#snippet nothingHere()}
+	<div class="mx-auto flex max-w-md flex-col items-center gap-2">
+		<div
+			class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+		>
+			{#if noPillarAccess}
+				<Lock class="size-5" />
+			{:else if filtered}
+				<SearchX class="size-5" />
+			{:else}
+				<Inbox class="size-5" />
+			{/if}
+		</div>
+		<p class="text-base font-semibold normal-case">{emptyHeading}</p>
+		{#if emptyBody}
+			<p class="text-sm font-normal text-muted-foreground normal-case">
+				{emptyBody}
+			</p>
+		{/if}
+		{#if filtered && !noPillarAccess}
+			<Button variant="outline" size="sm" class="mt-2" onclick={clearFilters}>
+				<X class="size-4" /> Clear filters
+			</Button>
+		{:else if emptyAction}
+			<div class="mt-2">{@render emptyAction()}</div>
+		{/if}
+	</div>
+{/snippet}
+
 <!--
 	The outer width used to be a pane in a two-pane group whose second pane was
 	empty, so the handle dragged the table against nothing and its starting
@@ -510,7 +580,7 @@
 	<div
 		bind:this={shell}
 		class="relative rounded-lg bg-background"
-		style={tableWidth !== null && !isMobile() ? `width:${tableWidth}px` : undefined}
+		style={tableWidth !== null && !phone.current ? `width:${tableWidth}px` : undefined}
 	>
 		<ScrollArea orientation="vertical" class="w-full rounded-lg p-2">
 			<div class="flex min-w-full flex-col gap-2 rounded-md border-0 px-1">
@@ -669,123 +739,170 @@
 					</div>
 				{/if}
 
-				<div class="rounded-md border">
-					<Table.Root id={uniqueTableId} class="group/table relative max-h-96">
-						<Table.Header>
-							{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-								<Table.Row>
-									{#each headerGroup.headers as header, index (header.id)}
-										<Table.Head
-											colspan={header.colSpan}
-											style={columnSizing[header.column.id]
-												? `width:${columnSizing[header.column.id]}px`
-												: undefined}
-											class="relative {index === 1
-												? 'sticky left-0 z-10 bg-background'
-												: ''} p-0 px-2 text-start"
-										>
-											{#if !header.isPlaceholder}
-												<FlexRender
-													content={header.column.columnDef.header}
-													context={header.getContext()}
-												/>
-											{/if}
+				{#if phone.current}
+					<div class="flex flex-col gap-2">
+						{#each table.getRowModel().rows as row (row.id)}
+							{@const parts = cardCells(row)}
+							<div
+								class="rounded-lg border bg-card p-3 data-[state=selected]:border-primary data-[state=selected]:bg-primary/5"
+								data-state={row.getIsSelected() && 'selected'}
+							>
+								<div class="flex items-start gap-2">
+									{#if parts.select}
+										<FlexRender
+											content={parts.select.column.columnDef.cell}
+											context={parts.select.getContext()}
+										/>
+									{/if}
+									{#if parts.index}
+										<span class="text-xs text-muted-foreground">
+											<FlexRender
+												content={parts.index.column.columnDef.cell}
+												context={parts.index.getContext()}
+											/>
+										</span>
+									{/if}
+									{#if parts.heading}
+										<div class="min-w-0 flex-1 font-medium">
+											<FlexRender
+												content={parts.heading.column.columnDef.cell}
+												context={parts.heading.getContext()}
+											/>
+										</div>
+									{/if}
+								</div>
 
-											{#if header.column.getCanResize()}
-												<!--
-													A divider rather than an edge you have to find: it is
-													always faintly there, darkens under the cursor, and
-													takes focus so the arrow keys can move it too.
-												-->
-												<button
-													type="button"
-													aria-label="Resize {columnLabel(header.column.id)} column"
-													onmousedown={(event) => startColumnResize(event, header)}
-													ontouchstart={(event) => startColumnResize(event, header)}
-													ondblclick={() => resetColumn(header.column.id)}
-													onkeydown={(event) => nudgeColumn(event, header)}
-													class="absolute inset-y-1 -right-px z-20 w-1.5 cursor-col-resize touch-none rounded-full bg-border/60 opacity-0 transition-opacity group-hover/table:opacity-100 hover:bg-primary hover:opacity-100 focus-visible:bg-primary focus-visible:opacity-100 focus-visible:outline-none"
-												></button>
-											{/if}
-										</Table.Head>
-									{/each}
-								</Table.Row>
-							{/each}
-						</Table.Header>
-						<Table.Body>
-							{#each table.getRowModel().rows as row (row.id)}
-								<Table.Row data-state={row.getIsSelected() && 'selected'}>
-									{#each row.getVisibleCells() as cell, index (cell.id)}
-										<Table.Cell
-											class="word-break capitalize {index === 1
-												? 'sticky left-0 z-10 bg-background'
-												: ''}"
-										>
+								{#if parts.fields.length}
+									<dl class="mt-2 flex flex-col gap-1 border-t pt-2">
+										{#each parts.fields as cell (cell.id)}
+											<div class="flex items-baseline justify-between gap-3">
+												<dt
+													class="shrink-0 text-[10px] tracking-wider text-muted-foreground uppercase"
+												>
+													{cardLabel(cell)}
+												</dt>
+												<dd class="min-w-0 text-right text-sm">
+													<FlexRender
+														content={cell.column.columnDef.cell}
+														context={cell.getContext()}
+													/>
+												</dd>
+											</div>
+										{/each}
+									</dl>
+								{/if}
+
+								{#if parts.actions.length}
+									<div class="mt-2 flex flex-wrap items-center justify-end gap-2 border-t pt-2">
+										{#each parts.actions as cell (cell.id)}
 											<FlexRender
 												content={cell.column.columnDef.cell}
 												context={cell.getContext()}
 											/>
-										</Table.Cell>
-									{/each}
-								</Table.Row>
-							{:else}
-								<Table.Row class="hover:bg-transparent">
-									<Table.Cell colspan={allColumns.length} class="py-12 text-center">
-										<div class="mx-auto flex max-w-md flex-col items-center gap-2">
-											<div
-												class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<div class="rounded-lg border py-12 text-center">
+								{@render nothingHere()}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="rounded-md border">
+						<Table.Root id={uniqueTableId} class="group/table relative max-h-96">
+							<Table.Header>
+								{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+									<Table.Row>
+										{#each headerGroup.headers as header, index (header.id)}
+											<Table.Head
+												colspan={header.colSpan}
+												style={columnSizing[header.column.id]
+													? `width:${columnSizing[header.column.id]}px`
+													: undefined}
+												class="relative {index === 1
+													? 'sticky left-0 z-10 bg-background'
+													: ''} p-0 px-2 text-start"
 											>
-												{#if noPillarAccess}
-													<Lock class="size-5" />
-												{:else if filtered}
-													<SearchX class="size-5" />
-												{:else}
-													<Inbox class="size-5" />
+												{#if !header.isPlaceholder}
+													<FlexRender
+														content={header.column.columnDef.header}
+														context={header.getContext()}
+													/>
 												{/if}
-											</div>
-											<p class="text-base font-semibold normal-case">{emptyHeading}</p>
-											{#if emptyBody}
-												<p class="text-sm font-normal text-muted-foreground normal-case">
-													{emptyBody}
-												</p>
-											{/if}
-											{#if filtered && !noPillarAccess}
-												<Button variant="outline" size="sm" class="mt-2" onclick={clearFilters}>
-													<X class="size-4" /> Clear filters
-												</Button>
-											{:else if emptyAction}
-												<div class="mt-2">{@render emptyAction()}</div>
-											{/if}
-										</div>
-									</Table.Cell>
-								</Table.Row>
-							{/each}
-						</Table.Body>
-					</Table.Root>
 
-					{#if !serverSide && table.getPageCount() > 1}
-						<div
-							class="absolute -bottom-5 flex w-full items-end justify-end space-x-2 justify-self-center py-4"
-						>
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={() => table.previousPage()}
-								disabled={!table.getCanPreviousPage()}
+												{#if header.column.getCanResize()}
+													<!--
+													A divider rather than an edge you have to find: it is
+													always faintly there, darkens under the cursor, and
+													takes focus so the arrow keys can move it too.
+												-->
+													<button
+														type="button"
+														aria-label="Resize {columnLabel(header.column.id)} column"
+														onmousedown={(event) => startColumnResize(event, header)}
+														ontouchstart={(event) => startColumnResize(event, header)}
+														ondblclick={() => resetColumn(header.column.id)}
+														onkeydown={(event) => nudgeColumn(event, header)}
+														class="absolute inset-y-1 -right-px z-20 w-1.5 cursor-col-resize touch-none rounded-full bg-border/60 opacity-0 transition-opacity group-hover/table:opacity-100 hover:bg-primary hover:opacity-100 focus-visible:bg-primary focus-visible:opacity-100 focus-visible:outline-none"
+													></button>
+												{/if}
+											</Table.Head>
+										{/each}
+									</Table.Row>
+								{/each}
+							</Table.Header>
+							<Table.Body>
+								{#each table.getRowModel().rows as row (row.id)}
+									<Table.Row data-state={row.getIsSelected() && 'selected'}>
+										{#each row.getVisibleCells() as cell, index (cell.id)}
+											<Table.Cell
+												class="word-break capitalize {index === 1
+													? 'sticky left-0 z-10 bg-background'
+													: ''}"
+											>
+												<FlexRender
+													content={cell.column.columnDef.cell}
+													context={cell.getContext()}
+												/>
+											</Table.Cell>
+										{/each}
+									</Table.Row>
+								{:else}
+									<Table.Row class="hover:bg-transparent">
+										<Table.Cell colspan={allColumns.length} class="py-12 text-center">
+											{@render nothingHere()}
+										</Table.Cell>
+									</Table.Row>
+								{/each}
+							</Table.Body>
+						</Table.Root>
+
+						{#if !serverSide && table.getPageCount() > 1}
+							<div
+								class="absolute -bottom-5 flex w-full items-end justify-end space-x-2 justify-self-center py-4"
 							>
-								Previous
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={() => table.nextPage()}
-								disabled={!table.getCanNextPage()}
-							>
-								Next
-							</Button>
-						</div>
-					{/if}
-				</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => table.previousPage()}
+									disabled={!table.getCanPreviousPage()}
+								>
+									Previous
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => table.nextPage()}
+									disabled={!table.getCanNextPage()}
+								>
+									Next
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</ScrollArea>
 
@@ -793,7 +910,7 @@
 			Hidden on a phone, where the table already fills the screen and there
 			is nothing to give the width back to.
 		-->
-		{#if !isMobile()}
+		{#if !phone.current}
 			<button
 				type="button"
 				aria-label="Resize the table"

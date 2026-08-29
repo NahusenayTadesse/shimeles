@@ -27,10 +27,11 @@
 	/**
 	 * Every route the current user may open, flattened for the palette.
 	 *
-	 * A parent entry with sub-items (e.g. "Beneficiaries" → Beneficiaries,
-	 * Households) always has its first sub-item pointing at the parent's own
-	 * URL, so only the sub-items are listed — otherwise the same path would
-	 * appear twice with a duplicate `each` key.
+	 * A group is listed under its own name — "Volunteers", not only "All
+	 * volunteers" — because the entity is what somebody types. Its first child
+	 * always points at the group's own URL, so that child is dropped rather
+	 * than listed twice; every remaining path is unique, which the `each` key
+	 * relies on.
 	 */
 	const pages = $derived(
 		dashboardSections()
@@ -38,9 +39,12 @@
 			.filter((item) => has(item.permission))
 			.flatMap((item) =>
 				item.items
-					? item.items
-							.filter((sub) => has(sub.permission))
-							.map((sub) => ({ label: sub.title, path: sub.url }))
+					? [
+							{ label: item.title, path: item.url },
+							...item.items
+								.filter((sub) => has(sub.permission) && sub.url !== item.url)
+								.map((sub) => ({ label: sub.title, path: sub.url }))
+						]
 					: [{ label: item.title, path: item.url }]
 			)
 	);
@@ -56,10 +60,39 @@
 	const isMac =
 		typeof navigator !== 'undefined' && /mac|iphone|ipad/i.test(navigator.platform ?? '');
 
+	/** Whether the keystroke landed in something the person is typing into. */
+	function isTyping(target: EventTarget | null) {
+		const element = target as HTMLElement | null;
+		if (!element) return false;
+		const tag = element.tagName;
+		return (
+			tag === 'INPUT' ||
+			tag === 'TEXTAREA' ||
+			tag === 'SELECT' ||
+			element.isContentEditable === true
+		);
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
 			event.preventDefault();
 			isOpen = !isOpen;
+			return;
+		}
+
+		// A bare "?" or "/" opens it too — the shortcut people try first, and the
+		// one they can reach without knowing the modifier. Guarded on whether
+		// they are typing, since both are ordinary characters in a search box or
+		// a slug field.
+		if (
+			(event.key === '?' || event.key === '/') &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey
+		) {
+			if (isTyping(event.target)) return;
+			event.preventDefault();
+			isOpen = true;
 		}
 	}
 
@@ -120,7 +153,7 @@
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Trigger
 		class={buttonVariants({ variant: 'outline', size: 'icon' })}
-		title="Search records and pages ({isMac ? '⌘K' : 'Ctrl K'})"
+		title="Search records and pages ({isMac ? '⌘K' : 'Ctrl K'}, or ?)"
 	>
 		<SearchIcon class="size-4" />
 		<span class="sr-only">Search records and pages</span>

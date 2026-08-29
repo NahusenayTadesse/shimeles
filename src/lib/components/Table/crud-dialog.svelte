@@ -52,10 +52,27 @@
 	const editing = 'id' in values;
 	const formId = `crud-${Math.random().toString(36).slice(2, 9)}`;
 
-	const { form, errors, enhance, delayed, message, allErrors } = superForm(data, {
+	/**
+	 * The toast is raised from `onUpdate` for the same reason as in
+	 * `crud-delete.svelte`: a successful write invalidates the page,
+	 * `content-page.svelte` keys the table on its rows, and the remount takes
+	 * this dialog with it before an effect on `$message` could run. Adding and
+	 * editing worked and said nothing.
+	 */
+	const { form, errors, enhance, delayed, allErrors } = superForm(data, {
 		resetForm: !editing,
 		// Each row renders its own dialog, so they must not share form state.
-		id: formId
+		id: formId,
+		onUpdate({ form: result }) {
+			const outcome = result.message as { type?: string; text?: string } | undefined;
+			if (!outcome?.text) return;
+			if (outcome.type === 'error') {
+				toast.error(outcome.text);
+			} else {
+				toast.success(outcome.text);
+				open = false;
+			}
+		}
 	});
 
 	// Prefill once at construction, the same way the testimonials dialog does.
@@ -64,16 +81,6 @@
 	}
 
 	let open = $state(false);
-
-	$effect(() => {
-		if (!$message) return;
-		if ($message.type === 'error') {
-			toast.error($message.text);
-		} else {
-			toast.success($message.text);
-			open = false;
-		}
-	});
 </script>
 
 <Dialog.Root bind:open>

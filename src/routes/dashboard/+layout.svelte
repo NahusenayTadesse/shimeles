@@ -18,10 +18,17 @@
 <Sidebar.Provider>
 	<AppSidebar permissions={data.access.permissions} counts={data.counts} />
 	<main class="w-full min-w-0 px-2">
+		<!--
+			Sticky at every width, not floating above the page below phone size.
+			Absolutely positioning it meant reserving space by hand — six rems of
+			blank page under a bar that was only three tall — so every screen on a
+			phone opened on a gap, and the entity bar and the page's own heading
+			started below the fold.
+		-->
 		<div
-			class="absolute top-2 left-2 z-20 flex w-[95%] flex-row items-center justify-between rounded-lg bg-background/85 p-2 pr-4 align-middle shadow-lg backdrop-blur-md lg:sticky lg:w-full lg:pr-0"
+			class="sticky top-0 z-20 -mx-2 flex flex-row items-center justify-between gap-2 border-b border-border bg-background/85 px-2 py-2 align-middle backdrop-blur-md lg:mx-0 lg:rounded-lg lg:border-0 lg:pr-0 lg:shadow-lg"
 		>
-			<Sidebar.Trigger class="rounded-lg bg-white p-4 dark:bg-black" />
+			<Sidebar.Trigger class="rounded-lg bg-white p-2.5 lg:p-4 dark:bg-black" />
 			<div class="flex items-center gap-3">
 				{#if data.access.roleName}
 					<span class="hidden text-xs text-muted-foreground sm:inline">{data.access.roleName}</span>
@@ -36,7 +43,7 @@
 			</div>
 		</div>
 
-		<div class="p-2 pt-24 pb-24 lg:pt-4 lg:pb-4">
+		<div class="p-2 pt-4 pb-24 lg:pb-4">
 			<EntityTabs permissions={data.access.permissions} counts={data.counts} />
 			{@render children?.()}
 		</div>

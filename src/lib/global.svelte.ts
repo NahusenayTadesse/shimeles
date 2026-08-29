@@ -1,4 +1,4 @@
-import { SvelteDate } from 'svelte/reactivity';
+import { MediaQuery, SvelteDate } from 'svelte/reactivity';
 import { formatDateLong } from '$lib/dates';
 
 export const bgGradient = `bg-linear-to-r from-background to-secondary`;
@@ -22,6 +22,17 @@ export function isMobile() {
 	if (typeof window === 'undefined') return false; // SSR guard
 	return window.innerWidth <= 768;
 }
+
+/**
+ * A phone-width viewport, reactively.
+ *
+ * `isMobile()` reads the window once, wherever it happens to be called, so a
+ * component that branched on it kept whatever answer it got on first render —
+ * rotate the phone or drag the window and the layout stayed as it was. This
+ * tracks the media query itself, and answers `false` during SSR so the server
+ * always renders the wide layout and the client corrects it if it must.
+ */
+export const phone = new MediaQuery('max-width: 640px');
 
 /**
  * Kept for its callers; the formatting itself now lives in `$lib/dates`.

@@ -18,8 +18,11 @@ import type { Actions, PageServerLoad } from './$types';
 /**
  * The dashboard overview.
  *
- * Deliberately a summary rather than a workspace: counts by status, the newest
- * cases the signed-in person may actually see, and the reconciliation backlog.
+ * A summary and, first of all, a queue: what is waiting on the person reading
+ * it, then how things stand. It used to open on four totals, which answer "how
+ * are we doing" and never "what should I do next" — and it answered even that
+ * only for caseworkers, since every panel was built around applications.
+ *
  * Everything obeys pillar scope, so two staff members on different programmes
  * see genuinely different numbers here.
  */
@@ -32,87 +35,114 @@ export const load: PageServerLoad = async (event) => {
 	const canSeeMoney = access.permissions.has('donations.read');
 	const canSeeVolunteers = access.permissions.has('volunteers.read');
 
-	const [byStatus, recent, volunteerCount, pendingDonations, metrics] = await Promise.all([
-		canSeeCases
-			? db
-					.select({
-						statusId: formSubmissions.statusId,
-						label: statusOptions.label,
-						color: statusOptions.color,
-						stage: statusOptions.stage,
-						total: count()
-					})
-					.from(formSubmissions)
-					.leftJoin(statusOptions, eq(statusOptions.id, formSubmissions.statusId))
-					.where(and(isNull(formSubmissions.deletedAt), ...scopeClause))
-					.groupBy(
-						formSubmissions.statusId,
-						statusOptions.label,
-						statusOptions.color,
-						statusOptions.stage
-					)
-			: Promise.resolve([]),
-
-		canSeeCases
-			? db
-					.select({
-						id: formSubmissions.id,
-						reference: formSubmissions.referenceNumber,
-						name: formSubmissions.submittedByName,
-						createdAt: formSubmissions.createdAt,
-						isRead: formSubmissions.isRead,
-						priority: formSubmissions.priority,
-						statusLabel: statusOptions.label,
-						statusColor: statusOptions.color,
-						pillarName: pillars.name,
-						formName: formDefinitions.name
-					})
-					.from(formSubmissions)
-					.leftJoin(statusOptions, eq(statusOptions.id, formSubmissions.statusId))
-					.leftJoin(pillars, eq(pillars.id, formSubmissions.pillarId))
-					.leftJoin(formDefinitions, eq(formDefinitions.id, formSubmissions.formDefinitionId))
-					.where(and(isNull(formSubmissions.deletedAt), ...scopeClause))
-					.orderBy(desc(formSubmissions.createdAt))
-					.limit(8)
-			: Promise.resolve([]),
-
-		canSeeVolunteers
-			? db
-					.select({ total: count() })
-					.from(volunteerApplications)
-					.where(
-						and(
-							isNull(volunteerApplications.deletedAt),
-							eq(volunteerApplications.safeguardingChecklistComplete, false)
+	const [byStatus, recent, recentVolunteers, volunteerCount, pendingDonations, metrics] =
+		await Promise.all([
+			canSeeCases
+				? db
+						.select({
+							statusId: formSubmissions.statusId,
+							label: statusOptions.label,
+							color: statusOptions.color,
+							stage: statusOptions.stage,
+							total: count()
+						})
+						.from(formSubmissions)
+						.leftJoin(statusOptions, eq(statusOptions.id, formSubmissions.statusId))
+						.where(and(isNull(formSubmissions.deletedAt), ...scopeClause))
+						.groupBy(
+							formSubmissions.statusId,
+							statusOptions.label,
+							statusOptions.color,
+							statusOptions.stage
 						)
-					)
-					.then((rows) => rows[0]?.total ?? 0)
-			: 0,
+				: Promise.resolve([]),
 
-		// Grouped by currency: the backlog is "12 gifts, ETB 40,000 and USD 300
-		// pledged", and the one figure it used to show was santim added to cents.
-		canSeeMoney
-			? db
-					.select({
-						currency: donations.currency,
-						total: count(),
-						amount: sql<number>`coalesce(sum(${donations.amount}), 0)`
-					})
-					.from(donations)
-					.where(and(eq(donations.status, 'pending_reconciliation'), isNull(donations.deletedAt)))
-					.groupBy(donations.currency)
-					.then((rows) => ({
-						total: rows.reduce((sum, row) => sum + row.total, 0),
-						totals: toMoneyTotals(rows)
-					}))
-			: { total: 0, totals: [] },
+			canSeeCases
+				? db
+						.select({
+							id: formSubmissions.id,
+							reference: formSubmissions.referenceNumber,
+							name: formSubmissions.submittedByName,
+							createdAt: formSubmissions.createdAt,
+							isRead: formSubmissions.isRead,
+							priority: formSubmissions.priority,
+							statusLabel: statusOptions.label,
+							statusColor: statusOptions.color,
+							pillarName: pillars.name,
+							formName: formDefinitions.name
+						})
+						.from(formSubmissions)
+						.leftJoin(statusOptions, eq(statusOptions.id, formSubmissions.statusId))
+						.leftJoin(pillars, eq(pillars.id, formSubmissions.pillarId))
+						.leftJoin(formDefinitions, eq(formDefinitions.id, formSubmissions.formDefinitionId))
+						.where(and(isNull(formSubmissions.deletedAt), ...scopeClause))
+						.orderBy(desc(formSubmissions.createdAt))
+						.limit(8)
+				: Promise.resolve([]),
 
-		getImpactMetrics()
-	]);
+			/*
+			 * The same list applications have always had, for the other half of the
+			 * staff. A volunteer coordinator used to open this screen and find two
+			 * numbers and nothing to act on, because every panel here was built
+			 * around cases.
+			 */
+			canSeeVolunteers
+				? db
+						.select({
+							id: volunteerApplications.id,
+							reference: volunteerApplications.referenceNumber,
+							fullName: volunteerApplications.fullName,
+							createdAt: volunteerApplications.createdAt,
+							isRead: volunteerApplications.isRead,
+							safeguardingComplete: volunteerApplications.safeguardingChecklistComplete,
+							statusLabel: statusOptions.label,
+							statusColor: statusOptions.color
+						})
+						.from(volunteerApplications)
+						.leftJoin(statusOptions, eq(statusOptions.id, volunteerApplications.statusId))
+						.where(isNull(volunteerApplications.deletedAt))
+						.orderBy(desc(volunteerApplications.createdAt))
+						.limit(6)
+				: Promise.resolve([]),
+
+			canSeeVolunteers
+				? db
+						.select({ total: count() })
+						.from(volunteerApplications)
+						.where(
+							and(
+								isNull(volunteerApplications.deletedAt),
+								eq(volunteerApplications.safeguardingChecklistComplete, false)
+							)
+						)
+						.then((rows) => rows[0]?.total ?? 0)
+				: 0,
+
+			// Grouped by currency: the backlog is "12 gifts, ETB 40,000 and USD 300
+			// pledged", and the one figure it used to show was santim added to cents.
+			canSeeMoney
+				? db
+						.select({
+							currency: donations.currency,
+							total: count(),
+							amount: sql<number>`coalesce(sum(${donations.amount}), 0)`
+						})
+						.from(donations)
+						.where(and(eq(donations.status, 'pending_reconciliation'), isNull(donations.deletedAt)))
+						.groupBy(donations.currency)
+						.then((rows) => ({
+							total: rows.reduce((sum, row) => sum + row.total, 0),
+							totals: toMoneyTotals(rows)
+						}))
+				: { total: 0, totals: [] },
+
+			getImpactMetrics()
+		]);
 
 	return {
 		byStatus,
 		recent,
+		recentVolunteers,
 		volunteersAwaitingSafeguarding: volunteerCount,
 		pendingDonations,
 		metrics: metrics.values,
