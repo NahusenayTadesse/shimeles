@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { scale } from 'svelte/transition';
 	import { cn } from '$lib/utils';
 	import { activeChild, groupOwnsPath, ownsPath } from '$lib/dashboard/nav';
@@ -65,34 +64,41 @@
 					<Collapsible.Root open={groupActive(item)} class="group/collapsible">
 						{#snippet child({ props })}
 							<div {...props}>
-								<!-- Parent trigger -->
-								<button
-									onclick={() => {
-										goto(item.url);
-										closeSidebar();
-									}}
-									class={linkClass(groupActive(item))}
-								>
-									{#if item.icon}
-										<item.icon class="h-3.75 w-3.75 shrink-0 opacity-80" />
-									{/if}
-									<span class="flex-1 text-left">{item.title}</span>
+								<!--
+									The row is a link and the chevron is a button beside it, rather
+									than a chevron nested inside a link. Nesting them meant the only
+									way to expand a group without leaving the page you were on was a
+									twelve-pixel span that no keyboard could reach; this is a
+									full-height target with its own focus ring, and it still leaves
+									the whole row leading where it says it leads.
+								-->
+								<div class="relative">
+									<a
+										href={item.url}
+										onclick={closeSidebar}
+										class={cn(linkClass(groupActive(item)), 'pr-9')}
+									>
+										{#if item.icon}
+											<item.icon class="h-3.75 w-3.75 shrink-0 opacity-80" />
+										{/if}
+										<span class="flex-1 text-left">{item.title}</span>
 
-									{#if (item.counter ?? 0) > 0}
-										<span
-											class="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-sidebar-accent px-1.5 text-[10px] font-semibold text-sidebar-accent-foreground"
-											in:scale={{ duration: 200 }}
-										>
-											{formatCount(item.counter ?? 0)}
-										</span>
-									{/if}
-
-									<Collapsible.Trigger {...props}>
-										{#snippet child({ props })}
+										{#if (item.counter ?? 0) > 0}
 											<span
+												class="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-sidebar-accent px-1.5 text-[10px] font-semibold text-sidebar-accent-foreground"
+												in:scale={{ duration: 200 }}
+											>
+												{formatCount(item.counter ?? 0)}
+											</span>
+										{/if}
+									</a>
+
+									<Collapsible.Trigger>
+										{#snippet child({ props })}
+											<button
 												{...props}
-												onclick={(e) => e.stopPropagation()}
-												class="ml-0.5 rounded p-0.5 opacity-50 hover:opacity-80"
+												aria-label="{item.title} pages"
+												class="absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-r-md opacity-50 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
 											>
 												<svg
 													class="h-3 w-3 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
@@ -105,10 +111,10 @@
 												>
 													<path d="M4 2l4 4-4 4" />
 												</svg>
-											</span>
+											</button>
 										{/snippet}
 									</Collapsible.Trigger>
-								</button>
+								</div>
 
 								<!-- Sub-items -->
 								<Collapsible.Content>

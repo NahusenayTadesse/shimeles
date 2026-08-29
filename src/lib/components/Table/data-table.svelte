@@ -36,10 +36,6 @@
 		selectable = false,
 		bulkActions
 	}: DataTableProps<TData, TValue> = $props();
-	// let filterSchema = $derived(
-	//   discoverFilterSchema(data).filter(meta => !filterBlacklist.includes(meta.key))
-	// );  import { Input } from "$lib/components/ui/input/index.js";
-
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -359,14 +355,6 @@
 </script>
 
 <!-- min-h-0 is required for flex-child overflow -->
-<!-- <div class="flex-1 text-sm text-muted-foreground">
-	{table.getFilteredSelectedRowModel().rows.length} of{''}
-	{table.getFilteredRowModel().rows.length} row(s) selected.
-
-	{#each table.getFilteredRowModel().rows as selected}
-		{selected?.id}
-	{/each}
-</div> -->
 <Resizable.PaneGroup
 	direction="horizontal"
 	class="mt-4 flex w-full min-w-full gap-0 rounded-lg lg:w-fit lg:min-w-2xl {className}"
@@ -475,8 +463,13 @@
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
 									{#snippet child({ props })}
-										<Button {...props} variant="outline" class="ml-auto"
-											>Pages <ChevronDownIcon class="size-5" />
+										<!--
+											It sets how many rows a page holds, so it says so. Labelled
+											"Pages", it read as the pager it sits next to, and the number
+											it is showing is the useful half of the answer anyway.
+										-->
+										<Button {...props} variant="outline" class="ml-auto">
+											{pagination.pageSize} per page <ChevronDownIcon class="size-5" />
 										</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
