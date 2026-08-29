@@ -42,18 +42,22 @@
 		{
 			id: 'name',
 			header: 'Name',
+			accessorFn: (row: any) => row.name ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(UserNameCell, { name: row.original.name, banned: row.original.banned })
 		},
 		{
 			id: 'email',
 			header: 'Email',
+			accessorFn: (row: any) => row.email ?? '',
 			cell: ({ row }: any) => row.original.email
 		},
 		{
 			id: 'role',
 			header: 'Role',
-			enableSorting: false,
+			// The role name, so a table of twenty staff can be narrowed to the
+			// finance ones without reading every row.
+			accessorFn: (row: any) => row.roleName ?? 'No role',
 			cell: ({ row }: any) =>
 				renderComponent(RoleSelect, {
 					userId: row.original.id,
@@ -76,6 +80,7 @@
 		{
 			id: 'createdAt',
 			header: 'Added',
+			accessorFn: (row: any) => new Date(row.createdAt ?? 0).getTime(),
 			cell: ({ row }: any) => fmt(row.original.createdAt)
 		},
 		{

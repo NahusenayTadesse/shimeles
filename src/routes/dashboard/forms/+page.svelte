@@ -78,6 +78,7 @@
 		{
 			id: 'acknowledgeSubmitter',
 			header: 'Emails them',
+			accessorFn: (row: any) => (row.acknowledgeSubmitter ? 'Yes' : 'No'),
 			cell: ({ row }: any) => (row.original.acknowledgeSubmitter ? 'Yes' : 'No')
 		},
 		{

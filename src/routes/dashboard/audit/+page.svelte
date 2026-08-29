@@ -96,6 +96,7 @@
 		},
 		{
 			id: 'action',
+			accessorFn: (row: any) => String(row.action ?? '').replace(/_/g, ' '),
 			header: 'Did what',
 			cell: ({ row }: any) =>
 				renderComponent(BadgeCell, {

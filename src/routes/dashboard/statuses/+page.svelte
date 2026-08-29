@@ -84,7 +84,10 @@
 			header: 'Emails them',
 			// Worth a column: "does this status write to the applicant" is the
 			// kind of thing a coordinator should be able to check at a glance
-			// rather than by opening six dialogs.
+			// rather than by opening six dialogs. Worth an accessor too, so
+			// "show me only the ones that email" is one click rather than a read
+			// down nineteen rows.
+			accessorFn: (row: any) => (row.notifyApplicant ? 'Yes' : 'No'),
 			cell: ({ row }: any) => (row.original.notifyApplicant ? 'Yes' : 'No')
 		},
 		column('sortOrder', 'Order'),

@@ -84,9 +84,15 @@
 
 	const columns = [
 		indexColumn,
+		/*
+		 * An accessor beside every cell, so the column can be sorted and filtered.
+		 * The cells render two-line summaries and badges, which TanStack cannot
+		 * read a value out of on its own.
+		 */
 		{
 			id: 'reference',
 			header: 'Reference',
+			accessorFn: (row: any) => row.reference ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: row.original.reference,
@@ -96,7 +102,7 @@
 		{
 			id: 'offer',
 			header: 'Offered',
-			enableSorting: false,
+			accessorFn: (row: any) => row.summary ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: row.original.summary,
@@ -106,6 +112,7 @@
 		{
 			id: 'donor',
 			header: 'From',
+			accessorFn: (row: any) => donorLabel(row) || 'Anonymous',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: donorLabel(row.original),
@@ -117,6 +124,8 @@
 		{
 			id: 'handover',
 			header: 'Handover',
+			accessorFn: (row: any) =>
+				HANDOVER_LABELS[row.handoverMethod as never] ?? row.handoverMethod ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: HANDOVER_LABELS[row.original.handoverMethod] ?? row.original.handoverMethod,
@@ -145,11 +154,36 @@
 		{
 			id: 'status',
 			header: 'Status',
+			accessorFn: (row: any) => IN_KIND_STATUS_LABELS[row.status as never] ?? row.status ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(StatusBadge, {
 					label: IN_KIND_STATUS_LABELS[row.original.status as never],
 					color: IN_KIND_STATUS_COLORS[row.original.status as never]
 				})
+		},
+		{
+			// Filterable, not shown: "which of these still need collecting" and
+			// "which are perishable" are real questions, and the flags column
+			// already draws the icons.
+			id: 'donorType',
+			header: 'Donor type',
+			meta: { label: 'Donor type', hidden: true },
+			accessorFn: (row: any) => DONOR_TYPE_LABELS[row.donorType as never] ?? row.donorType ?? '',
+			cell: ({ row }: any) => DONOR_TYPE_LABELS[row.original.donorType as never] ?? '-'
+		},
+		{
+			id: 'region',
+			header: 'Region',
+			meta: { label: 'Region', hidden: true },
+			accessorFn: (row: any) => row.regionName ?? 'Not given',
+			cell: ({ row }: any) => row.original.regionName ?? '-'
+		},
+		{
+			id: 'received',
+			header: 'Arrived',
+			meta: { label: 'Arrived', hidden: true },
+			accessorFn: (row: any) => (row.isRead ? 'Opened' : 'Not opened'),
+			cell: ({ row }: any) => (row.original.isRead ? 'Opened' : 'Not opened')
 		},
 		{
 			id: 'open',
@@ -258,6 +292,7 @@
 				data={data.rows}
 				search={false}
 				fileName="Gifts in kind"
+				excludeFilters={['status', 'handover']}
 				emptyMessage="Offers of goods and services arrive from the public donate page."
 			/>
 		{/key}

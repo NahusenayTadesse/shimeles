@@ -86,9 +86,19 @@
 		column('reference', 'Reference'),
 		column('fullName', 'Name'),
 		{
+			/*
+			 * An accessor beside the component, on every row control below.
+			 *
+			 * The cell renders a picker, which is why these columns were declared
+			 * with an id and nothing else — and an id with no accessor is a column
+			 * TanStack cannot sort and cannot build a filter from. So each one now
+			 * says what its row is *worth* as plain text: the status label, whether
+			 * the checklist is done, whether the licences are verified. The cell is
+			 * unchanged; the table simply knows what it is looking at.
+			 */
 			id: 'status',
 			header: 'Status',
-			enableSorting: false,
+			accessorFn: (row: any) => row.statusLabel ?? 'No status',
 			cell: ({ row }: any) =>
 				renderComponent(StatusCell, {
 					id: row.original.id,
@@ -100,7 +110,9 @@
 		{
 			id: 'safeguarding',
 			header: 'Safeguarding',
-			enableSorting: false,
+			// Complete or not, rather than "3/6": the question anybody sorts or
+			// filters this column to answer is which volunteers are blocked.
+			accessorFn: (row: any) => (row.safeguardingComplete ? 'Complete' : 'Incomplete'),
 			cell: ({ row }: any) =>
 				renderComponent(SafeguardingCell, {
 					id: row.original.id,
@@ -113,7 +125,12 @@
 		{
 			id: 'licences',
 			header: 'Licences',
-			enableSorting: false,
+			accessorFn: (row: any) =>
+				!row.credentialRows?.length
+					? 'None claimed'
+					: row.credentialsVerified
+						? 'Verified'
+						: 'Unverified',
 			cell: ({ row }: any) =>
 				renderComponent(CredentialsCell, {
 					id: row.original.id,
@@ -124,7 +141,12 @@
 		{
 			id: 'references',
 			header: 'References',
-			enableSorting: false,
+			accessorFn: (row: any) =>
+				!row.referenceRows?.length
+					? 'None given'
+					: row.referencesChecked
+						? 'Checked'
+						: 'Not checked',
 			cell: ({ row }: any) =>
 				renderComponent(ReferencesCell, {
 					id: row.original.id,
@@ -135,7 +157,7 @@
 		{
 			id: 'reviewer',
 			header: 'Reviewer',
-			enableSorting: false,
+			accessorFn: (row: any) => row.reviewerName ?? 'Unassigned',
 			cell: ({ row }: any) =>
 				renderComponent(ReviewerCell, {
 					id: row.original.id,
@@ -146,6 +168,9 @@
 		{
 			id: 'createdAt',
 			header: 'Applied',
+			// The raw timestamp sorts; the cell still shows the short date. Sorting
+			// on the formatted string would order "15 Aug" before "2 Sep".
+			accessorFn: (row: any) => new Date(row.createdAt ?? 0).getTime(),
 			cell: ({ row }: any) => fmt(row.original.createdAt)
 		},
 		{
@@ -259,6 +284,7 @@
 		search={false}
 		selectable
 		fileName="Volunteers"
+		excludeFilters={['status', 'safeguarding']}
 		emptyMessage="Applications arrive from the public /volunteer form."
 	>
 		{#snippet bulkActions({ rows, clear })}

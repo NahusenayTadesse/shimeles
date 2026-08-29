@@ -23,7 +23,13 @@ export const indexColumn = {
 const sortHeader =
 	(name: string) =>
 	({ column }: any) =>
-		renderComponent(DataTableSort, { name, onclick: column.getToggleSortingHandler() });
+		renderComponent(DataTableSort, {
+			name,
+			// Passed through so the header can show which way it is sorted, not
+			// merely that it could be.
+			sorted: column.getIsSorted(),
+			onclick: column.getToggleSortingHandler()
+		});
 
 /**
  * A plain, sortable text column.

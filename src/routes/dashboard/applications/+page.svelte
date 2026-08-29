@@ -93,14 +93,24 @@
 		// time by design.
 		...(data.access?.permissions?.includes('submissions.assign') ? [selectColumn] : []),
 		indexColumn,
+		/*
+		 * Each column carries an accessor as well as a cell.
+		 *
+		 * A column declared with an id and a renderer is a column TanStack can
+		 * neither sort nor build a filter from, which is why this board offered
+		 * neither. The accessor says what a row is worth as plain text; the cell
+		 * still draws whatever it drew.
+		 */
 		{
 			id: 'reference',
 			header: 'Reference',
+			accessorFn: (row: any) => row.reference ?? '',
 			cell: ({ row }: any) => row.original.reference
 		},
 		{
 			id: 'name',
 			header: 'Name',
+			accessorFn: (row: any) => row.name || 'Anonymous',
 			cell: ({ row }: any) =>
 				renderComponent(ApplicationNameCell, {
 					name: row.original.name,
@@ -110,11 +120,24 @@
 		{
 			id: 'pillarName',
 			header: 'Programme',
+			accessorFn: (row: any) => row.pillarName ?? 'No programme yet',
 			cell: ({ row }: any) => row.original.pillarName ?? '-'
+		},
+
+		{
+			// Not shown as its own column — the name cell already flags urgency —
+			// but worth filtering by, which is the whole reason a hidden column
+			// with an accessor exists.
+			id: 'priority',
+			header: 'Priority',
+			meta: { label: 'Priority', hidden: true },
+			accessorFn: (row: any) => row.priority ?? 'normal',
+			cell: ({ row }: any) => row.original.priority ?? 'normal'
 		},
 		{
 			id: 'status',
 			header: 'Status',
+			accessorFn: (row: any) => row.statusLabel ?? 'No status',
 			cell: ({ row }: any) =>
 				renderComponent(StatusBadge, {
 					label: row.original.statusLabel,
@@ -124,11 +147,15 @@
 		{
 			id: 'reviewerName',
 			header: 'Reviewer',
+			accessorFn: (row: any) => row.reviewerName ?? 'Unassigned',
 			cell: ({ row }: any) => row.original.reviewerName ?? 'Unassigned'
 		},
 		{
 			id: 'createdAt',
 			header: 'Received',
+			// The timestamp sorts; the cell shows the short date. Sorting the
+			// formatted string would put "15 Aug" before "2 Sep".
+			accessorFn: (row: any) => new Date(row.createdAt ?? 0).getTime(),
 			cell: ({ row }: any) => fmtDate(row.original.createdAt)
 		},
 		{
@@ -347,6 +374,7 @@
 				data={data.rows}
 				search={false}
 				fileName="Applications"
+				excludeFilters={['pillarName', 'status']}
 				caseScoped
 				bind:selected={selectedRows}
 				emptyMessage="Applications arrive from the public /apply form. Nothing has come in that matches this view."

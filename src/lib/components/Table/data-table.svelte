@@ -15,6 +15,7 @@
 	} from '@tanstack/table-core';
 	import TableExport from './table-export.svelte';
 	import FacetFilter from './facet-filter.svelte';
+	import DataTableSort from './data-table-sort.svelte';
 	import { selectColumn } from '$lib/dashboard/columns';
 
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -36,6 +37,7 @@
 		emptyAction,
 		caseScoped = false,
 		selectable = false,
+		excludeFilters = [],
 		bulkActions
 	}: DataTableProps<TData, TValue> = $props();
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
@@ -87,6 +89,16 @@
 		 */
 		selectable?: boolean;
 		/**
+		 * Column ids this screen already filters through its own `FilterBar`.
+		 *
+		 * Those bars narrow in SQL, against the whole table; these facets narrow
+		 * in the browser, against what was fetched. Offering both for the same
+		 * column would be two controls that look alike, disagree about their
+		 * scope, and fight over the same question. The bar wins — it is the one
+		 * that can see rows the page did not load.
+		 */
+		excludeFilters?: string[];
+		/**
 		 * What can be done to a selection, rendered in a bar above the table
 		 * while anything is ticked. Receives the selected rows and a `clear`
 		 * callback, so an action can empty the selection once it has run.
@@ -97,7 +109,22 @@
 	let sorting = $state<SortingState>([]);
 	let globalFilter = $state<GlobalFilterColumn>();
 
-	let columnVisibility = $state<VisibilityState>({});
+	/**
+	 * Columns start hidden when they declare `meta.hidden`.
+	 *
+	 * A column can be worth filtering by without being worth a column of screen
+	 * — an application's priority is already flagged on the name, but "show me
+	 * the urgent ones" is a real question. Such a column carries an accessor and
+	 * no cell, stays out of the table, and still appears in Filter by and in the
+	 * Columns menu for anybody who does want to see it.
+	 */
+	let columnVisibility = $state<VisibilityState>(
+		Object.fromEntries(
+			columns
+				.filter((column: any) => column.meta?.hidden)
+				.map((column: any) => [column.id ?? column.accessorKey, false])
+		)
+	);
 	let rowSelection = $state<RowSelectionState>({});
 
 	/* ==========================================================================
@@ -301,7 +328,10 @@
 
 		return table
 			.getAllColumns()
-			.filter((column) => column.getCanFilter() && column.getCanHide())
+			.filter(
+				(column) =>
+					column.getCanFilter() && column.getCanHide() && !excludeFilters.includes(column.id)
+			)
 			.map((column) => {
 				/*
 				 * Two values per entry, and the difference matters.
@@ -349,7 +379,12 @@
 					// wants. Where a number really is a category it has a lookup
 					// behind it, and the label resolution above has already turned
 					// it into the word the table shows.
-					facet.values.some((entry) => !/^-?\d+(\.\d+)?$/.test(entry.label.trim()))
+					facet.values.some((entry) => !/^-?\d+(\.\d+)?$/.test(entry.label.trim())) &&
+					// And a column where no two rows share a value is an identifier
+					// — a reference code, a title — not a category. Ticking one of
+					// those selects a single row, which is what the search box is
+					// for and what a filter should not pretend to be.
+					facet.values.some((entry) => entry.count > 1)
 			);
 	});
 
@@ -900,10 +935,24 @@
 													: ''} p-0 px-2 text-start"
 											>
 												{#if !header.isPlaceholder}
-													<FlexRender
-														content={header.column.columnDef.header}
-														context={header.getContext()}
-													/>
+													{#if header.column.getCanSort() && typeof header.column.columnDef.header === 'string'}
+														<!--
+														A column that can be sorted gets a control saying so, whether
+														or not the screen that defined it remembered to ask for one.
+														Half the columns in the dashboard were already sortable and
+														simply looked like plain text, so nobody clicked them.
+													-->
+														<DataTableSort
+															name={labelFor(header.column)}
+															sorted={header.column.getIsSorted()}
+															onclick={header.column.getToggleSortingHandler()}
+														/>
+													{:else}
+														<FlexRender
+															content={header.column.columnDef.header}
+															context={header.getContext()}
+														/>
+													{/if}
 												{/if}
 
 												{#if header.column.getCanResize()}

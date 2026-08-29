@@ -26,6 +26,7 @@
 		{
 			id: 'donor',
 			header: 'Donor',
+			accessorFn: (row: any) => row.donorName ?? 'Not given',
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: row.original.donorName ?? '-',
@@ -35,6 +36,8 @@
 		{
 			id: 'amount',
 			header: 'Amount',
+			// The number sorts, not the formatted string.
+			accessorFn: (row: any) => Number(row.amount ?? 0),
 			cell: ({ row }: any) => formatMoney(row.original.amount, row.original.currency)
 		},
 		{
@@ -46,6 +49,7 @@
 		{
 			id: 'nextReminderDate',
 			header: 'Next reminder',
+			accessorFn: (row: any) => new Date(row.nextReminderDate ?? 0).getTime(),
 			cell: ({ row }: any) => {
 				const due = isDue(row.original.nextReminderDate) && row.original.status === 'active';
 				return renderComponent(TwoLineCell, {
@@ -57,6 +61,7 @@
 		{
 			id: 'status',
 			header: 'Status',
+			accessorFn: (row: any) => row.status ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(BadgeCell, {
 					label: row.original.status,

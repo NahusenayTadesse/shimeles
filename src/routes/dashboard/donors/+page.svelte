@@ -16,7 +16,7 @@
 		{
 			id: 'organisationName',
 			header: 'Organisation',
-			enableSorting: false,
+			accessorFn: (row: any) => row.organisationName ?? 'Individual',
 			cell: ({ row }: any) => row.original.organisationName ?? '-'
 		},
 		{
@@ -28,14 +28,20 @@
 		{
 			id: 'lifetime',
 			header: 'Lifetime',
-			// Every currency this donor has given in, kept apart. Sorting still
-			// uses `lifetimeTotal`, which holds their largest single currency.
+			// Every currency this donor has given in, kept apart. The comment here
+			// used to say sorting used `lifetimeTotal` — it did not, because the
+			// column had no accessor and so could not be sorted at all. Now it can,
+			// on the largest single currency, which is the only orderable number a
+			// multi-currency total has.
+			accessorFn: (row: any) => Number(row.lifetimeTotal ?? 0),
 			cell: ({ row }: any) => renderComponent(MoneyTotals, { totals: row.original.lifetimeTotals })
 		},
 		column('donationCount', 'Gifts'),
 		{
 			id: 'lastDonationAt',
 			header: 'Last gift',
+			// The timestamp sorts; the cell shows the short date.
+			accessorFn: (row: any) => new Date(row.lastDonationAt ?? 0).getTime(),
 			cell: ({ row }: any) => fmt(row.original.lastDonationAt)
 		},
 		{

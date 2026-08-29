@@ -97,9 +97,16 @@
 
 	const columns = [
 		indexColumn,
+		/*
+		 * Accessors alongside the cells. Money sorts on the number, not on the
+		 * formatted string — "ETB 9,000" above "ETB 80,000" is what sorting text
+		 * gets you — and the currency is its own filter because two currencies in
+		 * one sorted column is an order nobody asked for.
+		 */
 		{
 			id: 'reference',
 			header: 'Reference',
+			accessorFn: (row: any) => row.reference ?? '',
 			cell: ({ row }: any) =>
 				renderComponent(DonationReferenceCell, {
 					reference: row.original.reference,
@@ -110,6 +117,7 @@
 		{
 			id: 'donor',
 			header: 'Donor',
+			accessorFn: (row: any) => (row.isAnonymous ? 'Anonymous' : (row.donorName ?? 'Not given')),
 			cell: ({ row }: any) =>
 				renderComponent(TwoLineCell, {
 					primary: row.original.isAnonymous ? 'Anonymous' : (row.original.donorName ?? '-'),
@@ -119,22 +127,39 @@
 		{
 			id: 'amount',
 			header: 'Amount',
+			accessorFn: (row: any) => Number(row.amount ?? 0),
 			cell: ({ row }: any) => formatMoney(row.original.amount, row.original.currency)
+		},
+		{
+			id: 'currency',
+			header: 'Currency',
+			meta: { label: 'Currency', hidden: true },
+			accessorFn: (row: any) => row.currency ?? '',
+			cell: ({ row }: any) => row.original.currency ?? '-'
 		},
 		{
 			id: 'for',
 			header: 'For',
-			enableSorting: false,
+			accessorFn: (row: any) => designationLabel(row) || 'Wherever needed',
 			cell: ({ row }: any) => designationLabel(row.original)
 		},
 		{
 			id: 'method',
 			header: 'Method',
+			accessorFn: (row: any) => row.methodName ?? 'Not recorded',
 			cell: ({ row }: any) => row.original.methodName ?? '-'
+		},
+		{
+			id: 'frequency',
+			header: 'One-off or monthly',
+			meta: { label: 'One-off or monthly', hidden: true },
+			accessorFn: (row: any) => (row.frequency === 'monthly' ? 'Monthly' : 'One-off'),
+			cell: ({ row }: any) => (row.original.frequency === 'monthly' ? 'Monthly' : 'One-off')
 		},
 		{
 			id: 'createdAt',
 			header: 'Pledged',
+			accessorFn: (row: any) => new Date(row.createdAt ?? 0).getTime(),
 			cell: ({ row }: any) => fmt(row.original.createdAt)
 		},
 		{
