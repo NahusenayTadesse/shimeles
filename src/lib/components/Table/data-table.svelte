@@ -14,6 +14,7 @@
 		type GlobalFilterColumn
 	} from '@tanstack/table-core';
 	import TableExport from './table-export.svelte';
+	import FacetFilter from './facet-filter.svelte';
 	import { selectColumn } from '$lib/dashboard/columns';
 
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -40,7 +41,7 @@
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ChevronDownIcon, Filter, Inbox, ListOrdered, Lock, SearchX, X } from '@lucide/svelte';
+	import { ChevronDownIcon, Inbox, ListOrdered, Lock, SearchX, X } from '@lucide/svelte';
 	import { phone } from '$lib/global.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -280,27 +281,102 @@
 	 * running index — has nothing to filter on, so TanStack reports
 	 * `getCanFilter()` false for it and it never reaches this list.
 	 */
+	/** What a cell shows, when what it shows is text rather than a component. */
+	function displayValue(row: any, column: any): string | null {
+		const render = column.columnDef?.cell;
+		if (typeof render !== 'function') return null;
+		try {
+			const cell = row.getAllCells().find((entry: any) => entry.column.id === column.id);
+			if (!cell) return null;
+			const out = render(cell.getContext());
+			return typeof out === 'string' || typeof out === 'number' ? String(out) : null;
+		} catch {
+			// A cell renderer that needs more than a context is not a label source.
+			return null;
+		}
+	}
+
 	const facets = $derived.by(() => {
 		if (serverSide) return [];
 
-		return (
-			table
-				.getAllColumns()
-				.filter((column) => column.getCanFilter() && column.getCanHide())
-				.map((column) => {
-					const seen: Record<string, true> = {};
-					for (const row of data) {
-						const raw = (row as Record<string, unknown>)[column.id];
-						if (raw === null || raw === undefined || raw === '') continue;
-						seen[String(raw)] = true;
-					}
-					return { column, values: Object.keys(seen).sort((a, b) => a.localeCompare(b)) };
-				})
-				// One distinct value filters nothing, and a column where every row
-				// differs (a title, a slug) would be a list as long as the table.
-				.filter((facet) => facet.values.length > 1 && facet.values.length <= 30)
-		);
+		return table
+			.getAllColumns()
+			.filter((column) => column.getCanFilter() && column.getCanHide())
+			.map((column) => {
+				/*
+				 * Two values per entry, and the difference matters.
+				 *
+				 * `value` is what the column stores and what the filter compares
+				 * against. `label` is what the column *shows* — a group column
+				 * holds `categoryId: 3` and renders "Care and companionship", and
+				 * a filter offering "1, 2, 3" is a filter nobody can use. So the
+				 * cell renderer is asked what this row looks like, and its answer
+				 * is used when it is text. A cell that renders a component answers
+				 * with an object, and that column falls back to its stored value
+				 * rather than guessing.
+				 *
+				 * Counted, too. "Health 12" says whether a filter is worth applying
+				 * before you apply it rather than after.
+				 */
+				const counts = new Map<string, number>();
+				const labels = new Map<string, string>();
+
+				for (const row of table.getPreFilteredRowModel().rows) {
+					const raw = row.getValue(column.id);
+					if (raw === null || raw === undefined || raw === '') continue;
+					const key = String(raw);
+					counts.set(key, (counts.get(key) ?? 0) + 1);
+					if (!labels.has(key)) labels.set(key, displayValue(row, column) ?? key);
+				}
+
+				return {
+					column,
+					label: labelFor(column),
+					values: [...counts.entries()]
+						.map(([value, count]) => ({ value, count, label: labels.get(value) ?? value }))
+						.sort((a, b) => a.label.localeCompare(b.label))
+				};
+			})
+			.filter(
+				(facet) =>
+					// One distinct value filters nothing, and a column where every
+					// row differs (a title, a slug) would be a list as long as the
+					// table.
+					facet.values.length > 1 &&
+					facet.values.length <= 30 &&
+					// A column of nothing but numbers is a measurement or a running
+					// order, not a set of categories — "Order: 5" is a filter nobody
+					// wants. Where a number really is a category it has a lookup
+					// behind it, and the label resolution above has already turned
+					// it into the word the table shows.
+					facet.values.some((entry) => !/^-?\d+(\.\d+)?$/.test(entry.label.trim()))
+			);
 	});
+
+	/**
+	 * The narrowings in force, as chips.
+	 *
+	 * The same row the server-filtered screens grew, for the same reason: the
+	 * controls themselves cannot say what is hidden, and a table showing four
+	 * of forty rows looks exactly like a table with four rows in it.
+	 */
+	const activeFacets = $derived(
+		facets.flatMap((facet) => {
+			const selected = (facet.column.getFilterValue() as string[]) ?? [];
+			return selected.map((value) => ({
+				column: facet.column,
+				value,
+				// The chip says what the table says, not what the database stores.
+				label: facet.values.find((entry) => entry.value === value)?.label ?? value
+			}));
+		})
+	);
+
+	function dropFacetValue(column: any, value: string) {
+		const selected = (column.getFilterValue() as string[]) ?? [];
+		const next = selected.filter((entry) => entry !== value);
+		column.setFilterValue(next.length ? next : undefined);
+	}
 
 	/* ==========================================================================
 	   The phone layout
@@ -319,14 +395,19 @@
 	const ACTION_COLUMNS = new Set(['edit', 'delete', 'open', 'view', 'actions', 'remove']);
 
 	/**
-	 * What to call a value on a card. The column's own name if it declared one,
-	 * the header if it is plain text, and only then the key it is stored under.
+	 * What to call a column, wherever its header row is not in front of you —
+	 * on a phone card, or on a filter button.
+	 *
+	 * The column's own declared name first, then the header if it is plain
+	 * text, and only then the key it is stored under. Reading the key is the
+	 * last resort because it is the one that produces "Category Id" for a
+	 * column every user knows as "Group".
 	 */
-	const cardLabel = (cell: any) => {
-		const definition = cell.column.columnDef;
+	const labelFor = (column: any) => {
+		const definition = column.columnDef;
 		if (typeof definition.meta?.label === 'string') return definition.meta.label;
 		if (typeof definition.header === 'string') return definition.header;
-		return columnLabel(cell.column.id);
+		return columnLabel(column.id);
 	};
 
 	const cardCells = (row: any) => {
@@ -342,8 +423,6 @@
 		);
 		return { select, index, actions, heading: rest[0], fields: rest.slice(1) };
 	};
-
-	const activeFilterCount = $derived(columnFilters.length);
 
 	/** Column ids are camelCase keys; the dropdown wants them readable. */
 	const columnLabel = (id: string) =>
@@ -601,61 +680,6 @@
 								oninput={() => table.setGlobalFilter(globalFilter)}
 							/>
 						{/if}
-						{#if facets.length}
-							<DropdownMenu.Root>
-								<DropdownMenu.Trigger>
-									{#snippet child({ props })}
-										<Button
-											{...props}
-											variant={activeFilterCount ? 'default' : 'outline'}
-											class="ml-auto shrink-0"
-										>
-											<Filter class="size-4" />
-											Filter
-											{#if activeFilterCount}
-												<span
-													class="ml-1 rounded-full bg-background/25 px-1.5 text-xs tabular-nums"
-												>
-													{activeFilterCount}
-												</span>
-											{/if}
-										</Button>
-									{/snippet}
-								</DropdownMenu.Trigger>
-								<DropdownMenu.Content align="end" class="max-h-96 w-56 overflow-y-auto">
-									{#each facets as facet (facet.column.id)}
-										{@const selected = (facet.column.getFilterValue() as string[]) ?? []}
-										<DropdownMenu.Label class="text-xs text-muted-foreground">
-											{columnLabel(facet.column.id)}
-										</DropdownMenu.Label>
-										{#each facet.values as value (value)}
-											<DropdownMenu.CheckboxItem
-												closeOnSelect={false}
-												checked={selected.includes(value)}
-												onCheckedChange={(checked) => {
-													const next = checked
-														? [...selected, value]
-														: selected.filter((v) => v !== value);
-													// An empty array would match nothing; "no selection"
-													// has to clear the filter rather than become one.
-													facet.column.setFilterValue(next.length ? next : undefined);
-												}}
-											>
-												{value}
-											</DropdownMenu.CheckboxItem>
-										{/each}
-										<DropdownMenu.Separator />
-									{/each}
-
-									{#if activeFilterCount}
-										<DropdownMenu.Item closeOnSelect={false} onclick={() => (columnFilters = [])}>
-											<X class="size-4" /> Clear filters
-										</DropdownMenu.Item>
-									{/if}
-								</DropdownMenu.Content>
-							</DropdownMenu.Root>
-						{/if}
-
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger>
 								{#snippet child({ props })}
@@ -725,6 +749,56 @@
 					</div>
 				</ScrollArea>
 
+				{#if facets.length}
+					<!--
+						The filters live on the surface, not behind one button. What a
+						table can be narrowed by is part of what the table is, and
+						hiding it meant nobody found it — the row says "Group",
+						"Licence", "Status" before anything is clicked.
+					-->
+					<div class="flex flex-wrap items-center gap-1.5">
+						<span class="text-xs tracking-wide text-muted-foreground uppercase">Filter by</span>
+						{#each facets as facet (facet.column.id)}
+							<FacetFilter
+								label={facet.label}
+								values={facet.values}
+								selected={(facet.column.getFilterValue() as string[]) ?? []}
+								onchange={(next) => facet.column.setFilterValue(next.length ? next : undefined)}
+							/>
+						{/each}
+					</div>
+				{/if}
+
+				{#if activeFacets.length}
+					<!--
+						The same chips the server-filtered screens carry. A table showing
+						four of forty rows looks exactly like a table with four rows in
+						it, and the dropdowns above cannot say which of them is why.
+					-->
+					<div class="flex flex-wrap items-center gap-1.5">
+						<span class="text-xs text-muted-foreground">Showing only:</span>
+						{#each activeFacets as chip (chip.column.id + chip.value)}
+							<button
+								type="button"
+								title="Remove this filter"
+								onclick={() => dropFacetValue(chip.column, chip.value)}
+								class="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 py-0.5 pr-1.5 pl-2.5 text-xs font-medium text-foreground capitalize transition-colors hover:border-primary hover:bg-primary/20"
+							>
+								{chip.label}
+								<X class="size-3 opacity-70" />
+							</button>
+						{/each}
+						<Button
+							variant="ghost"
+							size="sm"
+							class="h-6 px-2 text-xs"
+							onclick={() => (columnFilters = [])}
+						>
+							Clear all
+						</Button>
+					</div>
+				{/if}
+
 				{#if selectable && bulkActions && selectedRows.length}
 					<div
 						class="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 p-2"
@@ -779,7 +853,7 @@
 												<dt
 													class="shrink-0 text-[10px] tracking-wider text-muted-foreground uppercase"
 												>
-													{cardLabel(cell)}
+													{labelFor(cell.column)}
 												</dt>
 												<dd class="min-w-0 text-right text-sm">
 													<FlexRender
