@@ -12,6 +12,7 @@ import {
 import { requirePermission } from '$lib/server/permissions';
 import { listStatuses } from '$lib/server/workflow';
 import { addContactReply } from '$lib/server/contact';
+import { cleanSubject } from '$lib/server/email';
 import { normalizeRichText } from '$lib/richtext';
 import { audit } from '$lib/server/audit';
 import type { Actions, PageServerLoad } from './$types';
@@ -76,6 +77,7 @@ export const load: PageServerLoad = async (event) => {
 				isInternal: contactMessageReplies.isInternal,
 				isSystem: contactMessageReplies.isSystem,
 				channel: contactMessageReplies.channel,
+				subject: contactMessageReplies.subject,
 				sentAt: contactMessageReplies.sentAt,
 				createdAt: contactMessageReplies.createdAt,
 				authorName: user.name
@@ -166,7 +168,11 @@ export const actions: Actions = {
 			authorId: access.userId,
 			body,
 			isInternal,
-			channel: channel as 'email' | 'phone' | 'sms' | 'in_person' | 'note'
+			channel: channel as 'email' | 'phone' | 'sms' | 'in_person' | 'note',
+			// Only an emailed reply has a subject to carry. A logged phone call
+			// and an internal note are records of something that already
+			// happened, so there is nothing to title.
+			subject: cleanSubject(String(formData.get('subject') ?? ''))
 		});
 
 		return {

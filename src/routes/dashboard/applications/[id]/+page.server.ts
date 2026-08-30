@@ -28,6 +28,7 @@ import {
 	setSubmissionStatus
 } from '$lib/server/workflow';
 import { invalidateSettings } from '$lib/server/settings';
+import { cleanSubject } from '$lib/server/email';
 import { addSubmissionNote } from '$lib/server/submissions';
 import { linkBeneficiary } from '$lib/server/submissions';
 import { acceptApplication, getApplicationDetail } from '$lib/server/apply';
@@ -126,6 +127,7 @@ export const load: PageServerLoad = async (event) => {
 				note: formSubmissionNotes.note,
 				isSystem: formSubmissionNotes.isSystem,
 				isInternal: formSubmissionNotes.isInternal,
+				subject: formSubmissionNotes.subject,
 				sentAt: formSubmissionNotes.sentAt,
 				createdAt: formSubmissionNotes.createdAt,
 				authorName: user.name
@@ -264,6 +266,7 @@ export const actions: Actions = {
 		const formData = await event.request.formData();
 		const statusId = Number(formData.get('statusId'));
 		const note = normalizeRichText(String(formData.get('note') ?? ''));
+		const subject = cleanSubject(String(formData.get('subject') ?? ''));
 
 		if (!Number.isFinite(statusId)) return fail(400, { error: 'Pick a status.' });
 
@@ -274,7 +277,8 @@ export const actions: Actions = {
 			access,
 			id,
 			statusId,
-			note || undefined
+			note || undefined,
+			subject
 		);
 
 		// Whether a letter went out is not a detail: a caseworker who thinks the
@@ -301,8 +305,16 @@ export const actions: Actions = {
 		const { access, id } = await guard(event as never, 'submissions.write');
 		const formData = await event.request.formData();
 		const note = normalizeRichText(String(formData.get('note') ?? ''));
+		const subject = cleanSubject(String(formData.get('subject') ?? ''));
 
-		const result = await notifyOfCurrentStatus(event, access, 'application', id, note || undefined);
+		const result = await notifyOfCurrentStatus(
+			event,
+			access,
+			'application',
+			id,
+			note || undefined,
+			subject
+		);
 
 		if (result.sent) return { ok: true, notified: true };
 
@@ -418,7 +430,10 @@ export const actions: Actions = {
 		const { emailed, reason } = await addSubmissionNote(event, access, {
 			submissionId: id,
 			note: parsed.data.note,
-			isInternal
+			isInternal,
+			// Only ever read for a reply. An internal note is not sent anywhere,
+			// so a subject typed against one has nothing to title.
+			subject: isInternal ? null : cleanSubject(String(formData.get('subject') ?? ''))
 		});
 
 		if (!isInternal && !emailed) {

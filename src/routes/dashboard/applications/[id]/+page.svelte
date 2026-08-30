@@ -151,6 +151,19 @@
 	let statusNote = $state('');
 	let statusNoteKey = $state(0);
 
+	/**
+	 * The subject lines, which are plain inputs and so *can* be reset by the
+	 * form — but are cleared alongside their bodies anyway, because a subject
+	 * left behind from the last reply is a subject that goes out attached to
+	 * the wrong letter.
+	 *
+	 * Empty is the normal state: the template's own subject is a good one, and
+	 * these exist for the letters where a staff member wants to say what it is
+	 * about in the line the reader sees first.
+	 */
+	let caseSubject = $state('');
+	let statusSubject = $state('');
+
 	let statusId = $state<string>('');
 	let reviewerId = $state<string>('');
 	let priority = $state<string>('normal');
@@ -537,11 +550,22 @@
 							await update({ reset: true });
 							if (result.type === 'success') {
 								caseNote = '';
+								caseSubject = '';
 								noteKey += 1;
 							}
 						}}
 					class="mb-5 flex flex-col gap-2"
 				>
+					<!-- Only used when the reply button is the one pressed; an internal
+					     note is not sent anywhere, so the server ignores it there. -->
+					<InputComp
+						label=""
+						name="subject"
+						type="text"
+						maxlength={200}
+						bind:value={caseSubject}
+						placeholder="Subject line (optional — used only when you send a reply)"
+					/>
 					{#key noteKey}
 						<InputComp
 							label=""
@@ -588,6 +612,13 @@
 									? 'border-primary/30 bg-primary/5'
 									: ''}"
 						>
+							<!-- The line it went out under, above the words it carried, so a
+							     thread of replies reads the way the recipient's inbox does.
+							     Absent on an internal note and on every reply sent before the
+							     subject was recorded. -->
+							{#if note.subject}
+								<p class="mb-1 text-sm font-medium">{note.subject}</p>
+							{/if}
 							<!-- Written in the editor above, so it is HTML — and plain text on
 							     every note saved before that box became one. -->
 							<div class="prose-block">{@html renderRichText(note.note)}</div>
@@ -649,12 +680,21 @@
 							await update({ reset: false });
 							if (result.type === 'success') {
 								statusNote = '';
+								statusSubject = '';
 								statusNoteKey += 1;
 							}
 						}}
 					class="mb-4 flex flex-col gap-2"
 				>
 					<SelectComp name="statusId" items={statusItems} bind:value={statusId} />
+					<InputComp
+						label=""
+						name="subject"
+						type="text"
+						maxlength={200}
+						bind:value={statusSubject}
+						placeholder="Subject line (optional)"
+					/>
 					{#key statusNoteKey}
 						<InputComp
 							label=""

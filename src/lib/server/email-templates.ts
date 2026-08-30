@@ -749,3 +749,56 @@ export const magicLinkTemplate = (input: {
 			)}`,
 	action: { label: 'Sign in to the dashboard', href: input.url }
 });
+
+/* --------------------------------------------------------------------------
+   Staff-written subject lines
+   -------------------------------------------------------------------------- */
+
+/**
+ * The longest subject worth typing.
+ *
+ * Mail clients truncate somewhere around 70 characters and nothing reads a
+ * subject longer than a line, but the cap is a guard rather than advice: it is
+ * what stops a pasted paragraph becoming a header.
+ */
+export const MAX_SUBJECT_LENGTH = 200;
+
+/**
+ * Cleans a subject a staff member typed, or returns `null` for an empty box.
+ *
+ * Newlines are the reason this exists rather than a `.trim()` at each call
+ * site. A subject is a mail *header*, and a header containing a line break is
+ * a header injection — the classic way to append a `Bcc:` to somebody else's
+ * letter. Nodemailer encodes what it is given, but the box is filled in by a
+ * person and the safe thing to send is a single line, so every break becomes a
+ * space here, before the value can reach a transport.
+ */
+export const cleanSubject = (value: string | null | undefined): string | null => {
+	const oneLine = (value ?? '')
+		.replace(/[\r\n]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return oneLine ? oneLine.slice(0, MAX_SUBJECT_LENGTH) : null;
+};
+
+/**
+ * Lets a staff member's subject line win over the template's own.
+ *
+ * Templates keep writing a sensible default subject — that is what goes out
+ * when nobody types anything, and it is still the right line for every
+ * automatic send. This is the override for the letters a person actually
+ * composes: a reply, a status notification, a decision on an offer. Those are
+ * the ones where "Re: your message to the Shimeles Abera Foundation (REF-1)"
+ * is worse than the sentence the sender would have written, and where a reader
+ * scanning an inbox decides whether to open it from the subject alone.
+ *
+ * Applied at the send, not inside each template, so a template's signature
+ * does not grow an optional `subject` it then has to remember to honour.
+ */
+export const withSubject = <T extends EmailTemplate>(
+	template: T,
+	subject: string | null | undefined
+): T => {
+	const chosen = cleanSubject(subject);
+	return chosen ? { ...template, subject: chosen } : template;
+};

@@ -17,6 +17,7 @@ import {
 	contactAcknowledgementTemplate,
 	plainTemplate,
 	replyTemplate,
+	withSubject,
 	sendEmail,
 	sendEmailToEach,
 	staffRecipients
@@ -340,6 +341,8 @@ export async function addContactReply(
 		body: string;
 		isInternal: boolean;
 		channel: 'email' | 'phone' | 'sms' | 'in_person' | 'note';
+		/** What the staff member titled the reply. Empty keeps the "Re: …" default. */
+		subject?: string | null;
 	}
 ): Promise<{ emailed: boolean }> {
 	const [message] = await db
@@ -362,19 +365,29 @@ export async function addContactReply(
 	const shouldEmail = !input.isInternal && input.channel === 'email' && Boolean(message.email);
 	let emailed = false;
 
-	if (shouldEmail) {
+	// Composed even when the send fails, so the thread keeps the subject the
+	// reply would have carried. Null when nothing was ever going to be emailed
+	// — an internal note, or a phone call being logged after the fact.
+	const letter = shouldEmail
+		? withSubject(
+				replyTemplate({
+					name: message.fullName,
+					body: input.body,
+					reference: message.reference,
+					about: 'message'
+				}),
+				input.subject
+			)
+		: null;
+
+	if (letter) {
 		try {
 			const result = await sendEmail({
 				to: message.email!,
 				// The reply promises "you can reply to this email", so it has to
 				// land somewhere a person reads — the SMTP account is not that.
 				replyTo: (await setting('contact.email_primary')) || undefined,
-				...replyTemplate({
-					name: message.fullName,
-					body: input.body,
-					reference: message.reference,
-					about: 'message'
-				})
+				...letter
 			});
 			emailed = result.sent;
 		} catch (err) {
@@ -390,6 +403,7 @@ export async function addContactReply(
 		body: input.body,
 		isInternal: input.isInternal,
 		channel: input.channel,
+		subject: letter?.subject ?? null,
 		sentAt: emailed ? new Date() : null
 	});
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	cleanSubject,
 	escapeHtml,
 	footnote,
 	htmlToText,
@@ -7,7 +8,8 @@ import {
 	plainTemplate,
 	referencePanel,
 	replyTemplate,
-	shell
+	shell,
+	withSubject
 } from './email';
 
 /**
@@ -194,5 +196,44 @@ describe('replyTemplate', () => {
 describe('footnote', () => {
 	it('separates a closing aside instead of gluing it to the last line', () => {
 		expect(footnote('note')).toContain('border-top');
+	});
+});
+
+describe('cleanSubject', () => {
+	it('treats an empty or blank box as no subject at all', () => {
+		expect(cleanSubject('')).toBeNull();
+		expect(cleanSubject('   ')).toBeNull();
+		expect(cleanSubject(null)).toBeNull();
+		expect(cleanSubject(undefined)).toBeNull();
+	});
+
+	it('folds a header injection back into one line', () => {
+		expect(cleanSubject('Your gift\r\nBcc: everyone@example.com')).toBe(
+			'Your gift Bcc: everyone@example.com'
+		);
+	});
+
+	it('caps a pasted paragraph', () => {
+		expect(cleanSubject('a'.repeat(400))).toHaveLength(200);
+	});
+});
+
+describe('withSubject', () => {
+	const reply = replyTemplate({
+		name: 'Sara',
+		body: 'Your documents arrived.',
+		reference: 'REF-1',
+		about: 'request'
+	});
+
+	it("keeps the template's own subject when nobody typed one", () => {
+		expect(withSubject(reply, '  ').subject).toBe(reply.subject);
+	});
+
+	it('lets a staff member override it, and changes nothing else', () => {
+		const titled = withSubject(reply, 'Your documents arrived');
+		expect(titled.subject).toBe('Your documents arrived');
+		expect(titled.body).toBe(reply.body);
+		expect(titled.heading).toBe(reply.heading);
 	});
 });

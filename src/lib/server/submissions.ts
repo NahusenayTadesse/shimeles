@@ -16,7 +16,7 @@ import { defaultStatus } from '$lib/server/workflow';
 import { audit } from '$lib/server/audit';
 import { isFieldVisible } from '$lib/server/forms';
 import type { RenderForm } from '$lib/forms/types';
-import { replyTemplate, sendEmail } from '$lib/server/email';
+import { replyTemplate, sendEmail, withSubject } from '$lib/server/email';
 import type { Access } from '$lib/server/permissions';
 
 /**
@@ -296,6 +296,12 @@ export async function addSubmissionNote(
 		submissionId: number;
 		note: string;
 		isInternal: boolean;
+		/**
+		 * The subject line the caseworker typed, if they typed one. Empty falls
+		 * back to the template's own — an internal note ignores it entirely,
+		 * because nothing is being sent.
+		 */
+		subject?: string | null;
 	}
 ): Promise<{ emailed: boolean; reason?: 'no-email' | 'send-failed' }> {
 	const [submission] = await db
@@ -318,17 +324,24 @@ export async function addSubmissionNote(
 	// an ordinary state — the caller reports it rather than failing.
 	if (!input.isInternal && !submission.email) reason = 'no-email';
 
-	if (!input.isInternal && submission.email) {
-		try {
-			const result = await sendEmail({
-				to: submission.email,
-				...replyTemplate({
+	// Built whether or not it can be sent, because its subject is what the case
+	// file records — and a reply that bounced is filed with the line it would
+	// have carried, not with a blank where the letter should be.
+	const letter = input.isInternal
+		? null
+		: withSubject(
+				replyTemplate({
 					name: submission.name ?? 'friend',
 					body: input.note,
 					reference: submission.reference,
 					about: 'request'
-				})
-			});
+				}),
+				input.subject
+			);
+
+	if (letter && submission.email) {
+		try {
+			const result = await sendEmail({ to: submission.email, ...letter });
 			emailed = result.sent;
 			if (!result.sent) reason = 'send-failed';
 		} catch (err) {
@@ -343,6 +356,9 @@ export async function addSubmissionNote(
 		note: input.note,
 		isSystem: false,
 		isInternal: input.isInternal,
+		// Null on an internal note: it is not addressed to anybody, so there is
+		// no subject line to keep.
+		subject: letter?.subject ?? null,
 		sentAt: emailed ? new Date() : null,
 		createdAt: new Date()
 	});

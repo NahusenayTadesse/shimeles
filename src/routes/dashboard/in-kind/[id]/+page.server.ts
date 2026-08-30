@@ -16,7 +16,7 @@ import {
 import { requirePermission } from '$lib/server/permissions';
 import { canMoveInKind, recordInKindIntake, setInKindStatus } from '$lib/server/inKind';
 import { audit } from '$lib/server/audit';
-import { sendEmail, inKindDecisionTemplate } from '$lib/server/email';
+import { cleanSubject, sendEmail, inKindDecisionTemplate, withSubject } from '$lib/server/email';
 import { normalizeRichText } from '$lib/richtext';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -259,17 +259,22 @@ async function notifyDonor(input: {
 	outcome: 'accepted' | 'declined' | 'scheduled' | 'received';
 	note: string | null;
 	when: string | null;
+	/** The coordinator's own subject line, when they typed one. */
+	subject?: string | null;
 }): Promise<boolean> {
 	if (!input.email) return false;
 
-	const mail = inKindDecisionTemplate({
-		name: input.name,
-		referenceCode: input.reference,
-		summary: input.summary,
-		outcome: input.outcome,
-		note: input.note,
-		when: input.when
-	});
+	const mail = withSubject(
+		inKindDecisionTemplate({
+			name: input.name,
+			referenceCode: input.reference,
+			summary: input.summary,
+			outcome: input.outcome,
+			note: input.note,
+			when: input.when
+		}),
+		input.subject
+	);
 
 	try {
 		await sendEmail({ to: input.email, ...mail });
@@ -323,6 +328,7 @@ export const actions: Actions = {
 		const outcome = String(formData.get('outcome'));
 		const note = normalizeRichText(String(formData.get('note') ?? ''));
 		const notify = formData.get('notify') === 'on';
+		const subject = cleanSubject(String(formData.get('subject') ?? ''));
 
 		if (outcome !== 'accepted' && outcome !== 'declined') {
 			return fail(400, { error: 'That is not a decision this screen can record.' });
@@ -352,7 +358,8 @@ export const actions: Actions = {
 					summary: before.summary,
 					outcome,
 					note: note || null,
-					when: null
+					when: null,
+					subject
 				})
 			: false;
 
@@ -367,6 +374,7 @@ export const actions: Actions = {
 		const scheduledWindow = String(formData.get('scheduledWindow') ?? '').trim();
 		const assignedToId = String(formData.get('assignedToId') ?? '').trim();
 		const notify = formData.get('notify') === 'on';
+		const subject = cleanSubject(String(formData.get('subject') ?? ''));
 
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor)) {
 			return fail(400, { error: 'Pick a date for the handover.' });
@@ -400,7 +408,8 @@ export const actions: Actions = {
 					summary: before.summary,
 					outcome: 'scheduled',
 					note: scheduledWindow || null,
-					when: scheduledFor
+					when: scheduledFor,
+					subject
 				})
 			: false;
 
@@ -419,6 +428,7 @@ export const actions: Actions = {
 		const formData = await event.request.formData();
 		const intakeNotes = normalizeRichText(String(formData.get('intakeNotes') ?? ''));
 		const notify = formData.get('notify') === 'on';
+		const subject = cleanSubject(String(formData.get('subject') ?? ''));
 
 		const lines = formData
 			.getAll('itemId')
@@ -457,7 +467,8 @@ export const actions: Actions = {
 					summary: before.summary,
 					outcome: 'received',
 					note: intakeNotes || null,
-					when: null
+					when: null,
+					subject
 				})
 			: false;
 

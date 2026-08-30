@@ -31,6 +31,12 @@
 	let replyBody = $state('');
 	let composerKey = $state(0);
 
+	/**
+	 * The subject line for an emailed reply. Cleared with the body rather than
+	 * left to the form reset, so it cannot be carried onto the next letter.
+	 */
+	let replySubject = $state('');
+
 	let statusId = $state('');
 	let assignedToId = $state('');
 	let subjectId = $state('');
@@ -172,6 +178,12 @@
 							</span>
 							<span class="text-xs text-muted-foreground">{fmt(reply.createdAt)}</span>
 						</div>
+						<!-- The line the reply went out under. Absent on an internal note,
+						     on a logged phone call, and on every reply sent before the
+						     subject was recorded. -->
+						{#if reply.subject}
+							<p class="mb-1 text-sm font-medium">{reply.subject}</p>
+						{/if}
 						<!-- Written in the editor above, so it is HTML — and plain text on
 						     every row saved before that box became one. -->
 						<div class="prose-block text-sm">{@html renderRichText(reply.body)}</div>
@@ -199,11 +211,22 @@
 							await update({ reset: true });
 							if (result.type === 'success') {
 								replyBody = '';
+								replySubject = '';
 								composerKey += 1;
 							}
 						}}
 					class="flex flex-col gap-3"
 				>
+					<!-- Only carried when the reply is actually emailed. Empty keeps the
+					     "Re: your message…" line the template writes. -->
+					<InputComp
+						label=""
+						name="subject"
+						type="text"
+						maxlength={200}
+						bind:value={replySubject}
+						placeholder="Subject line (optional — used only on an emailed reply)"
+					/>
 					{#key composerKey}
 						<InputComp
 							label=""

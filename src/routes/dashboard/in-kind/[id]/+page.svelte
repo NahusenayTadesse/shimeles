@@ -681,6 +681,17 @@
 			/>
 
 			{#if o.donorEmail}
+				<!-- The subject line the donor sees first. Empty sends the
+				     template's own, which names the outcome and the reference. -->
+				<div class="flex flex-col gap-2">
+					<Label for="accept-subject">Subject line</Label>
+					<Input
+						id="accept-subject"
+						name="subject"
+						maxlength={200}
+						placeholder="We can take your donation"
+					/>
+				</div>
 				<label class="flex items-center gap-2 text-sm">
 					<Checkbox name="notify" checked />
 					Email {o.donorEmail} to say we can take it
@@ -726,6 +737,15 @@
 			/>
 
 			{#if o.donorEmail}
+				<div class="flex flex-col gap-2">
+					<Label for="decline-subject">Subject line</Label>
+					<Input
+						id="decline-subject"
+						name="subject"
+						maxlength={200}
+						placeholder="About your offer to the Foundation"
+					/>
+				</div>
 				<label class="flex items-center gap-2 text-sm">
 					<Checkbox name="notify" checked />
 					Email {o.donorEmail} with this reason
@@ -787,6 +807,15 @@
 			</div>
 
 			{#if o.donorEmail}
+				<div class="flex flex-col gap-2">
+					<Label for="schedule-subject">Subject line</Label>
+					<Input
+						id="schedule-subject"
+						name="subject"
+						maxlength={200}
+						placeholder="Your handover is booked"
+					/>
+				</div>
 				<label class="flex items-center gap-2 text-sm">
 					<Checkbox name="notify" checked />
 					Email {o.donorEmail} with the day
@@ -845,6 +874,15 @@
 			/>
 
 			{#if o.donorEmail}
+				<div class="flex flex-col gap-2">
+					<Label for="intake-subject">Subject line</Label>
+					<Input
+						id="intake-subject"
+						name="subject"
+						maxlength={200}
+						placeholder="Your gift has reached us"
+					/>
+				</div>
 				<label class="flex items-center gap-2 text-sm">
 					<Checkbox name="notify" checked />
 					Email {o.donorEmail} to say it arrived

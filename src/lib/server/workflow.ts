@@ -14,7 +14,7 @@ import { cached, invalidate } from '$lib/server/cache';
 import { audit } from '$lib/server/audit';
 import type { Access } from '$lib/server/permissions';
 import { assertPillarAccess } from '$lib/server/permissions';
-import { sendEmail, statusChangeTemplate } from '$lib/server/email';
+import { sendEmail, statusChangeTemplate, withSubject } from '$lib/server/email';
 import { settingFlag } from '$lib/server/settings';
 
 /**
@@ -151,7 +151,13 @@ export const autoNotifyEnabled = (): Promise<boolean> => settingFlag(AUTO_NOTIFY
  * which happened.
  */
 export type NotifyResult =
-	| { sent: true }
+	/**
+	 * `subject` is the line the letter went out with — the staff member's own
+	 * when they typed one, the template's when they did not. Carried back so
+	 * the case note written afterwards can record what the reader saw in their
+	 * inbox rather than only that something was sent.
+	 */
+	| { sent: true; subject: string }
 	| {
 			sent: false;
 			reason:
@@ -217,6 +223,8 @@ async function sendStatusEmail(input: {
 	name: string | null;
 	reference: string;
 	note?: string;
+	/** The subject a staff member typed. Empty keeps the template's own line. */
+	subject?: string | null;
 }): Promise<NotifyResult> {
 	// No address is not a failure: an application can be taken on paper or over
 	// the phone, and a volunteer's email is nullable for the same reason.
@@ -225,20 +233,22 @@ async function sendStatusEmail(input: {
 	const letter = statusLetter(input.status.publicDescription, input.note);
 	if (!letter) return { sent: false, reason: 'nothing-to-say' };
 
-	try {
-		const result = await sendEmail({
-			to: input.email,
-			...statusChangeTemplate({
-				name: input.name?.trim() || 'friend',
-				reference: input.reference,
-				statusLabel: input.status.label,
-				publicDescription: letter.body,
-				note: letter.note,
-				kind: input.kind
-			})
-		});
+	const mail = withSubject(
+		statusChangeTemplate({
+			name: input.name?.trim() || 'friend',
+			reference: input.reference,
+			statusLabel: input.status.label,
+			publicDescription: letter.body,
+			note: letter.note,
+			kind: input.kind
+		}),
+		input.subject
+	);
 
-		if (result.sent) return { sent: true };
+	try {
+		const result = await sendEmail({ to: input.email, ...mail });
+
+		if (result.sent) return { sent: true, subject: mail.subject };
 		return { sent: false, reason: result.reason === 'no-smtp-host' ? 'no-smtp' : 'send-failed' };
 	} catch (err) {
 		console.error('status change email failed', err);
@@ -258,6 +268,7 @@ async function notifyStatusChange(input: {
 	name: string | null;
 	reference: string;
 	note?: string;
+	subject?: string | null;
 }): Promise<NotifyResult> {
 	const requested = input.status.notifyApplicant || (await autoNotifyEnabled());
 	if (!requested) return { sent: false, reason: 'not-requested' };
@@ -294,7 +305,8 @@ export async function notifyOfCurrentStatus(
 	access: Access,
 	kind: 'application' | 'volunteer',
 	recordId: number,
-	note?: string
+	note?: string,
+	subject?: string | null
 ): Promise<NotifyResult> {
 	const record =
 		kind === 'application'
@@ -335,7 +347,8 @@ export async function notifyOfCurrentStatus(
 		email: record.email,
 		name: record.name,
 		reference: record.reference,
-		note
+		note,
+		subject
 	});
 
 	if (!result.sent) return result;
@@ -347,6 +360,8 @@ export async function notifyOfCurrentStatus(
 			authorId: access.userId,
 			note: `Notified ${record.email} that this is now "${status.label}".${note ? `\n${note}` : ''}`,
 			isSystem: true,
+			// The line the applicant saw, kept with the row that says we wrote.
+			subject: result.subject,
 			sentAt: new Date(),
 			createdAt: new Date()
 		});
@@ -379,7 +394,8 @@ export async function setSubmissionStatus(
 	access: Access,
 	submissionId: number,
 	statusId: number,
-	note?: string
+	note?: string,
+	subject?: string | null
 ): Promise<{ status: StatusRow; notification: NotifyResult }> {
 	const [submission] = await db
 		.select({
@@ -441,7 +457,8 @@ export async function setSubmissionStatus(
 		email: submission.applicantEmail,
 		name: submission.applicantName,
 		reference: submission.reference,
-		note
+		note,
+		subject
 	});
 
 	return { status: next, notification };
@@ -522,7 +539,8 @@ export async function setVolunteerStatus(
 	access: Access,
 	applicationId: number,
 	statusId: number,
-	note?: string
+	note?: string,
+	subject?: string | null
 ): Promise<{ status: StatusRow; notification: NotifyResult }> {
 	const [application] = await db
 		.select({
@@ -613,7 +631,8 @@ export async function setVolunteerStatus(
 		email: application.volunteerEmail,
 		name: application.volunteerName,
 		reference: application.reference,
-		note
+		note,
+		subject
 	});
 
 	return { status: next, notification };

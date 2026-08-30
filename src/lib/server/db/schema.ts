@@ -900,6 +900,18 @@ export const formSubmissionNotes = sqliteTable(
 		 * buttons, and never inferred.
 		 */
 		isInternal: integer('is_internal', { mode: 'boolean' }).default(true).notNull(),
+		/**
+		 * The subject line the letter carried, for the rows that are letters.
+		 *
+		 * Null on an internal note, which is not addressed to anybody, and null
+		 * on every row written before this column existed. Otherwise it is the
+		 * subject as sent — the staff member's own line when they typed one, and
+		 * the template's default when they did not, so the case file shows what
+		 * the family actually saw in their inbox rather than only what we meant
+		 * to say. Recorded on an attempt that failed too: read it with `sentAt`,
+		 * which is what says whether it went.
+		 */
+		subject: text('subject'),
 		/** Set once the email actually went out; null means it was not sent. */
 		sentAt: timestampMs('sent_at'),
 		createdAt: timestampMs('created_at').default(nowMs).notNull(),
@@ -2619,6 +2631,13 @@ export const contactMessageReplies = sqliteTable(
 		channel: text('channel', { enum: ['email', 'phone', 'sms', 'in_person', 'note'] })
 			.default('email')
 			.notNull(),
+		/**
+		 * The subject line the reply carried. Its counterpart on
+		 * `form_submission_notes` explains the rule; here it is additionally
+		 * null for a reply that was never going to be emailed at all — a logged
+		 * phone call or an in-person conversation has no subject.
+		 */
+		subject: text('subject'),
 		/** Set once the email actually went out; null means it was not sent. */
 		sentAt: timestampMs('sent_at'),
 		/** System-written rows (status changes), as `form_submission_notes` does it. */
