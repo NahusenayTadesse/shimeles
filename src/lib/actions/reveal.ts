@@ -39,6 +39,34 @@ const registry = new WeakMap<Element, Entry>();
 /** One observer per threshold — elements sharing a threshold share the callback. */
 const observers = new Map<number, IntersectionObserver>();
 
+/**
+ * Whether this entry counts as "on screen enough to reveal".
+ *
+ * `intersectionRatio` is the visible portion over the element's *whole* area,
+ * so an element taller than the viewport has a ceiling on it: a 7,800px
+ * section in an 830px root can never exceed 0.107, and against the default
+ * 0.12 it would stay hidden however far you scrolled. The Terms page hit this
+ * exactly — both language blocks are single sections several screens tall, and
+ * the page rendered blank on any window shorter than about 1,010px.
+ *
+ * So the threshold is treated as an intent rather than a literal ratio: where
+ * the element is short enough to satisfy it, it must; where it is not, any
+ * intersection reveals. The `-8%` bottom margin still holds the animation a
+ * little inside the fold either way, which is what the threshold was buying.
+ *
+ * Measuring off `entry` rather than the node means this re-decides itself on
+ * resize and after fonts settle, with no stored heights to go stale.
+ */
+function isRevealed(entry: IntersectionObserverEntry, threshold: number) {
+	if (!entry.isIntersecting) return false;
+
+	const rootHeight = entry.rootBounds?.height ?? window.innerHeight;
+	const elementHeight = entry.boundingClientRect.height;
+	const reachable = elementHeight === 0 || rootHeight / elementHeight >= threshold;
+
+	return reachable ? entry.intersectionRatio >= threshold : true;
+}
+
 function observerFor(threshold: number) {
 	let observer = observers.get(threshold);
 	if (observer) return observer;
@@ -49,7 +77,7 @@ function observerFor(threshold: number) {
 				const registered = registry.get(entry.target);
 				if (!registered) continue;
 
-				if (entry.isIntersecting) {
+				if (isRevealed(entry, registered.params.threshold)) {
 					show(entry.target as HTMLElement, registered);
 					if (!registered.params.repeat) observer!.unobserve(entry.target);
 				} else if (registered.params.repeat) {
@@ -58,7 +86,11 @@ function observerFor(threshold: number) {
 			}
 		},
 		{
-			threshold,
+			// Two thresholds, not one. `threshold` is the intent — reveal once this
+			// much of the element is on screen — but an element taller than the
+			// viewport can never reach a fractional ratio (see `isRevealed`), so we
+			// also watch the 0 crossing and let the callback decide which applies.
+			threshold: threshold > 0 ? [0, threshold] : [0],
 			// Hold the reveal until the element is a little way inside the fold, so it
 			// animates where the eye already is rather than at the very edge.
 			rootMargin: '0px 0px -8% 0px'
