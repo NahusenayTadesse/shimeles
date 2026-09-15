@@ -2,7 +2,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { reveal, stagger } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { ChevronLeft, ChevronRight, X } from '@lucide/svelte';
 
 	/**
@@ -53,6 +53,8 @@
 			>
 				<img
 					src={assetUrl(image.storagePath)}
+					srcset={imageSrcset(image.storagePath)}
+					sizes="(min-width: 768px) 25vw, 50vw"
 					alt={image.caption || ''}
 					loading="lazy"
 					class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -73,6 +75,8 @@
 				<Dialog.Title class="sr-only">{image.caption || 'Photograph'}</Dialog.Title>
 				<img
 					src={assetUrl(image.storagePath)}
+					srcset={imageSrcset(image.storagePath)}
+					sizes="(min-width: 896px) 896px, 100vw"
 					alt={image.caption || ''}
 					class="max-h-[75vh] w-full rounded-2xl object-contain"
 				/>

@@ -37,6 +37,9 @@ fi
 # vanish with the next `rm -rf deploy`. scripts/DEPLOYING.md is the tracked
 # original; this puts a copy on the server, where you want it at 2am.
 cp "$ROOT/scripts/DEPLOYING.md" "$LOCAL/OPERATIONS.md"
+# Same reason: the photo-copy cron job runs from the app directory, so the
+# tracked script is copied beside the build on every deploy. See §5b.
+cp "$ROOT/scripts/image-variants.mjs" "$LOCAL/image-variants.mjs"
 
 [ -d "$LOCAL/build" ] || { echo "no build in $LOCAL — run 'npm run build' first" >&2; exit 1; }
 
@@ -99,9 +102,10 @@ update)
 	echo "==> sending manifests"
 	# `migrate.mjs` rides along so it is always present when a migration is
 	# needed — see §3 of OPERATIONS.md. It is inert unless it is run.
+	# `image-variants.mjs` is what cron runs to make the phone-sized photos (§5b).
 	rsync -avz --human-readable \
 		"$LOCAL/package.json" "$LOCAL/package-lock.json" "$LOCAL/.npmrc" \
-		"$LOCAL/OPERATIONS.md" "$LOCAL/migrate.mjs" \
+		"$LOCAL/OPERATIONS.md" "$LOCAL/migrate.mjs" "$LOCAL/image-variants.mjs" \
 		"$REMOTE:$REMOTE_DIR/"
 
 	# Cheap and idempotent when nothing changed; necessary when it did.
