@@ -417,6 +417,63 @@ removed on the next run — `/files` refuses `?w=` on a private file regardless.
 
 ---
 
+## 5c. Visitor addresses behind Cloudflare
+
+The main domain reaches the app as **Cloudflare → OpenLiteSpeed → Node**; the
+srv domain skips Cloudflare. The rate limiter and `audit_log.ip_address` both
+need the visitor's address, and each hop hides it differently.
+
+- **OpenLiteSpeed trusts Cloudflare, and only Cloudflare.** In
+  `/usr/local/lsws/conf/httpd_config.conf`, `useIpInProxyHeader 2` ("trusted IP
+  only") and the `accessControl` allow list carries Cloudflare's published
+  ranges with a `T` suffix. A request that does not come from those ranges
+  cannot choose its own address with a header. If Cloudflare publishes new
+  ranges (cloudflare.com/ips), add them there, or visitors arriving through the
+  new ones are counted as Cloudflare.
+- **`XFF_DEPTH=2` for the app behind Cloudflare, `1` for the preview.**
+  OpenLiteSpeed appends the Cloudflare hop to `X-Forwarded-For`, so for the main
+  domain the visitor is the second entry from the right, not the rightmost.
+  With `1` there, every visitor keys as a Cloudflare edge address and the
+  limiter puts a whole city in one bucket. That happened for three minutes on
+  2026-09-15 before this was corrected.
+
+To check after any change, submit `/forgot-password` with an address that has
+no account (it sends nothing) and compare the newest row to your own address:
+
+```sh
+ssh hstgr "sqlite3 -readonly /home/admin/app/local.db 'select action, ip_address from audit_log order by id desc limit 1'"
+curl -s https://api.ipify.org
+```
+
+---
+
+## 5d. The client preview on the srv domain
+
+`https://srv1891814.hstgr.cloud` is **not** production. It is a second copy of
+the app for showing design work, in `/home/admin/preview`, run by
+`shimeles-preview.service` on port 3001; the srv vhost's `shimelesnode`
+extprocessor points at 3001, the main domain's at 3000.
+
+- **Its own data.** A snapshot of the production database and uploads taken
+  when it was created. Nothing entered there reaches production, and nothing
+  staff do in production shows there until it is refreshed.
+- **No email.** `SMTP_*` are blank in its `.env`, so a demo form cannot mail a
+  real applicant or member of staff.
+- **Its own `BETTER_AUTH_SECRET` and `ORIGIN`.** Sessions do not cross over.
+
+Deploy a branch to it with the normal script:
+
+```sh
+git switch <branch>
+REMOTE_DIR=/home/admin/preview SERVICE=shimeles-preview ./scripts/deploy.sh
+```
+
+To retire it: point the srv vhost back at `127.0.0.1:3000`, restart LiteSpeed,
+`systemctl disable --now shimeles-preview`, remove its crontab line, and delete
+`/home/admin/preview`.
+
+---
+
 ## 6. Traps
 
 Each of these has already cost real debugging time.
