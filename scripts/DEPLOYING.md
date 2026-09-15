@@ -128,6 +128,16 @@ A package with a compiled binding (like `better-sqlite3`) needs two things:
    run different Node builds. This is exactly why the deploy runs `npm install`
    remotely instead of rsyncing `node_modules`.
 
+**`sharp` is the exception to rule 1, and has a trap of its own.** It has no
+install script, so it needs no `allow-scripts` entry — but its compiled binary
+arrives as an *optional* dependency (`@img/sharp-linux-x64` and
+`@img/sharp-libvips-linux-x64`), and `.npmrc` omits optional dependencies. So
+both are listed as ordinary `dependencies` in `package.json`, pinned to the
+exact versions `sharp` itself asks for. Upgrading `sharp` means upgrading those
+two with it, to the versions in its own `optionalDependencies`; a mismatch fails
+with `Could not load the "sharp" module`. They are the x64 glibc builds — right
+for this AlmaLinux box, and they would need changing on an ARM or Alpine host.
+
 ---
 
 ## 3. Database migrations
@@ -364,6 +374,46 @@ Note the three separate ceilings, which are easy to confuse:
 Only the first two ever bite. The per-file limit produces a friendly validation
 message; `BODY_SIZE_LIMIT` produces a raw 413. If a user reports "payload too
 big" or a silent upload failure, check `journalctl` for `413` first.
+
+---
+
+## 5b. Phone-sized photos (the cron job)
+
+Every public photo is uploaded once, at up to 1600px. `image-variants.mjs` makes
+480, 960 and 1600px WebP copies of each into `.tempFiles/.variants/`, and pages
+ask for them with `srcset`, so a phone downloads a ~30 KB copy instead of a
+~200 KB original. `/files/<name>?w=480` serves a copy when it exists and the
+original when it does not, so a photo uploaded a minute ago still shows.
+
+It runs **from cron, never inside a request**: the server has one core, and
+resizing while a visitor waits would slow every page. The script uses one
+thread, no cache, and exits when it is done; measured locally, 41 photos took
+under 8 seconds at about 175 MB of memory. After the first run it only touches
+new uploads, and a run with nothing to do prints nothing.
+
+Install once, as `admin` (`crontab -e`):
+
+```cron
+*/10 * * * * cd /home/admin/app && flock -n /tmp/image-variants.lock nice -n 19 node --env-file=.env image-variants.mjs >> image-variants.log 2>&1
+```
+
+- `flock -n` — if a run is still going, the next one skips rather than piling up.
+- `nice -n 19` — the web server always wins the CPU.
+- The `node` on cron's `PATH` may not be nvm's. If the log says `node: command
+  not found`, use the full path from `shimeles.service`.
+
+Checking it:
+
+```sh
+ssh hstgr 'cd /home/admin/app && nice -n 19 node --env-file=.env image-variants.mjs'   # first run by hand
+ssh hstgr 'tail image-variants.log; ls /home/admin/app/.tempFiles/.variants | wc -l'
+curl -sI 'https://srv1891814.hstgr.cloud/files/<a photo name>?w=480' | grep -i 'content-type\|content-length'
+```
+
+Expect `image/webp` and a small length. **Undo** is `rm -rf .tempFiles/.variants`
+and removing the crontab line; the originals are never modified. Copies are
+public photos only, and a copy of a file that is deleted or made private is
+removed on the next run — `/files` refuses `?w=` on a private file regardless.
 
 ---
 

@@ -61,6 +61,45 @@ export const auth = betterAuth({
 		 */
 		revokeSessionsOnPasswordReset: true
 	},
+	/**
+	 * Throttling for `/api/auth/*`.
+	 *
+	 * Better Auth owns these paths, so `handleRateLimit` in `hooks.server.ts`
+	 * deliberately skips them: two limiters over one route would make a 429
+	 * impossible to attribute. The hook covers what this cannot — `/login`,
+	 * `/forgot-password`, `/magic-link` and `/reset-password` are SvelteKit form
+	 * actions that call `auth.api.*` server-side and never touch the HTTP layer
+	 * this governs, the same mechanism `handleBlockPublicSignup` relies on.
+	 *
+	 * `enabled` is left at its default, which is production-only. `storage` is
+	 * memory because the database option wants a `rateLimit` table and there is
+	 * no migration for one; a single process makes that a real choice rather
+	 * than a compromise.
+	 */
+	rateLimit: {
+		window: 60,
+		max: 60,
+		storage: 'memory',
+		customRules: {
+			// The two endpoints where a wrong answer is worth something: one
+			// guesses a staff password, the other mails an address of the
+			// caller's choosing from the Foundation's own account.
+			'/sign-in/email': { window: 5 * 60, max: 10 },
+			'/forget-password': { window: 5 * 60, max: 5 }
+		}
+	},
+	advanced: {
+		/**
+		 * OpenLiteSpeed proxies from loopback, so without naming it as a trusted
+		 * hop every caller keys as `127.0.0.1` and the limit above becomes a
+		 * single shared bucket for the internet. Same root cause as
+		 * `$lib/server/clientAddress`, which fixes it for the rest of the app.
+		 */
+		ipAddress: {
+			ipAddressHeaders: ['x-forwarded-for'],
+			trustedProxies: ['127.0.0.1', '::1']
+		}
+	},
 	/*
 	 * Session length is Better Auth's default — seven days — on purpose.
 	 *

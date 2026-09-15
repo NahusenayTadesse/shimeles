@@ -20,7 +20,7 @@
 
 <script lang="ts">
 	import { reveal, stagger } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 	import { Clock } from '@lucide/svelte';
 	import type { RenderBlogPost } from '$lib/content/types';
@@ -38,6 +38,8 @@
 		{#if post.coverImage}
 			<img
 				src={assetUrl(post.coverImage)}
+				srcset={imageSrcset(post.coverImage)}
+				sizes="(min-width: 768px) 33vw, 100vw"
 				alt=""
 				loading="lazy"
 				class="size-full object-cover transition-transform duration-500 group-hover:scale-105"

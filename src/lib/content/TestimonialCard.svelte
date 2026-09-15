@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { reveal, stagger } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 	import { Quote } from '@lucide/svelte';
 	import type { RenderTestimonial } from '$lib/content/types';
@@ -38,6 +38,8 @@
 		{#if testimonial.photo}
 			<img
 				src={assetUrl(testimonial.photo)}
+				srcset={imageSrcset(testimonial.photo)}
+				sizes="96px"
 				alt=""
 				loading="lazy"
 				class="size-11 shrink-0 rounded-full object-cover"

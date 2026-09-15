@@ -61,6 +61,26 @@ const MIME: Record<string, string> = {
 	docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 };
 
+/**
+ * Smaller copies of public photographs, written by `scripts/image-variants.mjs`
+ * from cron — never here, because this server has one core and a visitor
+ * should not wait on an image being resized.
+ *
+ * `?w=480` asks for one. Only these widths, only public images, and only when
+ * the copy already exists; otherwise the original is served, with a short
+ * cache rather than the year-long one, so a phone that asked before the copy
+ * was made picks it up next time instead of keeping the big file for a year.
+ * A copy is only ever reached through its original's row, so it inherits every
+ * check above — there is no way to name one directly.
+ */
+const VARIANT_WIDTHS = new Set([480, 960, 1600]);
+const SMALLEST_WIDTH = 480;
+const VARIANT_SOURCES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const VARIANTS_DIR = path.join(FILES_DIR, '.variants');
+/** Must match `variantName` in `scripts/image-variants.mjs`. */
+const variantName = (storedName: string, width: number) => `${storedName}.${width}w.webp`;
+const VARIANT_PENDING_CACHE = 'public, max-age=600';
+
 const mimeFor = (name: string) =>
 	MIME[name.toLowerCase().split('.').at(-1) ?? ''] ?? 'application/octet-stream';
 
@@ -197,11 +217,27 @@ export const GET: RequestHandler = async (event) => {
 		});
 	}
 
-	const stats = getCachedStats(filePath);
-	if (!stats) throw error(404, 'Not found');
+	let servePath = filePath;
+	let mimeType = record.mimeType || mimeFor(params.name);
+	let cacheControl: string = record.isPublic ? CACHE_TTL.public : CACHE_TTL.private;
 
-	const mimeType = record.mimeType || mimeFor(params.name);
-	const cacheControl = record.isPublic ? CACHE_TTL.public : CACHE_TTL.private;
+	const width = Number(event.url.searchParams.get('w'));
+	if (record.isPublic && VARIANT_WIDTHS.has(width) && VARIANT_SOURCES.has(mimeType)) {
+		const variantPath = path.join(VARIANTS_DIR, variantName(params.name, width));
+		if (getCachedStats(variantPath)) {
+			servePath = variantPath;
+			mimeType = 'image/webp';
+		} else if (!getCachedStats(path.join(VARIANTS_DIR, variantName(params.name, SMALLEST_WIDTH)))) {
+			// Not processed yet — the smallest copy is always made, so its absence
+			// means cron has not reached this photo. Once it has, a missing wider
+			// copy means the original is already that small, and the original is
+			// the permanent answer at the usual year-long cache.
+			cacheControl = VARIANT_PENDING_CACHE;
+		}
+	}
+
+	const stats = getCachedStats(servePath);
+	if (!stats) throw error(404, 'Not found');
 	const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
 
 	// Conditional requests are only worth honouring for public assets; a private
@@ -253,7 +289,7 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		const stream = Readable.toWeb(
-			fs.createReadStream(filePath, { start: range.start, end: range.end }),
+			fs.createReadStream(servePath, { start: range.start, end: range.end }),
 			{ strategy: new CountQueuingStrategy({ highWaterMark: 100 }) }
 		);
 
@@ -267,7 +303,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 	}
 
-	const stream = Readable.toWeb(fs.createReadStream(filePath), {
+	const stream = Readable.toWeb(fs.createReadStream(servePath), {
 		strategy: new CountQueuingStrategy({ highWaterMark: 100 })
 	});
 

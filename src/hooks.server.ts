@@ -1,9 +1,13 @@
 import { building } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
+import { audit } from '$lib/server/audit';
+import { clientAddress } from '$lib/server/clientAddress';
 import { startImpactSchedule } from '$lib/server/impact';
+import { consume, policyFor, startRateLimitSweep } from '$lib/server/rateLimit';
 
 /**
  * Closes the public signup endpoint.
@@ -84,6 +88,79 @@ const handleCsrf: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+/**
+ * Throttles the public routes.
+ *
+ * Placed after `handleCsrf` so cross-site junk is already refused and does not
+ * spend anybody's allowance, and before `handleBetterAuth` so a rejected
+ * request costs no session lookup. Which paths are governed, and how heavily,
+ * is `policyFor` in `$lib/server/rateLimit` — `/dashboard` and `/api/auth` are
+ * exempt there, for reasons given in that file.
+ *
+ * `RATE_LIMIT_DISABLED=1` turns it off without a deploy. It exists because the
+ * failure mode of a limiter that is keying on the wrong thing is the whole site
+ * refusing everybody, and the person who has to fix that at night should not
+ * need a build to do it.
+ */
+const handleRateLimit: Handle = async ({ event, resolve }) => {
+	if (env.RATE_LIMIT_DISABLED === '1') return resolve(event);
+
+	const policy = policyFor(event.url.pathname, event.request.method);
+	if (!policy) return resolve(event);
+
+	// No address means no bucket to count against, and inventing a shared one
+	// would put every anonymous caller in a single window — one script could
+	// then lock out the whole site. Let it through; `audit_log` still records
+	// what happened.
+	const address = clientAddress(event);
+	if (!address) return resolve(event);
+
+	const decision = consume(address, policy);
+	if (decision.allowed) return resolve(event);
+
+	if (decision.firstBreach) {
+		audit({
+			event,
+			action: 'rate_limited',
+			entityType: 'rate_limit',
+			metadata: { policy: policy.id, path: event.url.pathname, method: event.request.method }
+		});
+	}
+
+	return tooManyRequests(event, decision.retryAfter);
+};
+
+/**
+ * A 429 the caller can actually read.
+ *
+ * A form posted through `enhance` has its response run through `deserialize`,
+ * which is `JSON.parse` — hand that plain text and the applicant gets a parse
+ * error instead of an explanation. So a request carrying SvelteKit's action
+ * header gets an `ActionResult`, which surfaces through the app's own error
+ * boundary; anything else (a form submitted with JavaScript off, curl) gets
+ * the sentence itself.
+ */
+const TOO_MANY = 'Too many requests from this connection. Please wait a few minutes and try again.';
+
+function tooManyRequests(event: RequestEvent, retryAfter: number) {
+	const headers = {
+		'Retry-After': String(retryAfter),
+		'Cache-Control': 'no-store'
+	};
+
+	if (event.request.headers.get('x-sveltekit-action') === 'true') {
+		return new Response(JSON.stringify({ type: 'error', error: { message: TOO_MANY } }), {
+			status: 429,
+			headers: { ...headers, 'Content-Type': 'application/json' }
+		});
+	}
+
+	return new Response(TOO_MANY, {
+		status: 429,
+		headers: { ...headers, 'Content-Type': 'text/plain; charset=utf-8' }
+	});
+}
+
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 
@@ -131,11 +208,15 @@ const handleSecurity: Handle = async ({ event, resolve }) => {
 
 // The impact counters are recomputed hourly (§4) rather than on every homepage
 // visit. Started once per process, never during prerender.
-if (!building) startImpactSchedule();
+if (!building) {
+	startImpactSchedule();
+	startRateLimitSweep();
+}
 
 export const handle = sequence(
 	handleSecurity,
 	handleCsrf,
+	handleRateLimit,
 	handleBlockPublicSignup,
 	handleBetterAuth
 );
