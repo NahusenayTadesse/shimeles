@@ -1,6 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { auditLog } from '$lib/server/db/schema';
+import { clientAddress } from '$lib/server/clientAddress';
 
 /**
  * The audit trail.
@@ -67,7 +68,9 @@ export type AuditEntity =
 	| 'file'
 	| 'export'
 	/** A palette lookup across cases, volunteers, donors and messages. */
-	| 'search';
+	| 'search'
+	/** Not a record — the throttle in front of the public routes. */
+	| 'rate_limit';
 
 export type AuditAction =
 	| 'viewed'
@@ -100,7 +103,14 @@ export type AuditAction =
 	| 'password_reset_requested'
 	| 'password_reset'
 	| 'magic_link_requested'
-	| 'permission_denied';
+	| 'permission_denied'
+	/**
+	 * A client crossed a rate limit. Deliberately not `permission_denied`: that
+	 * one means somebody authenticated reached for something that was not
+	 * theirs, and burying traffic shaping in it would make both harder to read.
+	 * Written once per offender per window, not once per blocked request.
+	 */
+	| 'rate_limited';
 
 interface AuditInput {
 	event: RequestEvent;
@@ -137,23 +147,16 @@ export function audit({ event, action, entityType, entityId, userId, metadata }:
 				entityType,
 				entityId: entityId == null ? null : String(entityId),
 				metadata: metadata ?? null,
-				// `getClientAddress` throws when there is no adapter-provided address
-				// (during prerender, for instance), so it is guarded with the rest.
-				ipAddress: safeAddress(event),
+				// Resolved through `clientAddress`, not `getClientAddress`: behind the
+				// production proxy the socket address is the loopback hop, and this
+				// column is worth nothing if every row reads 127.0.0.1.
+				ipAddress: clientAddress(event),
 				userAgent: event.request.headers.get('user-agent')?.slice(0, 255) ?? null,
 				createdAt: new Date()
 			})
 			.run();
 	} catch (err) {
 		console.error('audit write failed', { action, entityType, entityId }, err);
-	}
-}
-
-function safeAddress(event: RequestEvent): string | null {
-	try {
-		return event.getClientAddress();
-	} catch {
-		return null;
 	}
 }
 
