@@ -20,7 +20,7 @@
 		<div>
 			<h1 class="font-heading text-2xl font-bold">Homepage</h1>
 			<p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-				The two photo sets on the homepage: the hero collage behind the headline, and the gallery
+				The two photo sets on the homepage: the hero slideshow behind the headline, and the gallery
 				section further down the page. The headline, subheadline and buttons are edited under
 				<a href="/dashboard/settings" class="underline">Site settings → Homepage</a>. This screen is
 				only the photos.
@@ -33,10 +33,11 @@
 
 	<Card.Root class="flex flex-col gap-4 p-6">
 		<div>
-			<h2 class="font-heading text-lg font-semibold">Hero collage</h2>
+			<h2 class="font-heading text-lg font-semibold">Hero slideshow</h2>
 			<p class="text-sm text-muted-foreground">
-				Add a few photos and the hero rotates through all of them; with none, it falls back to the
-				single hero image set in Site settings.
+				Add a few photos and the hero fades slowly through all of them, full-width behind the
+				headline, in the order shown here. Wide, well-lit photos work best. With none, it falls back
+				to the single hero image set in Site settings.
 			</p>
 		</div>
 		<GalleryUpload

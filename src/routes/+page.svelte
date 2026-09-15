@@ -1,11 +1,11 @@
 <script lang="ts">
 	import PageShell from '$lib/content/PageShell.svelte';
 	import TrimBand from '$lib/components/trim-band.svelte';
-	import HeroCollage from '$lib/components/hero-collage.svelte';
+	import HeroSlideshow from '$lib/components/hero-slideshow.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ArrowRight, Heart, Users } from '@lucide/svelte';
+	import { ArrowRight, Heart, Sun, Users } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
@@ -26,71 +26,81 @@
 	testimonials={data.testimonials}
 >
 	{#snippet header()}
-		<div class="relative overflow-hidden">
-			<div
-				class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-olive/12 via-transparent to-transparent"
-				aria-hidden="true"
-			></div>
-			<div
-				class="dot-field pointer-events-none absolute top-16 right-8 -z-10 size-40 text-olive/40 md:size-56"
-				aria-hidden="true"
-			></div>
-			<div
-				class="pointer-events-none absolute top-1/3 -left-20 -z-10 size-72 rounded-full bg-clay/10 blur-3xl"
-				aria-hidden="true"
-			></div>
+		<div
+			class="hero-night relative isolate flex min-h-[88svh] flex-col overflow-hidden text-(--hero-cream)"
+		>
+			<HeroSlideshow images={data.heroGallery} fallbackImage={s('hero.image')} />
 
 			<div
-				class="relative mx-auto grid w-full max-w-6xl items-start gap-12 px-4 pt-28 pb-20 md:grid-cols-[1.05fr_0.95fr] md:pt-32 md:pb-24"
+				class="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-6 px-4 pt-24 pb-28 md:pt-28 md:pb-32"
 			>
-				<div class="flex flex-col gap-5 md:pt-6">
+				<p
+					use:reveal
+					class="eyebrow flex w-fit items-center gap-2 rounded-full border border-olive/40 bg-(--hero-shade)/40 px-4 py-1.5 text-olive-bright backdrop-blur-sm"
+				>
+					<Sun class="size-3.5" />
+					A family foundation · Addis Ababa
+				</p>
+				<h1
+					use:reveal={{ delay: 70, y: 32 }}
+					class="hero-headline max-w-3xl text-4xl text-balance drop-shadow-[0_2px_24px_oklch(0.18_0.04_170/60%)] md:text-6xl lg:text-7xl"
+				>
+					{s('hero.headline') || 'Nobody should face the hardest days alone.'}
+				</h1>
+				<span
+					use:reveal={{ delay: 110, x: -24, y: 0 }}
+					class="hero-rule h-1.5 w-24 rounded-full"
+					aria-hidden="true"
+				></span>
+				{#if s('hero.subheadline')}
 					<p
-						use:reveal
-						class="eyebrow flex w-fit items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-accent-foreground"
+						use:reveal={{ delay: 150, y: 28 }}
+						class="max-w-xl text-lg text-(--hero-cream)/90 md:text-xl"
 					>
-						<Heart class="size-3.5" fill="currentColor" />
-						A family foundation · Addis Ababa
+						{s('hero.subheadline')}
 					</p>
-					<h1 use:reveal={{ delay: 70, y: 32 }} class="max-w-xl text-4xl md:text-6xl">
-						{s('hero.headline') || 'Nobody should face the hardest days alone.'}
-					</h1>
-					{#if s('hero.subheadline')}
-						<p use:reveal={{ delay: 150, y: 28 }} class="max-w-lg text-lg text-muted-foreground">
-							{s('hero.subheadline')}
-						</p>
-					{/if}
-					<div use:reveal={{ delay: 230, y: 24 }} class="flex flex-wrap gap-3 pt-2">
-						<a href="/donate" class={cn(buttonVariants({ size: 'lg' }), 'shadow-warm')}>
-							Give to the Foundation
-							<ArrowRight class="size-4" />
-						</a>
-						<a href="/programs" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }))}>
-							See our programmes
-						</a>
-					</div>
+				{/if}
+				<div use:reveal={{ delay: 230, y: 24 }} class="flex flex-wrap items-center gap-3 pt-2">
+					<a
+						href="/donate"
+						class={cn(
+							buttonVariants({ size: 'lg' }),
+							'hero-give bg-olive text-(--hero-shade) hover:bg-olive-bright'
+						)}
+					>
+						<Heart class="size-4" fill="currentColor" />
+						Give to the Foundation
+						<ArrowRight class="size-4" />
+					</a>
+					<a
+						href="/programs"
+						class={cn(
+							buttonVariants({ variant: 'outline', size: 'lg' }),
+							'border-(--hero-cream)/40 bg-(--hero-cream)/10 text-(--hero-cream) backdrop-blur-sm hover:bg-(--hero-cream)/20 hover:text-(--hero-cream) dark:border-(--hero-cream)/40 dark:bg-(--hero-cream)/10'
+						)}
+					>
+						See our programmes
+					</a>
 				</div>
 
-				<div use:reveal={{ delay: 120, y: 20 }} class="relative">
-					<HeroCollage images={data.heroGallery} fallbackImage={s('hero.image')} />
-
-					{#if familiesSupported > 0}
-						<div
-							class="floating-badge absolute -bottom-6 -left-6 flex items-center gap-3 md:-bottom-8 md:-left-8"
+				{#if familiesSupported > 0}
+					<div
+						use:reveal={{ delay: 320, y: 20 }}
+						class="mt-6 flex w-fit items-center gap-3 rounded-2xl border border-olive/30 bg-(--hero-shade)/45 px-4 py-3 backdrop-blur-md"
+					>
+						<span
+							class="flex size-10 items-center justify-center rounded-full bg-olive text-(--hero-shade)"
 						>
-							<span
-								class="flex size-10 items-center justify-center rounded-full bg-clay text-primary-foreground"
-							>
-								<Users class="size-5" />
+							<Users class="size-5" />
+						</span>
+						<span class="flex flex-col leading-tight">
+							<span class="font-heading text-xl font-bold text-olive-bright">
+								{familiesSupported.toLocaleString()}+
 							</span>
-							<span class="flex flex-col leading-tight">
-								<span class="font-heading text-xl font-bold text-foreground">
-									{familiesSupported.toLocaleString()}+
-								</span>
-								<span class="text-xs text-muted-foreground">Families supported</span>
-							</span>
-						</div>
-					{/if}
-				</div>
+							<span class="text-xs text-(--hero-cream)/80">Families supported</span>
+						</span>
+					</div>
+				{/if}
 			</div>
 
 			<TrimBand class="relative w-full" />

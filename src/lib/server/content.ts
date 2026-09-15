@@ -272,7 +272,7 @@ export async function getAboutContent() {
 /**
  * One owner's media, as the public components take it.
  *
- * `storagePath` rather than `url` because `Gallery` and `hero-collage` were
+ * `storagePath` rather than `url` because `Gallery` and the hero slideshow were
  * written against the old gallery tables' shape and there is no reason to
  * churn them; the column is simply selected under the name they expect.
  */
@@ -302,7 +302,7 @@ export async function getAboutGallery() {
 /**
  * The homepage hero's photo set. Ordered, captioned, and — unlike the old
  * `hero.image` setting — allowed to hold any number of photos, so the header
- * can rotate through a small collage instead of a single fixed banner.
+ * can fade through a slideshow instead of a single fixed banner.
  */
 export async function getHeroGallery() {
 	return cached('hero-gallery', () => mediaFor('hero', 0, 'image'));

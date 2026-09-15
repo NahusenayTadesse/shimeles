@@ -301,8 +301,7 @@
 --------------------------------------------------------------------------- */
 
 .site-shell {
-	--shadow-warm:
-		0 30px 60px -32px var(--shadow-tint), 0 8px 24px -12px var(--shadow-tint);
+	--shadow-warm: 0 30px 60px -32px var(--shadow-tint), 0 8px 24px -12px var(--shadow-tint);
 }
 
 /* Most public CTAs are `<a class={buttonVariants(...)}>`, not `<Button>`
@@ -451,4 +450,55 @@
 		filter: none;
 		transition: none;
 	}
+}
+
+/* ---------------------------------------------------------------------------
+   Homepage hero — the gold on a photograph
+
+   The rule under the headline is a short run of sunrise, and the Give button
+   carries a soft gold glow, so the one warm colour on the darkened photo is
+   the thing to press.
+--------------------------------------------------------------------------- */
+
+/* The hero is a photograph at night in either theme, so it pins its own shade
+   and cream instead of following `--clay-deep`, which dark mode lightens. */
+.hero-night {
+	--hero-shade: oklch(0.2 0.045 170);
+	--hero-cream: oklch(0.975 0.014 85);
+}
+
+/* Cream at the top of the headline warming to gold at its foot — the light
+   rising behind the photograph, carried into the words. */
+.hero-headline {
+	background: linear-gradient(
+		175deg,
+		var(--hero-cream) 0%,
+		var(--hero-cream) 45%,
+		oklch(0.86 0.1 88) 100%
+	);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.hero-rule {
+	background: linear-gradient(90deg, var(--olive-bright), var(--olive) 60%, transparent);
+	box-shadow: 0 0 18px color-mix(in oklch, var(--olive) 70%, transparent);
+}
+
+.site-shell .hero-give {
+	box-shadow:
+		0 18px 40px -16px color-mix(in oklch, var(--olive) 80%, transparent),
+		0 0 0 1px color-mix(in oklch, var(--olive-bright) 60%, transparent) inset;
+	transition:
+		transform 300ms var(--ease-soft),
+		box-shadow 300ms var(--ease-soft),
+		background-color 300ms var(--ease-soft);
+}
+
+.site-shell .hero-give:hover {
+	transform: translateY(-2px);
+	box-shadow:
+		0 24px 50px -16px color-mix(in oklch, var(--olive-bright) 90%, transparent),
+		0 0 0 1px color-mix(in oklch, var(--olive-bright) 80%, transparent) inset;
 }
