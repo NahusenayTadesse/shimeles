@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { ArrowRight, Quote } from '@lucide/svelte';
@@ -42,6 +42,8 @@
 								{#if testimonial.photo}
 									<img
 										src={assetUrl(testimonial.photo)}
+										srcset={imageSrcset(testimonial.photo)}
+										sizes="96px"
 										alt=""
 										loading="lazy"
 										class="size-14 rounded-full object-cover"
