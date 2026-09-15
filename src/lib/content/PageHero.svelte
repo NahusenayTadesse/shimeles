@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { reveal } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import TrimBand from '$lib/components/trim-band.svelte';
 	import { cn } from '$lib/utils';
 
@@ -96,6 +96,8 @@
 				     keeps the layout from shifting when it lands. -->
 				<img
 					src={assetUrl(image)}
+					srcset={imageSrcset(image)}
+					sizes="(min-width: 768px) 45vw, 100vw"
 					alt={imageAlt}
 					width="800"
 					height="600"

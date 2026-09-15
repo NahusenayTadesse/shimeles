@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { reveal, stagger } from '$lib/actions/reveal';
 	import { countUp } from '$lib/actions/count-up';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { formatCompact, formatMoney, type MoneyTotal } from '$lib/money';
 	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
@@ -158,6 +158,8 @@
 				<figure class="shadow-warm relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem]">
 					<img
 						src={assetUrl(str(block, 'src'))}
+						srcset={imageSrcset(str(block, 'src'))}
+						sizes="(min-width: 1024px) 1024px, 100vw"
 						alt={str(block, 'alt')}
 						loading="lazy"
 						class="h-[22rem] w-full object-cover md:h-[28rem]"
@@ -329,6 +331,8 @@
 									<div class="overflow-hidden">
 										<img
 											src={assetUrl(pillar.image)}
+											srcset={imageSrcset(pillar.image)}
+											sizes="(min-width: 768px) 50vw, 100vw"
 											alt={pillar.name}
 											loading="lazy"
 											class="aspect-video w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
@@ -415,6 +419,8 @@
 								{#if initiative.image}
 									<img
 										src={assetUrl(initiative.image)}
+										srcset={imageSrcset(initiative.image)}
+										sizes="(min-width: 768px) 33vw, 100vw"
 										alt={initiative.name}
 										loading="lazy"
 										class="aspect-video w-full object-cover"
@@ -571,6 +577,8 @@
 						{#if str(block, 'photo')}
 							<img
 								src={assetUrl(str(block, 'photo'))}
+								srcset={imageSrcset(str(block, 'photo'))}
+								sizes="112px"
 								alt={str(block, 'name')}
 								class="size-28 rounded-full object-cover ring-4 ring-olive/25"
 							/>

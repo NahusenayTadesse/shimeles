@@ -7,7 +7,7 @@
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 	import { ArrowRight, Clock, Search, X } from '@lucide/svelte';
 
@@ -162,6 +162,8 @@
 				{#if featured.coverImage}
 					<img
 						src={assetUrl(featured.coverImage)}
+						srcset={imageSrcset(featured.coverImage)}
+						sizes="(min-width: 768px) 60vw, 100vw"
 						alt=""
 						class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
 					/>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 
 	/**
@@ -25,9 +25,19 @@
 
 	const slides = $derived(
 		images.length
-			? images.map((image) => ({ key: String(image.id), src: assetUrl(image.storagePath) }))
+			? images.map((image) => ({
+					key: String(image.id),
+					src: assetUrl(image.storagePath),
+					srcset: imageSrcset(image.storagePath)
+				}))
 			: fallbackImage
-				? [{ key: 'fallback', src: assetUrl(fallbackImage) }]
+				? [
+						{
+							key: 'fallback',
+							src: assetUrl(fallbackImage),
+							srcset: imageSrcset(fallbackImage)
+						}
+					]
 				: []
 	);
 
@@ -80,6 +90,8 @@
 			{#if loaded.has(index)}
 				<img
 					src={slide.src}
+					srcset={slide.srcset}
+					sizes="100vw"
 					alt=""
 					class={cn(
 						'size-full object-cover',
