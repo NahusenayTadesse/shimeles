@@ -545,3 +545,29 @@
 		box-shadow: 0 0 28px 6px color-mix(in oklch, var(--olive) 45%, transparent);
 	}
 }
+
+/* ---------------------------------------------------------------------------
+   Page changes
+
+   A quick crossfade between public pages (started in `+layout.svelte`). Short
+   on purpose: long enough to read as one site rather than a reload, too short
+   to wait on. The header is named, so it is left out of the fade and holds
+   still while the page under it changes.
+--------------------------------------------------------------------------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: 180ms;
+	animation-timing-function: var(--ease-soft);
+}
+
+.site-header {
+	view-transition-name: site-header;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation: none;
+	}
+}

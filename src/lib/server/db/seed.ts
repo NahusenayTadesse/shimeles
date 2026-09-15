@@ -2954,6 +2954,11 @@ async function seedContact() {
 
 async function seedTranslations() {
 	const strings: { key: string; en: string; am?: string; group: string }[] = [
+		// Wayfinding on every public page — see `next-steps.svelte`,
+		// `breadcrumbs.svelte` and the skip link in the root layout.
+		{ key: 'nav.next_heading', en: 'Where to next', group: 'nav' },
+		{ key: 'nav.breadcrumb_label', en: 'You are here', group: 'nav' },
+		{ key: 'nav.skip_to_content', en: 'Skip to content', group: 'nav' },
 		{ key: 'form.submit', en: 'Submit', group: 'form' },
 		{ key: 'form.sending', en: 'Sending', group: 'form' },
 		{ key: 'form.your_name', en: 'Your name', group: 'form' },

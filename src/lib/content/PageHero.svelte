@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { reveal } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import TrimBand from '$lib/components/trim-band.svelte';
+	import Breadcrumbs from '$lib/components/breadcrumbs.svelte';
 	import { cn } from '$lib/utils';
 
 	/**
@@ -22,7 +23,9 @@
 		image,
 		imageAlt = '',
 		icon,
-		actions
+		actions,
+		breadcrumbs = [],
+		breadcrumbLabel
 	}: {
 		eyebrow?: string;
 		title: string;
@@ -31,6 +34,9 @@
 		imageAlt?: string;
 		icon?: import('svelte').Snippet;
 		actions?: import('svelte').Snippet;
+		/** The trail the page gives `<Seo>`; shown from three steps deep. */
+		breadcrumbs?: { name: string; path: string }[];
+		breadcrumbLabel?: string;
 	} = $props();
 </script>
 
@@ -51,6 +57,7 @@
 		)}
 	>
 		<div class="flex flex-col gap-5">
+			<Breadcrumbs items={breadcrumbs} label={breadcrumbLabel} />
 			{#if icon}
 				<div use:reveal>
 					{@render icon()}
@@ -96,6 +103,8 @@
 				     keeps the layout from shifting when it lands. -->
 				<img
 					src={assetUrl(image)}
+					srcset={imageSrcset(image)}
+					sizes="(min-width: 768px) 45vw, 100vw"
 					alt={imageAlt}
 					width="800"
 					height="600"

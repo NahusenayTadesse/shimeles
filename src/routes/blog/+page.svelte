@@ -7,7 +7,7 @@
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 	import { ArrowRight, Clock, Search, X } from '@lucide/svelte';
 
@@ -83,7 +83,7 @@
 
 <div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
 	<!-- Filters -->
-	<div use:reveal class="flex flex-col gap-4">
+	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center gap-2">
 			<button
 				type="button"
@@ -162,6 +162,8 @@
 				{#if featured.coverImage}
 					<img
 						src={assetUrl(featured.coverImage)}
+						srcset={imageSrcset(featured.coverImage)}
+						sizes="(min-width: 768px) 60vw, 100vw"
 						alt=""
 						class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
 					/>
@@ -207,7 +209,7 @@
 			{/each}
 		</div>
 	{:else if !data.featured}
-		<div use:reveal class="mt-10 rounded-[2rem] border border-dashed p-12 text-center">
+		<div class="mt-10 rounded-[2rem] border border-dashed p-12 text-center">
 			<p class="text-lg font-medium">Nothing here yet.</p>
 			<p class="mt-2 text-muted-foreground">
 				{#if hasFilters}

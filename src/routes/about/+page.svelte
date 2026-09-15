@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { reveal, stagger } from '$lib/actions/reveal';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { formatMoney } from '$lib/money';
 	import PageHero from '$lib/content/PageHero.svelte';
 	import Seo from '$lib/components/Seo.svelte';
@@ -73,7 +73,7 @@
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-16 md:gap-28 md:py-24">
 	<!-- Our Story -->
-	<section use:reveal class="mx-auto flex max-w-3xl flex-col gap-6">
+	<section class="mx-auto flex max-w-3xl flex-col gap-6">
 		<div class="flex items-center gap-3">
 			<div class="flex size-11 items-center justify-center rounded-full bg-accent text-primary">
 				<BookOpen class="size-5" />
@@ -256,6 +256,8 @@
 						<img
 							use:reveal={{ scale: 0.98 }}
 							src={assetUrl(memoriamMainPhoto.storagePath)}
+							srcset={imageSrcset(memoriamMainPhoto.storagePath)}
+							sizes="(min-width: 768px) 50vw, 100vw"
 							alt={memoriamMainPhoto.caption || memoriamName}
 							class="shadow-warm h-[24rem] w-full rounded-[1.75rem] object-cover sm:h-[30rem] lg:h-[36rem]"
 						/>
@@ -281,6 +283,8 @@
 							>
 								<img
 									src={assetUrl(image.storagePath)}
+									srcset={imageSrcset(image.storagePath)}
+									sizes="(min-width: 768px) 16vw, 33vw"
 									alt=""
 									loading="lazy"
 									class="size-full object-cover"
@@ -324,6 +328,8 @@
 							{#if initiative.image}
 								<img
 									src={assetUrl(initiative.image)}
+									srcset={imageSrcset(initiative.image)}
+									sizes="(min-width: 768px) 33vw, 100vw"
 									alt={initiative.name}
 									loading="lazy"
 									class="aspect-video w-full object-cover"

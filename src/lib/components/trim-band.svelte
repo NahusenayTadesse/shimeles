@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { reveal } from '$lib/actions/reveal';
 	import { cn } from '$lib/utils';
 
 	/**
@@ -28,11 +27,7 @@
 </script>
 
 {#if festive}
-	<div
-		use:reveal={{ x: -32, duration: 700, blur: 2 }}
-		class={cn('h-7 w-full overflow-hidden', className)}
-		aria-hidden="true"
-	>
+	<div class={cn('h-7 w-full overflow-hidden', className)} aria-hidden="true">
 		<svg class="block size-full">
 			<defs>
 				<pattern id="tibeb-{id}" width="28" height="28" patternUnits="userSpaceOnUse">
@@ -50,9 +45,5 @@
 		</svg>
 	</div>
 {:else}
-	<div
-		use:reveal={{ x: -32, duration: 700, blur: 2 }}
-		class={cn('trim-band', thin && 'trim-band--thin', className)}
-		aria-hidden="true"
-	></div>
+	<div class={cn('trim-band', thin && 'trim-band--thin', className)} aria-hidden="true"></div>
 {/if}

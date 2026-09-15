@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { assetUrl } from '$lib/assets';
+	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
 
 	/**
@@ -12,6 +12,10 @@
 	 *
 	 * Motion is decoration here, so it stops for `prefers-reduced-motion`, for a
 	 * hidden tab, and while the visitor is choosing a slide with the dots.
+	 *
+	 * And with data saving on (`navigator.connection.saveData`, the phone's own
+	 * setting, or `prefers-reduced-data`) it is one photograph and no more: the
+	 * rest of the set is never downloaded, and there are no dots to ask for it.
 	 */
 	let {
 		images,
@@ -25,9 +29,19 @@
 
 	const slides = $derived(
 		images.length
-			? images.map((image) => ({ key: String(image.id), src: assetUrl(image.storagePath) }))
+			? images.map((image) => ({
+					key: String(image.id),
+					src: assetUrl(image.storagePath),
+					srcset: imageSrcset(image.storagePath)
+				}))
 			: fallbackImage
-				? [{ key: 'fallback', src: assetUrl(fallbackImage) }]
+				? [
+						{
+							key: 'fallback',
+							src: assetUrl(fallbackImage),
+							srcset: imageSrcset(fallbackImage)
+						}
+					]
 				: []
 	);
 
@@ -36,14 +50,17 @@
 	let previous = $state(-1);
 	let paused = $state(false);
 	let reducedMotion = $state(false);
+	let saveData = $state(false);
+	/** Every slide normally; only the first when the visitor is saving data. */
+	const shown = $derived(saveData ? slides.slice(0, 1) : slides);
 	/** Slides that have been shown at least once — only those get a real `src`. */
 	let loaded = $state(new Set<number>([0]));
 
 	function show(index: number) {
 		if (index === current) return;
 		previous = current;
-		current = (index + slides.length) % slides.length;
-		loaded = new Set([...loaded, current, (current + 1) % slides.length]);
+		current = (index + shown.length) % shown.length;
+		loaded = new Set([...loaded, current, (current + 1) % shown.length]);
 	}
 
 	onMount(() => {
@@ -51,14 +68,18 @@
 		reducedMotion = query.matches;
 		const onChange = (event: MediaQueryListEvent) => (reducedMotion = event.matches);
 		query.addEventListener('change', onChange);
+		const connection = (navigator as Navigator & { connection?: { saveData?: boolean } })
+			.connection;
+		saveData =
+			connection?.saveData === true || window.matchMedia('(prefers-reduced-data: reduce)').matches;
 		// Warm the second slide once the page has settled, so the first crossfade
 		// never fades into a half-decoded photo.
-		if (slides.length > 1) loaded = new Set([0, 1]);
+		if (slides.length > 1 && !saveData) loaded = new Set([0, 1]);
 		return () => query.removeEventListener('change', onChange);
 	});
 
 	$effect(() => {
-		if (slides.length < 2 || paused || reducedMotion) return;
+		if (shown.length < 2 || paused || reducedMotion) return;
 		const timer = setInterval(() => {
 			if (!document.hidden) show(current + 1);
 		}, interval);
@@ -70,7 +91,7 @@
 	class="hero-slideshow absolute inset-0 -z-10 overflow-hidden bg-(--hero-shade)"
 	aria-hidden="true"
 >
-	{#each slides as slide, index (slide.key)}
+	{#each shown as slide, index (slide.key)}
 		<div
 			class={cn(
 				'hero-slide absolute inset-0 transition-opacity duration-[1800ms] ease-in-out',
@@ -80,6 +101,8 @@
 			{#if loaded.has(index)}
 				<img
 					src={slide.src}
+					srcset={slide.srcset}
+					sizes="100vw"
 					alt=""
 					class={cn(
 						'size-full object-cover',
@@ -105,9 +128,9 @@
 	<div class="hero-sun absolute -right-40 -bottom-56 size-[42rem] rounded-full"></div>
 </div>
 
-{#if slides.length > 1}
+{#if shown.length > 1}
 	<div class="absolute right-4 bottom-10 z-10 flex items-center gap-2 md:right-8 md:bottom-14">
-		{#each slides as slide, index (slide.key)}
+		{#each shown as slide, index (slide.key)}
 			<button
 				type="button"
 				onclick={() => show(index)}
@@ -115,7 +138,7 @@
 				onmouseleave={() => (paused = false)}
 				onfocus={() => (paused = true)}
 				onblur={() => (paused = false)}
-				aria-label="Show photo {index + 1} of {slides.length}"
+				aria-label="Show photo {index + 1} of {shown.length}"
 				aria-current={index === current}
 				class={cn(
 					'h-1.5 rounded-full transition-all duration-500 focus-visible:ring-2 focus-visible:ring-olive-bright focus-visible:outline-none',

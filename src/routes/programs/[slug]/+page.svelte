@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { reveal } from '$lib/actions/reveal';
 	import PageHero from '$lib/content/PageHero.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
@@ -23,6 +22,12 @@
 			sky: 'text-sky bg-sky/10 border-sky/25'
 		}[pillar.color] ?? 'text-primary bg-primary/10 border-primary/25'
 	);
+	/** One trail for `<Seo>` and for the visible breadcrumbs, so they cannot disagree. */
+	const trail = $derived([
+		{ name: 'Home', path: '/' },
+		{ name: 'Programs', path: '/programs' },
+		{ name: pillar.name, path: `/programs/${pillar.slug}` }
+	]);
 </script>
 
 <Seo
@@ -30,14 +35,12 @@
 	description={pillar.summary}
 	image={pillar.image}
 	imageAlt={pillar.name}
-	breadcrumbs={[
-		{ name: 'Home', path: '/' },
-		{ name: 'Programs', path: '/programs' },
-		{ name: pillar.name, path: `/programs/${pillar.slug}` }
-	]}
+	breadcrumbs={trail}
 />
 
 <PageHero
+	breadcrumbs={trail}
+	breadcrumbLabel={data.strings?.['nav.breadcrumb_label']}
 	eyebrow="One of four programmes"
 	title={pillar.name}
 	description={pillar.summary}
@@ -69,7 +72,7 @@
 {#if pillar.description}
 	<div class="mx-auto w-full max-w-6xl px-4 pt-16 md:pt-24">
 		<!-- Authored in the dashboard's rich-text editor, per §3.2. -->
-		<div use:reveal class="prose-block prose-lede max-w-prose">
+		<div class="prose-block prose-lede max-w-prose">
 			{@html pillar.description}
 		</div>
 	</div>
@@ -102,7 +105,7 @@
 			<h2 class="text-3xl md:text-4xl">Apply for support</h2>
 			<span class="h-[3px] w-14 rounded-full bg-olive"></span>
 		</div>
-		<div use:reveal class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
+		<div class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 			<DynamicForm
 				form={data.applicationForm.definition}
 				data={data.applicationForm.data}

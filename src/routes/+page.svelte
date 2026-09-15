@@ -61,7 +61,7 @@
 >
 	{#snippet header()}
 		<div
-			class="hero-night relative isolate flex min-h-[88svh] flex-col overflow-hidden text-(--hero-cream)"
+			class="hero-night relative isolate flex min-h-[70svh] flex-col overflow-hidden text-(--hero-cream) md:min-h-[88svh]"
 		>
 			<HeroSlideshow images={data.heroGallery} fallbackImage={s('hero.image')} />
 
@@ -145,7 +145,7 @@
 		<TrimBand festive class="mt-20 rounded-full md:mt-28" />
 		<section class="mt-16 md:mt-20">
 			<div class="mb-8 flex flex-col gap-2">
-				<h2 use:reveal class="text-3xl md:text-4xl">Moments from the work</h2>
+				<h2 class="text-3xl md:text-4xl">Moments from the work</h2>
 				<span class="h-3 w-14 rounded-full bg-olive"></span>
 			</div>
 			<Gallery images={data.gallery} />

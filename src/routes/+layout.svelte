@@ -11,9 +11,11 @@
 	import { ModeWatcher, mode } from 'mode-watcher';
 	import { Toaster } from 'svelte-sonner';
 	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import SiteNav from '$lib/components/site-nav.svelte';
 	import SiteFooter from '$lib/components/site-footer.svelte';
 	import SeasonBanner from '$lib/components/season-banner.svelte';
+	import NextSteps from '$lib/components/next-steps.svelte';
 
 	let { children, data } = $props();
 
@@ -26,6 +28,34 @@
 	const isAuth = $derived(
 		['/login', '/setup', '/forgot-password', '/reset-password'].includes(page.url.pathname)
 	);
+
+	/**
+	 * A short crossfade between public pages, through the browser's own View
+	 * Transitions API — no library, and nothing at all on a browser without it,
+	 * which simply changes page the way it always did.
+	 *
+	 * Skipped for the dashboard (staff are working, not browsing), for a
+	 * navigation that stays on the same page (a filter, a tab), and under
+	 * reduced motion. The header carries its own `view-transition-name`, so it
+	 * holds still while the page beneath it changes.
+	 */
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const from = navigation.from?.url;
+		const to = navigation.to?.url;
+		if (!from || !to || from.pathname === to.pathname) return;
+		if (to.pathname.startsWith('/dashboard') || from.pathname.startsWith('/dashboard')) return;
+
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
+
+	const str = (key: string, fallback: string) => data.strings?.[key] ?? fallback;
 </script>
 
 <svelte:head>
@@ -58,6 +88,13 @@
 	{@render children?.()}
 {:else}
 	<div class="site-shell flex min-h-screen flex-col">
+		<!-- First thing a keyboard reaches: past the header, straight to the page. -->
+		<a
+			href="#main"
+			class="sr-only rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
+		>
+			{str('nav.skip_to_content', 'Skip to content')}
+		</a>
 		<SiteNav
 			items={data.navigation?.header ?? []}
 			siteNameAmharic={data.settings?.['site.name_am'] || 'ሽመልስ አበራ ፋውንዴሽን'}
@@ -68,9 +105,13 @@
 			message={data.settings?.['season.banner_message'] ?? ''}
 			href={data.settings?.['season.banner_link'] || null}
 		/>
-		<main class="flex-1">
+		<main id="main" tabindex="-1" class="flex-1 outline-none">
 			{@render children?.()}
 		</main>
+		<NextSteps
+			items={data.navigation?.header ?? []}
+			heading={str('nav.next_heading', 'Where to next')}
+		/>
 		<SiteFooter items={data.navigation?.footer ?? []} settings={data.settings ?? {}} />
 	</div>
 {/if}

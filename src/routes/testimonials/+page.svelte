@@ -2,7 +2,6 @@
 	import PageHero from '$lib/content/PageHero.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import TestimonialCard from '$lib/content/TestimonialCard.svelte';
-	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { HeartHandshake } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
@@ -33,7 +32,7 @@
 
 <div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
 	{#if data.pillars.length > 1}
-		<div use:reveal class="mb-10 flex flex-wrap items-center gap-2">
+		<div class="mb-10 flex flex-wrap items-center gap-2">
 			<Button
 				variant={filter === '' ? 'default' : 'outline'}
 				size="sm"
@@ -62,7 +61,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div use:reveal class="rounded-[2rem] border border-dashed p-12 text-center">
+		<div class="rounded-[2rem] border border-dashed p-12 text-center">
 			<p class="text-lg font-medium">Nothing here yet.</p>
 			<p class="mt-2 text-muted-foreground">
 				{#if filter}
