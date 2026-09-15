@@ -27,6 +27,7 @@
 	import ChartCanvas from '$lib/components/chart.svelte';
 	import type { ChartSeries } from '$lib/charts/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
+	import type { Snippet } from 'svelte';
 
 	/**
 	 * The generic block renderer.
@@ -54,6 +55,7 @@
 		labels = {},
 		initiativeNotice = '',
 		paymentNotice = { en: '', am: '' },
+		ledeAside,
 		class: className = ''
 	}: {
 		blocks: RenderBlock[];
@@ -98,6 +100,13 @@
 		 * Passed in for the same reason as everything else here.
 		 */
 		paymentNotice?: { en: string; am: string };
+		/**
+		 * Drawn beside a page's opening paragraph, which otherwise leaves half
+		 * the width empty. A snippet from the route rather than block content,
+		 * because what belongs there is the page's own — the homepage puts the
+		 * Foundation's tagline in it — and every other page keeps its lede alone.
+		 */
+		ledeAside?: Snippet;
 		class?: string;
 	} = $props();
 
@@ -150,9 +159,18 @@
 
 			{#if block.type === 'rich_text'}
 				<!-- `{ body }` — HTML authored in the dashboard editor. -->
-				<div class={cn('prose-block max-w-prose', isLede(block, index) && 'prose-lede')}>
-					{@html str(block, 'body')}
-				</div>
+				{#if isLede(block, index) && ledeAside}
+					<div class="grid items-center gap-10 md:grid-cols-[minmax(0,1.3fr)_1fr] lg:gap-16">
+						<div class="prose-block prose-lede max-w-prose">
+							{@html str(block, 'body')}
+						</div>
+						{@render ledeAside()}
+					</div>
+				{:else}
+					<div class={cn('prose-block max-w-prose', isLede(block, index) && 'prose-lede')}>
+						{@html str(block, 'body')}
+					</div>
+				{/if}
 			{:else if block.type === 'image'}
 				<!-- `{ src, alt, caption }` -->
 				<figure class="shadow-warm relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem]">
@@ -182,13 +200,9 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
-				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
+				<div class="gold-surface shadow-warm relative overflow-hidden rounded-[2rem]">
 					<div
-						class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-olive/10 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<div
-						class="relative grid divide-y divide-olive/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
+						class="relative grid divide-y divide-(--on-gold)/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
 					>
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
@@ -209,7 +223,7 @@
 							>
 								{#if money}
 									<div
-										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+										class="font-heading text-2xl font-bold text-(--on-gold) tabular-nums transition-transform duration-300 group-hover:scale-110"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -229,12 +243,12 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+										class="font-heading text-4xl font-bold text-(--on-gold) tabular-nums transition-transform duration-300 group-hover:scale-110 md:text-5xl"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
 								{/if}
-								<p class="text-sm text-[oklch(0.94_0.012_80)]/65">
+								<p class="text-sm font-medium text-(--on-gold)/75">
 									{stat.label ?? key}
 								</p>
 							</div>
@@ -295,20 +309,18 @@
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
 				<div
-					class="shadow-warm relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] bg-clay-deep p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10"
+					class="gold-surface shadow-warm relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10"
 				>
-					<div
-						class="pointer-events-none absolute -bottom-12 -left-10 size-48 rounded-full bg-olive/10 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<p class="relative max-w-md font-heading text-xl text-[oklch(0.94_0.012_80)] md:text-2xl">
+					<p
+						class="relative max-w-md font-heading text-xl font-semibold text-(--on-gold) md:text-2xl"
+					>
 						{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
 					</p>
 					<a
 						href={str(block, 'url') || '#'}
 						class={cn(
 							buttonVariants({ size: 'lg' }),
-							'relative shrink-0 bg-olive text-clay-deep hover:bg-olive-bright'
+							'relative shrink-0 bg-(--on-gold) text-olive-bright hover:bg-(--on-gold)/90'
 						)}
 					>
 						{str(block, 'label') || 'Learn more'}
@@ -389,8 +401,14 @@
 								valueIndex % 2 === 0 ? 'sm:tilt-left' : 'sm:tilt-right'
 							)}
 						>
+							<!-- A sun icon gets a slow glow of its own: on the homepage that is
+     Hope, and the one value worth lighting. Keyed on the icon rather
+     than the title, so it follows the picture staff chose. -->
 							<div
-								class="group flex size-16 items-center justify-center rounded-full bg-clay-deep text-olive ring-4 ring-olive/15 transition-all duration-300 ease-out hover:scale-110 hover:rotate-6 hover:ring-olive/30"
+								class={cn(
+									'group flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-olive-bright to-olive text-(--on-gold) ring-4 ring-olive/20 transition-all duration-300 ease-out hover:scale-110 hover:rotate-6 hover:ring-olive/40',
+									String(value.icon ?? '') === 'Sun' && 'value-sun'
+								)}
 							>
 								<DynamicIcon
 									name={String(value.icon ?? '')}
@@ -559,12 +577,16 @@
 			{:else if block.type === 'memoriam'}
 				<!-- `{ name, photo, body, linkHref, linkLabel }` — a tribute, set apart
 				     from the surrounding prose rather than folded into it. -->
-				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
+				<!-- Warm and lit rather than dark: a tribute reads as thanks for a life,
+     where a near-black card read as mourning it. -->
+				<div
+					class="shadow-warm relative overflow-hidden rounded-[2rem] border-2 border-olive/45 bg-card"
+				>
 					<div
-						class="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-olive/10 blur-3xl"
+						class="pointer-events-none absolute -top-24 left-1/2 size-96 -translate-x-1/2 rounded-full bg-olive/20 blur-3xl"
 						aria-hidden="true"
 					></div>
-					<TrimBand thin class="relative" />
+					<TrimBand festive class="relative" />
 					<div
 						class="relative mx-auto flex max-w-2xl flex-col items-center gap-5 px-6 py-14 text-center sm:px-12"
 					>
@@ -572,35 +594,25 @@
 							<img
 								src={assetUrl(str(block, 'photo'))}
 								alt={str(block, 'name')}
-								class="size-28 rounded-full object-cover ring-4 ring-olive/25"
+								class="size-28 rounded-full object-cover ring-4 ring-olive/60 ring-offset-4 ring-offset-card"
 							/>
 						{/if}
 						{#if str(block, 'name')}
-							<h3
-								class="font-heading text-2xl font-semibold text-[oklch(0.97_0.01_80)] md:text-3xl"
-							>
+							<h3 class="font-heading text-2xl font-semibold md:text-3xl">
 								{str(block, 'name')}
 							</h3>
 						{/if}
-						<span class="h-px w-16 bg-olive/40"></span>
-						<div
-							class="prose-block prose-invert text-left text-[oklch(0.97_0.01_80)]/80 sm:text-center"
-						>
+						<span class="h-[3px] w-16 rounded-full bg-olive"></span>
+						<div class="prose-block text-left text-foreground/80 sm:text-center">
 							{@html str(block, 'body')}
 						</div>
 						{#if str(block, 'linkHref')}
-							<a
-								href={str(block, 'linkHref')}
-								class={cn(
-									buttonVariants({ size: 'lg' }),
-									'mt-2 bg-olive text-clay-deep hover:bg-olive-bright'
-								)}
-							>
+							<a href={str(block, 'linkHref')} class={cn(buttonVariants({ size: 'lg' }), 'mt-2')}>
 								{str(block, 'linkLabel') || 'Read more'}
 							</a>
 						{/if}
 					</div>
-					<TrimBand thin class="relative" />
+					<TrimBand festive class="relative" />
 				</div>
 			{/if}
 		</section>

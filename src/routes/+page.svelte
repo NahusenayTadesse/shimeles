@@ -12,7 +12,40 @@
 
 	const s = (key: string) => data.settings?.[key] ?? '';
 	const familiesSupported = $derived(data.metrics?.families_supported ?? 0);
+	/** "Hope. Compassion. Opportunity." — one line per word beside the opening paragraph. */
+	const taglineWords = $derived(
+		s('site.tagline')
+			.split('.')
+			.map((word) => word.trim())
+			.filter(Boolean)
+	);
 </script>
+
+{#snippet tagline()}
+	<div
+		use:reveal={{ delay: 120, x: 24, y: 0 }}
+		class="relative isolate overflow-hidden rounded-[2rem] border-2 border-olive/40 bg-card px-8 py-10 md:px-10 md:py-12"
+	>
+		<div
+			class="pointer-events-none absolute -top-20 -right-16 -z-10 size-64 rounded-full bg-olive/30 blur-3xl"
+			aria-hidden="true"
+		></div>
+		<Sun class="mb-5 size-9 text-olive" aria-hidden="true" />
+		<ul class="flex flex-col gap-1" aria-label={s('site.tagline')}>
+			{#each taglineWords as word, index (word)}
+				<li
+					use:reveal={{ delay: 200 + index * 110, x: 16, y: 0 }}
+					class={cn(
+						'font-heading text-3xl font-bold tracking-tight md:text-4xl',
+						index === 0 ? 'text-olive' : 'text-foreground'
+					)}
+				>
+					{word}<span class="text-olive">.</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
+{/snippet}
 
 <PageShell
 	page={data.page}
@@ -24,6 +57,7 @@
 	payments={data.payments}
 	settings={data.settings}
 	testimonials={data.testimonials}
+	ledeAside={taglineWords.length ? tagline : undefined}
 >
 	{#snippet header()}
 		<div
@@ -103,12 +137,13 @@
 				{/if}
 			</div>
 
-			<TrimBand class="relative w-full" />
+			<TrimBand festive class="relative" />
 		</div>
 	{/snippet}
 
 	{#if data.gallery.length}
-		<section class="mt-20 md:mt-28">
+		<TrimBand festive class="mt-20 rounded-full md:mt-28" />
+		<section class="mt-16 md:mt-20">
 			<div class="mb-8 flex flex-col gap-2">
 				<h2 use:reveal class="text-3xl md:text-4xl">Moments from the work</h2>
 				<span class="h-3 w-14 rounded-full bg-olive"></span>

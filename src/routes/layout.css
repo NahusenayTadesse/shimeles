@@ -44,6 +44,9 @@
 	--terracotta: oklch(0.53 0.15 35);
 	--terracotta-bright: oklch(0.63 0.15 38);
 	--shadow-tint: oklch(0.22 0.045 170 / 24%);
+	/* Text and marks drawn on a gold surface. Deliberately not redefined under
+	   `.dark`: gold is gold in either theme, and what reads on it does not change. */
+	--on-gold: oklch(0.22 0.045 170);
 
 	--background: oklch(0.985 0.008 80);
 	--foreground: oklch(0.24 0.02 60);
@@ -501,4 +504,44 @@
 	box-shadow:
 		0 24px 50px -16px color-mix(in oklch, var(--olive-bright) 90%, transparent),
 		0 0 0 1px color-mix(in oklch, var(--olive-bright) 80%, transparent) inset;
+}
+
+/* ---------------------------------------------------------------------------
+   Gold surfaces — the brand's warm colour as a place, not only a line
+
+   The counters and the giving band sit on this: the Foundation's gold, lit
+   from the top corner the way the hero's light rises. Text on it is always
+   `--on-gold`, never the theme foreground, because the surface does not change
+   with the theme.
+--------------------------------------------------------------------------- */
+
+.gold-surface {
+	color: var(--on-gold);
+	background:
+		radial-gradient(520px 260px at 88% -20%, oklch(0.97 0.05 95 / 70%), transparent 70%),
+		radial-gradient(420px 220px at 0% 120%, oklch(0.66 0.12 70 / 45%), transparent 70%),
+		linear-gradient(120deg, oklch(0.85 0.1 90), oklch(0.77 0.11 86) 55%, oklch(0.72 0.115 78));
+}
+
+/* The glow behind a sun icon in a values list — on the homepage, Hope. */
+.value-sun {
+	box-shadow: 0 0 0 0 color-mix(in oklch, var(--olive) 55%, transparent);
+	animation: value-sun-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes value-sun-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 18px 2px color-mix(in oklch, var(--olive) 35%, transparent);
+	}
+	50% {
+		box-shadow: 0 0 36px 10px color-mix(in oklch, var(--olive-bright) 55%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.value-sun {
+		animation: none;
+		box-shadow: 0 0 28px 6px color-mix(in oklch, var(--olive) 45%, transparent);
+	}
 }

@@ -34,6 +34,8 @@
 		labels = {},
 		/** Rendered above the blocks, for routes with their own hero. */
 		header,
+		/** Drawn beside the opening paragraph — see `BlockRenderer`. */
+		ledeAside,
 		children
 	}: {
 		page: RenderPage;
@@ -52,6 +54,7 @@
 		testimonials?: RenderTestimonial[];
 		labels?: Record<string, string>;
 		header?: import('svelte').Snippet;
+		ledeAside?: import('svelte').Snippet;
 		children?: import('svelte').Snippet;
 	} = $props();
 
@@ -98,6 +101,7 @@
 		{forms}
 		{testimonials}
 		{labels}
+		{ledeAside}
 		initiativeNotice={settings['initiatives.disclaimer'] ?? ''}
 		paymentNotice={{
 			en: settings['donation.notice_bank'] ?? '',

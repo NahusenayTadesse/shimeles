@@ -13,6 +13,7 @@
 	import { page } from '$app/state';
 	import SiteNav from '$lib/components/site-nav.svelte';
 	import SiteFooter from '$lib/components/site-footer.svelte';
+	import SeasonBanner from '$lib/components/season-banner.svelte';
 
 	let { children, data } = $props();
 
@@ -61,6 +62,11 @@
 			items={data.navigation?.header ?? []}
 			siteNameAmharic={data.settings?.['site.name_am'] || 'ሽመልስ አበራ ፋውንዴሽን'}
 			siteName={data.settings?.['site.name'] || 'Shimeles Abera Foundation'}
+		/>
+		<SeasonBanner
+			enabled={data.settings?.['season.banner_enabled'] === 'true'}
+			message={data.settings?.['season.banner_message'] ?? ''}
+			href={data.settings?.['season.banner_link'] || null}
 		/>
 		<main class="flex-1">
 			{@render children?.()}

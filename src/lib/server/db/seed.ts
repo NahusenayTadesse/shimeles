@@ -371,6 +371,32 @@ async function seedSettings() {
 		},
 		{ key: 'hero.image', label: 'Hero image', group: 'homepage', valueType: 'image' },
 
+		// Seasonal greeting — a gold ribbon under the header for a holiday
+		// (Enkutatash, Meskel, Genna, Eid). Off and blank by default: which days
+		// the Foundation marks, and in what words, is the Foundation's to decide,
+		// so none is seeded. Switching it off leaves the message saved for next year.
+		{
+			key: 'season.banner_enabled',
+			label: 'Show the seasonal greeting',
+			group: 'season',
+			valueType: 'boolean',
+			value: 'false',
+			hint: 'Turn on for a holiday, off again afterwards. Nothing shows while the message is blank.'
+		},
+		{
+			key: 'season.banner_message',
+			label: 'Greeting',
+			group: 'season',
+			hint: 'One short line, e.g. “Melkam Addis Amet — a happy Ethiopian New Year from all of us.”'
+		},
+		{
+			key: 'season.banner_link',
+			label: 'Link (optional)',
+			group: 'season',
+			valueType: 'url',
+			hint: 'Where the greeting leads, such as a holiday appeal. Leave blank for no link.'
+		},
+
 		// Impact overrides — deliberately blank. §4: computed values are the
 		// default, and an override is an editorial exception, not a habit.
 		{
