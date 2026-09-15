@@ -4,11 +4,11 @@
 	import { cn } from '$lib/utils';
 
 	/**
-	 * The homepage hero's background — the dashboard-managed `hero` photo set,
-	 * shown full-bleed one at a time and crossfading, with the forest green laid
-	 * over it and a gold dawn light rising from the bottom so the headline always
-	 * sits on something readable. With no photos it falls back to the single
-	 * `hero.image` setting; with none of either it is only the light.
+	 * The homepage hero's photographs — the dashboard-managed `hero` photo set,
+	 * one at a time and crossfading inside whatever frame the page gives it (on
+	 * the homepage, the arch). The photographs are not under any text, so they
+	 * are shown as they are: no shade, no tint. With no photos it falls back to
+	 * the single `hero.image` setting; with neither it draws nothing.
 	 *
 	 * Motion is decoration here, so it stops for `prefers-reduced-motion`, for a
 	 * hidden tab, and while the visitor is choosing a slide with the dots.
@@ -20,11 +20,14 @@
 	let {
 		images,
 		fallbackImage,
-		interval = 6500
+		interval = 6500,
+		class: className = ''
 	}: {
 		images: { id: number; storagePath: string; caption?: string | null }[];
 		fallbackImage?: string | null;
 		interval?: number;
+		/** The frame: its shape, size and radius. The slides fill it. */
+		class?: string;
 	} = $props();
 
 	const slides = $derived(
@@ -32,14 +35,16 @@
 			? images.map((image) => ({
 					key: String(image.id),
 					src: assetUrl(image.storagePath),
-					srcset: imageSrcset(image.storagePath)
+					srcset: imageSrcset(image.storagePath),
+					alt: image.caption ?? ''
 				}))
 			: fallbackImage
 				? [
 						{
 							key: 'fallback',
 							src: assetUrl(fallbackImage),
-							srcset: imageSrcset(fallbackImage)
+							srcset: imageSrcset(fallbackImage),
+							alt: ''
 						}
 					]
 				: []
@@ -87,99 +92,63 @@
 	});
 </script>
 
-<div
-	class="hero-slideshow absolute inset-0 -z-10 overflow-hidden bg-(--hero-shade)"
-	aria-hidden="true"
->
-	{#each shown as slide, index (slide.key)}
-		<div
-			class={cn(
-				'hero-slide absolute inset-0 transition-opacity duration-[1800ms] ease-in-out',
-				index === current ? 'opacity-100' : 'opacity-0'
-			)}
-		>
-			{#if loaded.has(index)}
-				<img
-					src={slide.src}
-					srcset={slide.srcset}
-					sizes="100vw"
-					alt=""
-					class={cn(
-						'size-full object-cover',
-						(index === current || index === previous) && !reducedMotion && 'ken-burns'
-					)}
-					style:animation-duration="{interval + 2500}ms"
-					fetchpriority={index === 0 ? 'high' : 'auto'}
-					loading={index === 0 ? 'eager' : 'lazy'}
-					decoding="async"
-				/>
-			{/if}
-		</div>
-	{/each}
-
-	<!-- Forest shade: deepest behind the text on the left, lifting to the right. -->
-	<div
-		class="absolute inset-0 bg-gradient-to-r from-(--hero-shade)/90 via-(--hero-shade)/55 to-(--hero-shade)/10"
-	></div>
-	<!-- On a phone the text spans the whole photo, so the right side needs shade too. -->
-	<div class="absolute inset-0 bg-(--hero-shade)/35 md:hidden"></div>
-	<!-- The dawn: a gold light rising from below, and a warm sun off the right edge. -->
-	<div class="hero-dawn absolute inset-0"></div>
-	<div class="hero-sun absolute -right-40 -bottom-56 size-[42rem] rounded-full"></div>
-</div>
-
-{#if shown.length > 1}
-	<div class="absolute right-4 bottom-10 z-10 flex items-center gap-2 md:right-8 md:bottom-14">
+{#if shown.length}
+	<div class={cn('relative overflow-hidden bg-(--night)', className)}>
 		{#each shown as slide, index (slide.key)}
-			<button
-				type="button"
-				onclick={() => show(index)}
-				onmouseenter={() => (paused = true)}
-				onmouseleave={() => (paused = false)}
-				onfocus={() => (paused = true)}
-				onblur={() => (paused = false)}
-				aria-label="Show photo {index + 1} of {shown.length}"
-				aria-current={index === current}
+			<div
 				class={cn(
-					'h-1.5 rounded-full transition-all duration-500 focus-visible:ring-2 focus-visible:ring-olive-bright focus-visible:outline-none',
-					index === current
-						? 'w-8 bg-olive-bright'
-						: 'w-3 bg-(--hero-cream)/45 hover:bg-(--hero-cream)/75'
+					'hero-slide absolute inset-0 transition-opacity duration-[1800ms] ease-in-out',
+					index === current ? 'opacity-100' : 'opacity-0'
 				)}
-			></button>
+				aria-hidden={index !== current}
+			>
+				{#if loaded.has(index)}
+					<img
+						src={slide.src}
+						srcset={slide.srcset}
+						sizes="(min-width: 768px) 32rem, 80vw"
+						alt={slide.alt}
+						class={cn(
+							'size-full object-cover',
+							(index === current || index === previous) && !reducedMotion && 'ken-burns'
+						)}
+						style:animation-duration="{interval + 2500}ms"
+						fetchpriority={index === 0 ? 'high' : 'auto'}
+						loading={index === 0 ? 'eager' : 'lazy'}
+						decoding="async"
+					/>
+				{/if}
+			</div>
 		{/each}
 	</div>
+
+	{#if shown.length > 1}
+		<div class="mt-5 flex items-center gap-2">
+			{#each shown as slide, index (slide.key)}
+				<button
+					type="button"
+					onclick={() => show(index)}
+					onmouseenter={() => (paused = true)}
+					onmouseleave={() => (paused = false)}
+					onfocus={() => (paused = true)}
+					onblur={() => (paused = false)}
+					aria-label="Show photo {index + 1} of {shown.length}"
+					aria-current={index === current}
+					class="grid size-6 place-items-center"
+				>
+					<span
+						class={cn(
+							'block h-1.5 rounded-full transition-all duration-500',
+							index === current ? 'w-6 bg-(--gold)' : 'w-1.5 bg-(--honey)/40'
+						)}
+					></span>
+				</button>
+			{/each}
+		</div>
+	{/if}
 {/if}
 
 <style>
-	.hero-dawn {
-		background:
-			radial-gradient(
-				120% 70% at 70% 105%,
-				color-mix(in oklch, var(--olive-bright) 55%, transparent) 0%,
-				color-mix(in oklch, var(--olive) 22%, transparent) 40%,
-				transparent 70%
-			),
-			linear-gradient(
-				to top,
-				color-mix(in oklch, var(--olive) 30%, transparent) 0%,
-				transparent 45%
-			),
-			linear-gradient(to bottom, oklch(0.18 0.04 170 / 50%), transparent 28%);
-		mix-blend-mode: screen;
-	}
-
-	.hero-sun {
-		background: radial-gradient(
-			circle,
-			color-mix(in oklch, var(--olive-bright) 75%, transparent) 0%,
-			color-mix(in oklch, var(--olive) 35%, transparent) 38%,
-			transparent 68%
-		);
-		filter: blur(12px);
-		animation: sun-breathe 9s ease-in-out infinite alternate;
-	}
-
 	.ken-burns {
 		animation-name: ken-burns;
 		animation-timing-function: linear;
@@ -188,28 +157,14 @@
 
 	@keyframes ken-burns {
 		from {
-			transform: scale(1.02) translate3d(0, 0, 0);
+			transform: scale(1.02);
 		}
 		to {
-			transform: scale(1.12) translate3d(-1.5%, -1%, 0);
-		}
-	}
-
-	@keyframes sun-breathe {
-		from {
-			opacity: 0.7;
-			transform: scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1.05);
+			transform: scale(1.1);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.hero-sun {
-			animation: none;
-		}
 		.hero-slide {
 			transition: none;
 		}

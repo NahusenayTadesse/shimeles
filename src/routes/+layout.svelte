@@ -8,13 +8,14 @@
 	 */
 	import soraLatin from '@fontsource-variable/sora/files/sora-latin-wght-normal.woff2?url';
 	import manropeLatin from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
+	import alegreyaLatin from '@fontsource-variable/alegreya/files/alegreya-latin-wght-normal.woff2?url';
+	import alegreyaSansLatin from '@fontsource/alegreya-sans/files/alegreya-sans-latin-400-normal.woff2?url';
 	import { ModeWatcher, mode } from 'mode-watcher';
 	import { Toaster } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { onNavigate } from '$app/navigation';
 	import SiteNav from '$lib/components/site-nav.svelte';
 	import SiteFooter from '$lib/components/site-footer.svelte';
-	import SeasonBanner from '$lib/components/season-banner.svelte';
 	import NextSteps from '$lib/components/next-steps.svelte';
 
 	let { children, data } = $props();
@@ -64,8 +65,21 @@
 	     about a second of it on a throttled connection, before a single heading
 	     is drawn in the right face. `crossorigin` is not optional on a font
 	     preload even from our own origin; without it the file is fetched twice. -->
-	<link rel="preload" href={soraLatin} as="font" type="font/woff2" crossorigin="anonymous" />
-	<link rel="preload" href={manropeLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+	{#if isDashboard || isAuth}
+		<link rel="preload" href={soraLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+		<link rel="preload" href={manropeLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+	{:else}
+		<!-- The public site draws in Alegreya; the dashboard's faces are left for
+		     the dashboard to ask for. -->
+		<link rel="preload" href={alegreyaLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+		<link
+			rel="preload"
+			href={alegreyaSansLatin}
+			as="font"
+			type="font/woff2"
+			crossorigin="anonymous"
+		/>
+	{/if}
 
 	<noscript>
 		<!-- `use:reveal` starts elements hidden in CSS. Without JavaScript nothing
@@ -99,11 +113,6 @@
 			items={data.navigation?.header ?? []}
 			siteNameAmharic={data.settings?.['site.name_am'] || 'ሽመልስ አበራ ፋውንዴሽን'}
 			siteName={data.settings?.['site.name'] || 'Shimeles Abera Foundation'}
-		/>
-		<SeasonBanner
-			enabled={data.settings?.['season.banner_enabled'] === 'true'}
-			message={data.settings?.['season.banner_message'] ?? ''}
-			href={data.settings?.['season.banner_link'] || null}
 		/>
 		<main id="main" tabindex="-1" class="flex-1 outline-none">
 			{@render children?.()}

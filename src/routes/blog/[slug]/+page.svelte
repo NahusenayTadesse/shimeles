@@ -73,7 +73,7 @@
 
 	{#if post.videos.length}
 		<div class="mt-16">
-			<SectionHeading title="Watch" eyebrow={post.videos.length === 1 ? 'Video' : 'Videos'} />
+			<SectionHeading title="Watch" />
 			<div class="mt-8">
 				<VideoCarousel videos={post.videos} title={post.title} />
 			</div>
@@ -82,7 +82,7 @@
 
 	{#if post.gallery.length}
 		<div class="mt-16">
-			<SectionHeading title="From the day" eyebrow="Photographs" />
+			<SectionHeading title="From the day" />
 			<div class="mt-8">
 				<Gallery images={post.gallery} />
 			</div>
@@ -102,7 +102,7 @@
 {#if data.related.length}
 	<section class="border-t bg-muted/40">
 		<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
-			<SectionHeading title="More from the Foundation" eyebrow="Keep reading" />
+			<SectionHeading title="More from the Foundation" />
 			<div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.related as related, index (related.id)}
 					<BlogCard post={related} {index} />

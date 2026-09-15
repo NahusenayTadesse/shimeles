@@ -1,16 +1,15 @@
 <script lang="ts">
-	import { reveal, stagger } from '$lib/actions/reveal';
+	import { reveal } from '$lib/actions/reveal';
 	import { countUp } from '$lib/actions/count-up';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { formatCompact, formatMoney, type MoneyTotal } from '$lib/money';
 	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { ArrowRight, Copy, Quote } from '@lucide/svelte';
+	import { Copy } from '@lucide/svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import PaymentNotice from '$lib/components/payment-notice.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
@@ -117,15 +116,6 @@
 	const list = <T,>(block: RenderBlock, key: string): T[] =>
 		Array.isArray(block.content[key]) ? (block.content[key] as T[]) : [];
 
-	/** Accent token → the Tailwind classes the pillar cards use. */
-	const accent = (color: string) =>
-		({
-			clay: 'text-clay border-clay/30 bg-clay/8',
-			olive: 'text-olive-bright border-olive/40 bg-olive/10',
-			plum: 'text-plum border-plum/30 bg-plum/8',
-			sky: 'text-sky border-sky/30 bg-sky/8'
-		})[color] ?? 'text-primary border-primary/30 bg-primary/8';
-
 	const copy = async (value: string) => {
 		await navigator.clipboard.writeText(value);
 		toast.success('Copied');
@@ -147,14 +137,8 @@
 <div class={cn('flex flex-col gap-20 md:gap-28', className)}>
 	{#each blocks as block, index (block.id)}
 		<section id={block.type === 'memoriam' ? 'in-memoriam' : undefined}>
-			<!-- No fade on the section itself: headings and prose are there the
-			     moment the page is. Only the cards, counters and photos inside
-			     move, so the page never waits on its own text. -->
 			{#if block.heading}
-				<div class="mb-8 flex flex-col gap-2">
-					<h2 class="text-3xl md:text-4xl">{block.heading}</h2>
-					<span class="h-[3px] w-14 rounded-full bg-olive"></span>
-				</div>
+				<h2 class="mb-10 max-w-3xl text-[clamp(1.9rem,3.4vw,2.7rem)]">{block.heading}</h2>
 			{/if}
 
 			{#if block.type === 'rich_text'}
@@ -173,27 +157,23 @@
 				{/if}
 			{:else if block.type === 'image'}
 				<!-- `{ src, alt, caption }` -->
-				<figure class="shadow-warm relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem]">
+				<!-- The words sit under the photograph, not over it: the picture is of
+     people and deserves to be seen whole, and the sentence reads better
+     on paper than through a dark gradient. -->
+				<figure class="grid gap-6 md:grid-cols-[1.6fr_1fr] md:items-end md:gap-10">
 					<img
 						src={assetUrl(str(block, 'src'))}
 						srcset={imageSrcset(str(block, 'src'))}
-						sizes="(min-width: 1024px) 1024px, 100vw"
+						sizes="(min-width: 768px) 60vw, 100vw"
 						alt={str(block, 'alt')}
 						loading="lazy"
-						class="h-[22rem] w-full object-cover md:h-[28rem]"
+						class="aspect-[4/3] w-full rounded-[1.25rem] object-cover"
 					/>
 					{#if str(block, 'caption')}
-						<div
-							class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"
-							aria-hidden="true"
-						></div>
-						<figcaption class="absolute inset-x-0 bottom-0 flex items-end gap-4 p-8 md:p-12">
-							<Quote class="size-9 shrink-0 text-olive-bright/90 md:size-11" fill="currentColor" />
-							<p
-								class="font-heading text-xl leading-snug text-white italic drop-shadow-sm md:text-2xl"
-							>
-								{str(block, 'caption')}
-							</p>
+						<figcaption
+							class="border-l-2 border-(--gold) pl-6 font-serif text-2xl leading-snug md:mb-4 md:text-3xl"
+						>
+							{str(block, 'caption')}
 						</figcaption>
 					{/if}
 				</figure>
@@ -202,10 +182,8 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
-				<div class="gold-surface shadow-warm relative overflow-hidden rounded-[2rem]">
-					<div
-						class="relative grid divide-y divide-(--on-gold)/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
-					>
+				<div class="on-forest rounded-[1.5rem] bg-(--forest) px-6 py-10 md:px-10">
+					<div class="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							<!-- Derived from the metric, never read from the block. A stat block
@@ -219,13 +197,10 @@
 							     `moneyTotals` is empty until the cache is first warmed, so a
 							     cold homepage still shows a zero rather than a blank panel. -->
 							{@const totals = money ? (moneyTotals[key] ?? [{ currency: 'ETB', amount: 0 }]) : []}
-							<div
-								use:reveal={{ delay: stagger(statIndex, 80, 4), scale: 0.92 }}
-								class="group flex flex-col items-center gap-1.5 px-6 py-10 text-center"
-							>
+							<div class="flex flex-col gap-2 border-t border-(--gold)/40 pt-5">
 								{#if money}
 									<div
-										class="font-heading text-2xl font-bold text-(--on-gold) tabular-nums transition-transform duration-300 group-hover:scale-110"
+										class="font-serif text-2xl leading-tight font-bold text-(--gold) tabular-nums"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -245,12 +220,12 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-heading text-4xl font-bold text-(--on-gold) tabular-nums transition-transform duration-300 group-hover:scale-110 md:text-5xl"
+										class="font-serif text-5xl leading-none font-bold text-(--gold) tabular-nums"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
 								{/if}
-								<p class="text-sm font-medium text-(--on-gold)/75">
+								<p class="text-base">
 									{stat.label ?? key}
 								</p>
 							</div>
@@ -286,86 +261,60 @@
 				{/if}
 			{:else if block.type === 'quote'}
 				<!-- `{ text, attribution }` -->
-				<div class="mx-auto flex max-w-2xl justify-center">
-					<div
-						class="tilt-left shadow-warm relative rounded-[2rem] bg-card px-8 py-12 text-center sm:px-14"
-					>
-						<Quote
-							class="absolute top-4 left-6 size-16 text-terracotta/15 sm:size-20"
-							fill="currentColor"
-						/>
-						<p class="relative font-heading text-2xl leading-snug italic md:text-3xl">
-							{str(block, 'text')}
-						</p>
-						{#if str(block, 'attribution')}
-							<footer
-								class="relative mt-5 flex items-center justify-center gap-3 text-sm text-muted-foreground"
-							>
-								<span class="h-px w-8 bg-olive/50"></span>
-								{str(block, 'attribution')}
-								<span class="h-px w-8 bg-olive/50"></span>
-							</footer>
-						{/if}
-					</div>
-				</div>
+				<blockquote class="max-w-3xl border-l-2 border-(--gold) pl-6 md:pl-8">
+					<p class="font-serif text-2xl leading-snug md:text-3xl">{str(block, 'text')}</p>
+					{#if str(block, 'attribution')}
+						<footer class="mt-4 font-sans text-base text-muted-foreground">
+							{str(block, 'attribution')}
+						</footer>
+					{/if}
+				</blockquote>
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
+				<!-- The one forest band in the middle of a page: the sentence, and the gold button. -->
 				<div
-					class="gold-surface shadow-warm relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10"
+					class="on-forest relative isolate flex flex-col items-start gap-7 overflow-hidden rounded-[1.5rem] bg-(--forest) px-7 py-12 text-[#f6f3e6] sm:px-12 md:flex-row md:items-center md:justify-between md:py-14"
 				>
-					<p
-						class="relative max-w-md font-heading text-xl font-semibold text-(--on-gold) md:text-2xl"
-					>
+					<p class="max-w-xl font-serif text-[clamp(1.6rem,3vw,2.3rem)] leading-tight font-bold">
 						{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
 					</p>
 					<a
 						href={str(block, 'url') || '#'}
-						class={cn(
-							buttonVariants({ size: 'lg' }),
-							'relative shrink-0 bg-(--on-gold) text-olive-bright hover:bg-(--on-gold)/90'
-						)}
+						class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-12 shrink-0 px-7')}
 					>
 						{str(block, 'label') || 'Learn more'}
-						<ArrowRight class="size-4" />
 					</a>
 				</div>
 			{:else if block.type === 'pillar_grid'}
 				<!-- `{ show_apply_links }` — the pillars themselves come from the
 				     `pillars` table, never from this block's JSON. -->
-				<div class="grid items-stretch gap-6 md:grid-cols-2">
-					{#each pillars as pillar, pillarIndex (pillar.id)}
-						<div
-							use:reveal={{ delay: stagger(pillarIndex, 80, 4), scale: 0.95, blur: 6 }}
-							class="flex"
-						>
-							<Card.Root class="card-lift group flex w-full flex-col gap-3 overflow-hidden p-0">
-								{#if pillar.image}
-									<div class="overflow-hidden">
-										<img
-											src={assetUrl(pillar.image)}
-											srcset={imageSrcset(pillar.image)}
-											sizes="(min-width: 768px) 50vw, 100vw"
-											alt={pillar.name}
-											loading="lazy"
-											class="aspect-video w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
-										/>
-									</div>
-								{/if}
-								<div class="flex flex-1 flex-col gap-3 p-7">
-									<div
-										class={cn(
-											'w-fit rounded-2xl border p-3 transition-transform duration-300 group-hover:scale-110',
-											accent(pillar.color)
-										)}
-									>
-										<DynamicIcon name={pillar.icon} class="size-6" />
-									</div>
-									<h3 class="font-heading text-xl font-semibold">{pillar.name}</h3>
-									{#if pillar.summary}
-										<p class="text-muted-foreground">{pillar.summary}</p>
-									{/if}
-									<div class="mt-auto flex flex-wrap gap-2 pt-3">
-										<!-- The programme's name is in the link, not only in an
+				<!-- No card around each programme: a photograph, its name and a line
+     about it, the way a printed report would set them. -->
+				<div class="grid gap-x-10 gap-y-14 md:grid-cols-2">
+					{#each pillars as pillar (pillar.id)}
+						<article class="flex flex-col gap-4">
+							{#if pillar.image}
+								<img
+									src={assetUrl(pillar.image)}
+									srcset={imageSrcset(pillar.image)}
+									sizes="(min-width: 768px) 50vw, 100vw"
+									alt={pillar.name}
+									loading="lazy"
+									class="aspect-[3/2] w-full rounded-[1.25rem] object-cover"
+								/>
+							{/if}
+							<h3 class="mt-2 text-[1.75rem]">
+								<a
+									href={`/programs/${pillar.slug}`}
+									class="hover:underline hover:decoration-(--gold) hover:decoration-2 hover:underline-offset-4"
+									>{pillar.name}</a
+								>
+							</h3>
+							{#if pillar.summary}
+								<p class="max-w-prose text-muted-foreground">{pillar.summary}</p>
+							{/if}
+							<div class="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+								<!-- The programme's name is in the link, not only in an
 										     `aria-label`: four cards side by side each saying "Learn
 										     more" are four identical anchors to four different pages,
 										     which is the least useful anchor text on the site for a
@@ -374,52 +323,28 @@
 										     above it is already headed with the name, and repeating it
 										     in the button would read as clutter to someone who can see
 										     both. -->
-										<a
-											href={`/programs/${pillar.slug}`}
-											class={buttonVariants({ variant: 'outline', size: 'sm' })}
-										>
-											Learn more<span class="sr-only"> about {pillar.name}</span>
-										</a>
-										{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
-											<a
-												href={`/programs/${pillar.slug}#apply`}
-												class={buttonVariants({ variant: 'ghost', size: 'sm' })}
-											>
-												Apply for support<span class="sr-only"> from {pillar.name}</span>
-											</a>
-										{/if}
-									</div>
-								</div>
-							</Card.Root>
-						</div>
+								<a href={`/programs/${pillar.slug}`} class="link-quiet font-medium">
+									Learn more<span class="sr-only"> about {pillar.name}</span>
+								</a>
+								{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
+									<a href={`/programs/${pillar.slug}#apply`} class="link-quiet font-medium">
+										Apply for support<span class="sr-only"> from {pillar.name}</span>
+									</a>
+								{/if}
+							</div>
+						</article>
 					{/each}
 				</div>
 			{:else if block.type === 'values_list'}
 				<!-- `{ values: [{ icon, title, body }] }` -->
-				<div class="grid gap-8 md:grid-cols-3">
+				<div class="grid gap-10 md:grid-cols-3 md:gap-12">
 					{#each list<Record<string, unknown>>(block, 'values') as value, valueIndex (valueIndex)}
-						<div
-							use:reveal={{ delay: stagger(valueIndex, 90, 3) }}
-							class={cn(
-								'flex flex-col gap-3',
-								valueIndex % 2 === 0 ? 'sm:tilt-left' : 'sm:tilt-right'
-							)}
-						>
-							<!-- A sun icon gets a slow glow of its own: on the homepage that is
-     Hope, and the one value worth lighting. Keyed on the icon rather
-     than the title, so it follows the picture staff chose. -->
-							<div
-								class={cn(
-									'group flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-olive-bright to-olive text-(--on-gold) ring-4 ring-olive/20 transition-all duration-300 ease-out hover:scale-110 hover:rotate-6 hover:ring-olive/40',
-									String(value.icon ?? '') === 'Sun' && 'value-sun'
-								)}
-							>
-								<DynamicIcon
-									name={String(value.icon ?? '')}
-									class="size-7 transition-transform duration-300 ease-out group-hover:scale-110"
-								/>
-							</div>
-							<h3 class="font-heading text-lg font-semibold">
+						<div class="flex flex-col gap-3">
+							<DynamicIcon
+								name={String(value.icon ?? '')}
+								class="size-8 text-(--gold-deep) [&_*]:[stroke-width:1.5]"
+							/>
+							<h3 class="text-2xl">
 								{value.title}
 							</h3>
 							<p class="text-muted-foreground">
@@ -431,9 +356,9 @@
 			{:else if block.type === 'initiative_grid'}
 				<!-- Rows come from `future_initiatives`; the block carries no copy. -->
 				<div class="grid gap-6 md:grid-cols-3">
-					{#each initiatives as initiative, initiativeIndex (initiative.id)}
-						<div use:reveal={{ delay: stagger(initiativeIndex, 80, 3) }} class="flex">
-							<Card.Root class="card-lift flex w-full flex-col gap-3 p-0">
+					{#each initiatives as initiative (initiative.id)}
+						<div class="flex">
+							<Card.Root class="flex w-full flex-col gap-3 overflow-hidden p-0">
 								{#if initiative.image}
 									<img
 										src={assetUrl(initiative.image)}
@@ -503,7 +428,6 @@
 						>
 							<a href={`/forms/${slug}`} class={cn(buttonVariants({ size: 'lg' }), 'shrink-0')}>
 								Open the form
-								<ArrowRight class="size-4" />
 							</a>
 						</div>
 					{/if}
@@ -514,8 +438,7 @@
 				     is a copy button rather than text to be retyped. -->
 				<div class="grid gap-5 md:grid-cols-2">
 					{#each payments as account (account.accountId)}
-						<Card.Root class="flex flex-col gap-0 p-0">
-							<TrimBand thin />
+						<Card.Root class="flex flex-col gap-0 border-t-2 border-t-(--gold) p-0">
 							<div class="flex flex-col gap-3 p-6">
 								<div class="flex items-center justify-between gap-2">
 									<h3 class="font-heading text-lg font-semibold">{account.methodName}</h3>
@@ -583,44 +506,44 @@
 			{:else if block.type === 'memoriam'}
 				<!-- `{ name, photo, body, linkHref, linkLabel }` — a tribute, set apart
 				     from the surrounding prose rather than folded into it. -->
-				<!-- Warm and lit rather than dark: a tribute reads as thanks for a life,
-     where a near-black card read as mourning it. -->
-				<div
-					class="shadow-warm relative overflow-hidden rounded-[2rem] border-2 border-olive/45 bg-card"
-				>
-					<div
-						class="pointer-events-none absolute -top-24 left-1/2 size-96 -translate-x-1/2 rounded-full bg-olive/20 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<TrimBand festive class="relative" />
-					<div
-						class="relative mx-auto flex max-w-2xl flex-col items-center gap-5 px-6 py-14 text-center sm:px-12"
-					>
+				<!-- Set like a letter: centred, in the serif, on a slightly deeper paper,
+     with his portrait in the arch. A tribute to a life, not a notice of a
+     death, so there is no black here. -->
+				<div class="rounded-[1.5rem] bg-(--accent) px-6 py-14 text-center sm:px-12 md:py-20">
+					<div class="mx-auto flex max-w-2xl flex-col items-center gap-6">
 						{#if str(block, 'photo')}
-							<img
-								src={assetUrl(str(block, 'photo'))}
-								srcset={imageSrcset(str(block, 'photo'))}
-								sizes="112px"
-								alt={str(block, 'name')}
-								class="size-28 rounded-full object-cover ring-4 ring-olive/60 ring-offset-4 ring-offset-card"
-							/>
+							<div
+								class="arch-portrait w-32 ring-1 ring-(--gold) ring-offset-4 ring-offset-(--accent) md:w-36"
+							>
+								<img
+									src={assetUrl(str(block, 'photo'))}
+									srcset={imageSrcset(str(block, 'photo'))}
+									sizes="144px"
+									alt={str(block, 'name')}
+									loading="lazy"
+									class="size-full object-cover"
+								/>
+							</div>
 						{/if}
 						{#if str(block, 'name')}
-							<h3 class="font-heading text-2xl font-semibold md:text-3xl">
+							<h3 class="text-[clamp(2rem,4vw,3rem)]">
 								{str(block, 'name')}
 							</h3>
 						{/if}
-						<span class="h-[3px] w-16 rounded-full bg-olive"></span>
-						<div class="prose-block text-left text-foreground/80 sm:text-center">
+						<div
+							class="prose-block font-serif text-lg leading-relaxed text-foreground/85 md:text-xl [&_p]:font-serif"
+						>
 							{@html str(block, 'body')}
 						</div>
 						{#if str(block, 'linkHref')}
-							<a href={str(block, 'linkHref')} class={cn(buttonVariants({ size: 'lg' }), 'mt-2')}>
+							<a
+								href={str(block, 'linkHref')}
+								class={cn(buttonVariants({ size: 'lg' }), 'mt-2 h-12 px-7')}
+							>
 								{str(block, 'linkLabel') || 'Read more'}
 							</a>
 						{/if}
 					</div>
-					<TrimBand festive class="relative" />
 				</div>
 			{/if}
 		</section>

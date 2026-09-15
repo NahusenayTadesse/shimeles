@@ -17,6 +17,11 @@ export type RevealParams = {
 	repeat?: boolean;
 	/** Fraction of the element that must be visible before it fires. */
 	threshold?: number;
+	/**
+	 * Take part in the page's one entrance. Without this the element is simply
+	 * there — see `reveal` below.
+	 */
+	orchestrate?: boolean;
 };
 
 const DEFAULTS = {
@@ -27,7 +32,8 @@ const DEFAULTS = {
 	blur: 0,
 	duration: 450,
 	repeat: false,
-	threshold: 0.12
+	threshold: 0.12,
+	orchestrate: false
 } satisfies Required<RevealParams>;
 
 const reduceMotion = () =>
@@ -168,7 +174,12 @@ export const reveal: Action<HTMLElement, RevealParams | undefined> = (node, para
 	const entry: Entry = { params: settle(params) };
 	registry.set(node, entry);
 
-	if (reduceMotion()) {
+	// One orchestrated moment per page — the homepage sunrise, a page header
+	// settling — rather than every card and heading fading up as it scrolls
+	// past, which reads as decoration and makes a fast page feel slow. Call
+	// sites that are not part of that moment render as they are; they keep the
+	// action so an element can be promoted into an entrance without rewiring.
+	if (reduceMotion() || !entry.params.orchestrate) {
 		node.dataset.reveal = 'in';
 		return {
 			destroy() {

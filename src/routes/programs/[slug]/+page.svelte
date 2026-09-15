@@ -3,25 +3,14 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import SectionHeading from '$lib/components/section-heading.svelte';
-	import { ArrowRight, HeartHandshake } from '@lucide/svelte';
-	import { cn } from '$lib/utils';
 
 	let { data } = $props();
 
 	const pillar = $derived(data.pillar);
 
-	const accent = $derived(
-		{
-			clay: 'text-clay bg-clay/10 border-clay/25',
-			olive: 'text-olive-bright bg-olive/10 border-olive/30',
-			plum: 'text-plum bg-plum/10 border-plum/25',
-			sky: 'text-sky bg-sky/10 border-sky/25'
-		}[pillar.color] ?? 'text-primary bg-primary/10 border-primary/25'
-	);
 	/** One trail for `<Seo>` and for the visible breadcrumbs, so they cannot disagree. */
 	const trail = $derived([
 		{ name: 'Home', path: '/' },
@@ -47,23 +36,14 @@
 	image={pillar.image}
 	imageAlt={pillar.name}
 >
-	{#snippet icon()}
-		<div class={cn('w-fit rounded-2xl border p-4', accent)}>
-			<DynamicIcon name={pillar.icon} class="size-8" />
-		</div>
-	{/snippet}
 	{#snippet actions()}
 		{#if data.applicationForm}
-			<a href="#apply" class={buttonVariants({ size: 'lg' })}>
-				Apply for support
-				<ArrowRight class="size-4" />
-			</a>
+			<a href="#apply" class={buttonVariants({ size: 'lg' })}> Apply for support </a>
 		{/if}
 		<a
 			href={`/donate?pillar=${pillar.slug}`}
 			class={buttonVariants({ variant: 'outline', size: 'lg' })}
 		>
-			<HeartHandshake class="size-4" />
 			Give to this programme
 		</a>
 	{/snippet}
@@ -80,7 +60,7 @@
 
 {#if data.media.videos.length}
 	<div class="mx-auto w-full max-w-4xl px-4 pt-16 md:pt-24">
-		<SectionHeading title="Watch" eyebrow={data.media.videos.length === 1 ? 'Video' : 'Videos'} />
+		<SectionHeading title="Watch" />
 		<div class="mt-8">
 			<VideoCarousel videos={data.media.videos} title={pillar.name} />
 		</div>
@@ -89,7 +69,7 @@
 
 {#if data.media.gallery.length}
 	<div class="mx-auto w-full max-w-6xl px-4 pt-16 md:pt-24">
-		<SectionHeading title="From this programme" eyebrow="Photographs" />
+		<SectionHeading title="From this programme" />
 		<div class="mt-8">
 			<Gallery images={data.media.gallery} />
 		</div>
@@ -103,7 +83,6 @@
 	<div id="apply" class="mx-auto w-full max-w-2xl scroll-mt-20 px-4 py-16 md:py-24">
 		<div class="mb-8 flex flex-col gap-2">
 			<h2 class="text-3xl md:text-4xl">Apply for support</h2>
-			<span class="h-[3px] w-14 rounded-full bg-olive"></span>
 		</div>
 		<div class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 			<DynamicForm

@@ -11,6 +11,16 @@
    enough range of weights to carry both the public site and the dashboard. */
 @import '@fontsource-variable/manrope';
 
+/* Alegreya and Alegreya Sans — the public site's voice. A calligraphic serif
+   with the warmth of a letter written by hand, for a foundation that began as
+   a family's; and its sans sibling for everything that has to be read quickly.
+   Only the weights actually drawn are imported. The dashboard keeps Sora and
+   Manrope: staff are working, not being addressed. */
+@import '@fontsource-variable/alegreya/wght.css';
+@import '@fontsource/alegreya-sans/400.css';
+@import '@fontsource/alegreya-sans/500.css';
+@import '@fontsource/alegreya-sans/700.css';
+
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
@@ -349,57 +359,6 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Trim band — the Foundation's one recurring ornament.
-
-   A woven-look band of triangles, the way a tibeb border runs along the edge
-   of a shawl. Pure CSS gradients so it costs nothing and never blurs, in two
-   weights: a hairline divider between sections, and a thicker interlocking
-   version used as a card's top edge.
---------------------------------------------------------------------------- */
-
-.trim-band {
-	--trim-size: 14px;
-	height: var(--trim-size);
-	background-image:
-		linear-gradient(135deg, var(--olive) 25%, transparent 25.5%),
-		linear-gradient(225deg, var(--olive) 25%, transparent 25.5%),
-		linear-gradient(45deg, var(--clay) 25%, transparent 25.5%),
-		linear-gradient(315deg, var(--clay) 25%, transparent 25.5%);
-	background-position:
-		0 0,
-		calc(var(--trim-size) / 2) 0,
-		calc(var(--trim-size) / 2) calc(var(--trim-size) / -2),
-		0 calc(var(--trim-size) / 2);
-	background-size: var(--trim-size) var(--trim-size);
-	background-repeat: repeat-x;
-	transform-origin: left center;
-}
-
-.trim-band--thin {
-	--trim-size: 9px;
-	opacity: 0.85;
-}
-
-/* ---------------------------------------------------------------------------
-   Dot field & floating badge
-
-   A loose grid of dots — the kind of small, cheerful ornament that keeps a
-   hero or a section corner from feeling like empty space, without competing
-   with a photograph. And the "stat card pinned to the corner of a photo"
-   pattern used wherever a number needs to feel earned rather than printed.
---------------------------------------------------------------------------- */
-
-.dot-field {
-	background-image: radial-gradient(currentColor 1.6px, transparent 1.6px);
-	background-size: 16px 16px;
-}
-
-.site-shell .floating-badge {
-	@apply rounded-2xl border bg-card px-4 py-3;
-	box-shadow: var(--shadow-warm);
-}
-
-/* ---------------------------------------------------------------------------
    Photo tilt — a card pinned very slightly off true, the way a print sits in
    a family album rather than a stock-photo grid. Applied selectively, never
    to more than one element in a group.
@@ -456,97 +415,6 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Homepage hero — the gold on a photograph
-
-   The rule under the headline is a short run of sunrise, and the Give button
-   carries a soft gold glow, so the one warm colour on the darkened photo is
-   the thing to press.
---------------------------------------------------------------------------- */
-
-/* The hero is a photograph at night in either theme, so it pins its own shade
-   and cream instead of following `--clay-deep`, which dark mode lightens. */
-.hero-night {
-	--hero-shade: oklch(0.2 0.045 170);
-	--hero-cream: oklch(0.975 0.014 85);
-}
-
-/* Cream at the top of the headline warming to gold at its foot — the light
-   rising behind the photograph, carried into the words. */
-.hero-headline {
-	background: linear-gradient(
-		175deg,
-		var(--hero-cream) 0%,
-		var(--hero-cream) 45%,
-		oklch(0.86 0.1 88) 100%
-	);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
-}
-
-.hero-rule {
-	background: linear-gradient(90deg, var(--olive-bright), var(--olive) 60%, transparent);
-	box-shadow: 0 0 18px color-mix(in oklch, var(--olive) 70%, transparent);
-}
-
-.site-shell .hero-give {
-	box-shadow:
-		0 18px 40px -16px color-mix(in oklch, var(--olive) 80%, transparent),
-		0 0 0 1px color-mix(in oklch, var(--olive-bright) 60%, transparent) inset;
-	transition:
-		transform 300ms var(--ease-soft),
-		box-shadow 300ms var(--ease-soft),
-		background-color 300ms var(--ease-soft);
-}
-
-.site-shell .hero-give:hover {
-	transform: translateY(-2px);
-	box-shadow:
-		0 24px 50px -16px color-mix(in oklch, var(--olive-bright) 90%, transparent),
-		0 0 0 1px color-mix(in oklch, var(--olive-bright) 80%, transparent) inset;
-}
-
-/* ---------------------------------------------------------------------------
-   Gold surfaces — the brand's warm colour as a place, not only a line
-
-   The counters and the giving band sit on this: the Foundation's gold, lit
-   from the top corner the way the hero's light rises. Text on it is always
-   `--on-gold`, never the theme foreground, because the surface does not change
-   with the theme.
---------------------------------------------------------------------------- */
-
-.gold-surface {
-	color: var(--on-gold);
-	background:
-		radial-gradient(520px 260px at 88% -20%, oklch(0.97 0.05 95 / 70%), transparent 70%),
-		radial-gradient(420px 220px at 0% 120%, oklch(0.66 0.12 70 / 45%), transparent 70%),
-		linear-gradient(120deg, oklch(0.85 0.1 90), oklch(0.77 0.11 86) 55%, oklch(0.72 0.115 78));
-}
-
-/* The glow behind a sun icon in a values list — on the homepage, Hope. */
-.value-sun {
-	box-shadow: 0 0 0 0 color-mix(in oklch, var(--olive) 55%, transparent);
-	animation: value-sun-glow 3.2s ease-in-out infinite;
-}
-
-@keyframes value-sun-glow {
-	0%,
-	100% {
-		box-shadow: 0 0 18px 2px color-mix(in oklch, var(--olive) 35%, transparent);
-	}
-	50% {
-		box-shadow: 0 0 36px 10px color-mix(in oklch, var(--olive-bright) 55%, transparent);
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.value-sun {
-		animation: none;
-		box-shadow: 0 0 28px 6px color-mix(in oklch, var(--olive) 45%, transparent);
-	}
-}
-
-/* ---------------------------------------------------------------------------
    Page changes
 
    A quick crossfade between public pages (started in `+layout.svelte`). Short
@@ -568,6 +436,298 @@
 @media (prefers-reduced-motion: reduce) {
 	::view-transition-old(root),
 	::view-transition-new(root) {
+		animation: none;
+	}
+}
+
+/* ===========================================================================
+   The public site — forest, gold and an open door
+
+   Everything below is scoped to `.site-shell`, so the dashboard keeps its own
+   look. The brand is two colours: the Foundation's forest green and its gold.
+   The green is the ground the site stands on — header, hero, footer and one
+   band mid-page. The gold is light, used sparingly: the sun behind the hero,
+   the main button, the outline of an arch. Reading happens on a pale,
+   green-tinted paper rather than the cream every warm site reaches for.
+
+   The one recurring shape is the arch — the window and doorway of Lalibela
+   and Axum, and the "door that stays open" the Foundation's own values
+   describe. It is used three times and no more: the homepage photographs, the
+   photograph on a page header, and the portrait in the memoriam.
+=========================================================================== */
+
+.site-shell {
+	--forest: #0e3b2e;
+	--night: #092a20;
+	--gold: #ccab59;
+	--gold-deep: #7d6420;
+	--honey: #ecdcae;
+	--mist: #f1f3ec;
+	--ink: #1a231e;
+	--paper: #f8f9f4;
+
+	--clay: var(--forest);
+	--clay-bright: #1b5a47;
+	--clay-deep: var(--night);
+	--olive: var(--gold);
+	--olive-bright: #dcc27f;
+	--on-gold: var(--night);
+
+	--background: var(--mist);
+	--foreground: var(--ink);
+	--card: var(--paper);
+	--card-foreground: var(--ink);
+	--popover: var(--paper);
+	--popover-foreground: var(--ink);
+	--primary: var(--forest);
+	--primary-foreground: #f6f3e6;
+	--secondary: #e3e8dc;
+	--secondary-foreground: var(--ink);
+	--muted: #e3e8dc;
+	--muted-foreground: #3f4b44;
+	--accent: #ebe2c2;
+	--accent-foreground: #3b3113;
+	--border: #d4dbcc;
+	--input: #c9d1c0;
+	--ring: var(--gold-deep);
+
+	--font-serif: 'Alegreya Variable', 'Alegreya', Georgia, 'Times New Roman', serif;
+	--font-sans-public: 'Alegreya Sans', ui-sans-serif, system-ui, sans-serif;
+
+	/* Brand-only chart colours: forest, gold, and two steps between them. */
+	--chart-1: var(--forest);
+	--chart-2: var(--gold);
+	--chart-3: #6b9478;
+	--chart-4: #9a7b2c;
+
+	font-family: var(--font-sans-public);
+	font-size: 1.125rem;
+	line-height: 1.6;
+	color: var(--ink);
+	background: var(--mist);
+}
+
+.dark .site-shell {
+	--gold-deep: var(--gold);
+	--mist: #0b231b;
+	--paper: #0f2c23;
+	--ink: #e8ebdf;
+
+	--background: var(--mist);
+	--foreground: var(--ink);
+	--card: var(--paper);
+	--card-foreground: var(--ink);
+	--popover: var(--paper);
+	--popover-foreground: var(--ink);
+	--primary: var(--gold);
+	--primary-foreground: var(--night);
+	--secondary: #143429;
+	--secondary-foreground: var(--ink);
+	--muted: #143429;
+	--muted-foreground: #b9c4b8;
+	--accent: #2b3a23;
+	--accent-foreground: var(--honey);
+	--border: rgb(232 235 223 / 0.13);
+	--input: rgb(232 235 223 / 0.18);
+	--ring: var(--gold);
+}
+
+/* Anything placed on the forest ground — the header, a page's opening band,
+   the footer — flips the tokens, so a component dropped there (a default
+   button, an outline button, muted text) is legible without being told. */
+.site-shell .on-forest,
+.dark .site-shell .on-forest {
+	--background: transparent;
+	--foreground: #f6f3e6;
+	--primary: var(--gold);
+	--primary-foreground: var(--night);
+	--secondary: rgb(236 220 174 / 0.12);
+	--secondary-foreground: #f6f3e6;
+	--muted: rgb(236 220 174 / 0.1);
+	--muted-foreground: rgb(236 220 174 / 0.8);
+	--accent: rgb(236 220 174 / 0.12);
+	--accent-foreground: #f6f3e6;
+	--border: rgb(236 220 174 / 0.3);
+	--input: rgb(236 220 174 / 0.3);
+	--gold-deep: var(--gold);
+	color: var(--honey);
+}
+
+/* Type. The serif carries every heading, quote and figure; the sans carries
+   everything else. Sizes stay with each component — only the voice is set
+   here. */
+.site-shell :is(h1, h2, h3, h4, blockquote, .font-heading, .font-serif) {
+	font-family: var(--font-serif);
+	letter-spacing: -0.005em;
+}
+.site-shell :is(h1, h2) {
+	font-weight: 700;
+	line-height: 1.08;
+	text-wrap: balance;
+}
+.site-shell :is(h3, h4) {
+	font-weight: 600;
+	line-height: 1.2;
+}
+.site-shell .font-sans {
+	font-family: var(--font-sans-public);
+}
+
+/* Alegreya's default figures are old-style, which is right inside a sentence
+   and wrong in a counter, where a 0 reads as a lowercase o. Figures that
+   stand alone line up. */
+.site-shell .tabular-nums,
+.site-shell .lining-nums {
+	font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* A label says what follows in the site's ordinary voice — no tracked capitals. */
+.site-shell .eyebrow {
+	font-size: 1rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--gold-deep);
+}
+
+/* Prose. The opening paragraph of a page is set in the serif, larger — the
+   Foundation introducing itself — instead of a dropped capital. */
+.site-shell .prose-block {
+	font-size: 1.125rem;
+	line-height: 1.7;
+}
+.site-shell .prose-block.prose-lede > :where(p):first-of-type {
+	font-family: var(--font-serif);
+	font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+	line-height: 1.45;
+	color: var(--ink);
+}
+.site-shell .prose-block.prose-lede > :where(p):first-of-type::first-letter {
+	float: none;
+	margin: 0;
+	font-size: inherit;
+	line-height: inherit;
+	color: inherit;
+}
+.site-shell .prose-block :where(a) {
+	color: var(--forest);
+	text-decoration-color: var(--gold);
+	text-decoration-thickness: 2px;
+}
+.dark .site-shell .prose-block :where(a) {
+	color: var(--honey);
+}
+
+/* Surfaces are flat. Hierarchy comes from the ground changing colour, not
+   from a shadow under every box. */
+.site-shell .shadow-warm,
+.site-shell [data-slot='card'] {
+	box-shadow: none;
+}
+.site-shell [data-slot='card'] {
+	border-radius: 1.25rem;
+}
+.site-shell .card-lift:hover {
+	transform: none;
+	box-shadow: none;
+}
+.site-shell .tilt-left,
+.site-shell .tilt-right,
+.site-shell .tilt-left:hover,
+.site-shell .tilt-right:hover {
+	transform: none;
+}
+
+/* Buttons keep their pill, lose the forced small size. */
+.site-shell [data-slot='button'],
+.site-shell a[class*='tracking-widest'],
+.site-shell button[class*='tracking-widest'] {
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+/* The gold button: the one place a visitor is asked to act. */
+.site-shell .btn-gold {
+	background: var(--gold);
+	color: var(--night);
+}
+.site-shell .btn-gold:hover {
+	background: #d9bd72;
+}
+
+/* A text link that behaves like one. */
+.site-shell .link-quiet {
+	text-decoration: underline;
+	text-decoration-color: color-mix(in oklch, currentColor 35%, transparent);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 0.3em;
+	transition: text-decoration-color 150ms;
+}
+.site-shell .link-quiet:hover {
+	text-decoration-color: var(--gold);
+}
+
+:where(.site-shell) :focus-visible {
+	outline: 2px solid var(--gold);
+	outline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------------------
+   The arch
+
+   A rounded top that is a true semicircle for the box's own proportions: the
+   horizontal radius is half the width, and the vertical one is set to match
+   that same length on a 4:5 (or 3:4) box.
+--------------------------------------------------------------------------- */
+
+.arch {
+	aspect-ratio: 4 / 5;
+	border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
+	overflow: hidden;
+}
+.arch-portrait {
+	aspect-ratio: 3 / 4;
+	border-radius: 50% 50% 0.75rem 0.75rem / 37.5% 37.5% 0.75rem 0.75rem;
+	overflow: hidden;
+}
+
+/* The same outline, offset behind a photo — a doorway drawn in gold. */
+.arch-line {
+	aspect-ratio: 4 / 5;
+	border: 1.5px solid var(--gold);
+	border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
+}
+
+/* ---------------------------------------------------------------------------
+   The sun
+
+   The homepage's single moment of motion: a gold sun rising behind the arch
+   as the page opens, once. Under reduced motion it is simply already up.
+--------------------------------------------------------------------------- */
+
+.hero-sun {
+	background: radial-gradient(
+		circle at 50% 50%,
+		#e6cc84 0%,
+		var(--gold) 58%,
+		color-mix(in oklch, var(--gold) 0%, transparent) 71%
+	);
+	animation: sun-rise 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes sun-rise {
+	from {
+		transform: translateY(45%);
+		opacity: 0;
+	}
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.hero-sun {
 		animation: none;
 	}
 }

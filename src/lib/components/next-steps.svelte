@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { ArrowRight, HeartHandshake } from '@lucide/svelte';
 	import type { RenderNavItem } from '$lib/content/types';
+	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils';
 
 	/**
@@ -29,38 +29,32 @@
 </script>
 
 {#if next.length || cta}
-	<nav aria-labelledby="next-steps-heading" class="mx-auto w-full max-w-6xl px-4 pb-16 md:pb-20">
-		<h2 id="next-steps-heading" class="eyebrow mb-4">{heading}</h2>
-		<ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-			{#each next as item (item.id)}
-				<li>
-					<a
-						href={item.href}
-						class="group flex min-h-14 items-center justify-between gap-3 rounded-2xl border bg-card px-5 py-4 font-heading font-semibold transition-colors hover:border-olive/60 hover:bg-accent"
-					>
-						{item.label}
-						<ArrowRight
-							class="size-4 shrink-0 text-olive transition-transform group-hover:translate-x-1"
-						/>
-					</a>
-				</li>
-			{/each}
-			{#if cta}
-				<li>
-					<a
-						href={cta.href}
-						class={cn(
-							'gold-surface group flex min-h-14 items-center justify-between gap-3 rounded-2xl px-5 py-4 font-heading font-semibold'
-						)}
-					>
-						<span class="flex items-center gap-2">
-							<HeartHandshake class="size-4" />
+	<!-- A row of plain serif links over a gold hairline, and the call to action
+	     as the one gold button. It sits at the foot of the page, so it should
+	     read as the page's last sentence, not as another section of cards. -->
+	<nav aria-labelledby="next-steps-heading" class="mx-auto mt-8 w-full max-w-6xl px-4">
+		<div
+			class="flex flex-col gap-6 border-t border-(--gold)/50 pt-10 md:flex-row md:items-baseline md:gap-12"
+		>
+			<h2 id="next-steps-heading" class="shrink-0 font-sans text-lg font-medium text-(--gold-deep)">
+				{heading}
+			</h2>
+			<ul class="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+				{#each next as item (item.id)}
+					<li>
+						<a href={item.href} class="link-quiet font-serif text-2xl font-bold md:text-3xl">
+							{item.label}
+						</a>
+					</li>
+				{/each}
+				{#if cta}
+					<li>
+						<a href={cta.href} class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-12 px-7')}>
 							{cta.label}
-						</span>
-						<ArrowRight class="size-4 shrink-0 transition-transform group-hover:translate-x-1" />
-					</a>
-				</li>
-			{/if}
-		</ul>
+						</a>
+					</li>
+				{/if}
+			</ul>
+		</div>
 	</nav>
 {/if}

@@ -4,8 +4,7 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import DarkMode from '$lib/components/DarkMode.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
-	import { Menu, HeartHandshake } from '@lucide/svelte';
+	import { Menu } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import type { RenderNavItem } from '$lib/content/types';
 
@@ -57,21 +56,27 @@
 	onfocusin={() => (focusInside = true)}
 	onfocusout={() => (focusInside = false)}
 	class={cn(
-		'site-header sticky top-0 z-40 w-full bg-background/85 backdrop-blur transition-transform duration-300 ease-out supports-[backdrop-filter]:bg-background/70 motion-reduce:transition-none',
+		'site-header on-forest sticky top-0 z-40 w-full bg-(--forest) transition-transform duration-300 ease-out motion-reduce:transition-none',
 		hidden && !focusInside && !open && '-translate-y-full'
 	)}
 >
 	<div class="mx-auto flex h-20 w-full max-w-6xl items-center gap-4 px-4">
-		<a href="/" class="group flex min-w-0 items-center gap-3 leading-tight">
+		<a href="/" class="flex min-w-0 items-center gap-3">
 			<img
 				src="/favicon.png"
 				alt=""
-				class="size-11 shrink-0 rounded-full object-contain ring-2 ring-olive/40 transition-transform group-hover:-rotate-6"
+				width="44"
+				height="44"
+				class="size-11 shrink-0 rounded-full object-contain ring-1 ring-(--gold)/60"
 			/>
-			<span class="text-md truncate font-heading font-semibold"
-				>{siteName}
-				<br />
-				{siteNameAmharic}
+			<!-- The two names are the same name, so they are one link: English in the
+			     serif, the Amharic beneath it smaller, as a subtitle rather than a
+			     second line competing for the same weight. -->
+			<span class="flex min-w-0 flex-col">
+				<span class="truncate font-serif text-lg leading-tight font-bold text-[#f6f3e6]">
+					{siteName}
+				</span>
+				<span class="truncate text-sm leading-tight text-(--honey)/80">{siteNameAmharic}</span>
 			</span>
 		</a>
 
@@ -81,27 +86,23 @@
 					href={item.href}
 					aria-current={isActive(item.href) ? 'page' : undefined}
 					class={cn(
-						'relative rounded-full px-4 py-2 text-sm font-medium text-foreground/75 transition-colors hover:text-foreground',
-						isActive(item.href) && 'text-primary'
+						'relative px-3 py-2 text-base font-medium text-(--honey)/80 transition-colors hover:text-[#f6f3e6]',
+						isActive(item.href) && 'text-[#f6f3e6]'
 					)}
 				>
 					{item.label}
 					{#if isActive(item.href)}
-						<span class="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-olive"></span>
+						<span class="absolute inset-x-3 bottom-0 h-[2px] bg-(--gold)"></span>
 					{/if}
 				</a>
 			{/each}
 		</nav>
 
-		<div class="ml-auto flex items-center gap-2 lg:ml-0">
+		<div class="ml-auto flex items-center gap-2 lg:ml-2">
 			<DarkMode />
 
 			{#each items.filter((item) => item.isCta) as item (item.id)}
-				<a
-					href={item.href}
-					class={cn(buttonVariants({ size: 'sm' }), 'hidden gap-1.5 sm:inline-flex')}
-				>
-					<HeartHandshake class="size-3.5" />
+				<a href={item.href} class={cn(buttonVariants(), 'btn-gold hidden sm:inline-flex')}>
 					{item.label}
 				</a>
 			{/each}
@@ -120,7 +121,7 @@
 						</Button>
 					{/snippet}
 				</Sheet.Trigger>
-				<Sheet.Content side="right" class="w-72">
+				<Sheet.Content side="right" class="site-shell w-72">
 					<Sheet.Header>
 						<Sheet.Title class="font-heading">{siteName}</Sheet.Title>
 					</Sheet.Header>
@@ -146,6 +147,4 @@
 			</Sheet.Root>
 		</div>
 	</div>
-
-	<TrimBand thin />
 </header>

@@ -9,7 +9,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
-	import { ArrowRight, Clock, Search, X } from '@lucide/svelte';
+	import { Clock, Search, X } from '@lucide/svelte';
 
 	let { data } = $props();
 
@@ -193,9 +193,7 @@
 					</span>
 				</div>
 				<span class="inline-flex w-fit items-center gap-2 font-medium text-primary">
-					Read the story <ArrowRight
-						class="size-4 transition-transform group-hover:translate-x-1"
-					/>
+					Read the story
 				</span>
 			</div>
 		</a>

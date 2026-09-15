@@ -1,6 +1,5 @@
 <script lang="ts">
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
 
 	let { data } = $props();
 </script>
@@ -23,7 +22,6 @@
 	<div class="relative mx-auto w-full max-w-3xl px-4 pt-16 pb-14 md:pt-20">
 		<h1 class="font-heading text-3xl md:text-4xl">{data.definition.title}</h1>
 	</div>
-	<TrimBand class="relative w-full" thin />
 </div>
 
 <div class="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">

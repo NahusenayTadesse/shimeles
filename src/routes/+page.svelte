@@ -1,17 +1,16 @@
 <script lang="ts">
 	import PageShell from '$lib/content/PageShell.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
 	import HeroSlideshow from '$lib/components/hero-slideshow.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ArrowRight, Heart, Sun, Users } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
 
 	const s = (key: string) => data.settings?.[key] ?? '';
 	const familiesSupported = $derived(data.metrics?.families_supported ?? 0);
+
 	/** "Hope. Compassion. Opportunity." — one line per word beside the opening paragraph. */
 	const taglineWords = $derived(
 		s('site.tagline')
@@ -19,32 +18,27 @@
 			.map((word) => word.trim())
 			.filter(Boolean)
 	);
+
+	/**
+	 * The seasonal greeting (`season.*` in Site settings) is a line above the
+	 * headline, in the hero's own voice, rather than a strip across the top of
+	 * every page. Shown only when it is switched on and has words.
+	 */
+	const greeting = $derived(
+		s('season.banner_enabled') === 'true' ? s('season.banner_message').trim() : ''
+	);
+	const greetingHref = $derived(s('season.banner_link'));
 </script>
 
 {#snippet tagline()}
-	<div
-		use:reveal={{ delay: 120, x: 24, y: 0 }}
-		class="relative isolate overflow-hidden rounded-[2rem] border-2 border-olive/40 bg-card px-8 py-10 md:px-10 md:py-12"
+	<ul
+		class="flex flex-col gap-2 border-l-2 border-(--gold) py-2 pl-6"
+		aria-label={s('site.tagline')}
 	>
-		<div
-			class="pointer-events-none absolute -top-20 -right-16 -z-10 size-64 rounded-full bg-olive/30 blur-3xl"
-			aria-hidden="true"
-		></div>
-		<Sun class="mb-5 size-9 text-olive" aria-hidden="true" />
-		<ul class="flex flex-col gap-1" aria-label={s('site.tagline')}>
-			{#each taglineWords as word, index (word)}
-				<li
-					use:reveal={{ delay: 200 + index * 110, x: 16, y: 0 }}
-					class={cn(
-						'font-heading text-3xl font-bold tracking-tight md:text-4xl',
-						index === 0 ? 'text-olive' : 'text-foreground'
-					)}
-				>
-					{word}<span class="text-olive">.</span>
-				</li>
-			{/each}
-		</ul>
-	</div>
+		{#each taglineWords as word (word)}
+			<li class="font-serif text-3xl leading-tight font-bold md:text-4xl">{word}.</li>
+		{/each}
+	</ul>
 {/snippet}
 
 <PageShell
@@ -60,94 +54,86 @@
 	ledeAside={taglineWords.length ? tagline : undefined}
 >
 	{#snippet header()}
-		<div
-			class="hero-night relative isolate flex min-h-[70svh] flex-col overflow-hidden text-(--hero-cream) md:min-h-[88svh]"
-		>
-			<HeroSlideshow images={data.heroGallery} fallbackImage={s('hero.image')} />
-
+		<section class="on-forest relative isolate overflow-hidden bg-(--forest)">
 			<div
-				class="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-6 px-4 pt-24 pb-28 md:pt-28 md:pb-32"
+				class="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pt-8 pb-20 md:grid-cols-[1.15fr_0.85fr] md:gap-16 md:pt-16 md:pb-28"
 			>
-				<p
-					use:reveal
-					class="eyebrow flex w-fit items-center gap-2 rounded-full border border-olive/40 bg-(--hero-shade)/40 px-4 py-1.5 text-olive-bright backdrop-blur-sm"
-				>
-					<Sun class="size-3.5" />
-					A family foundation · Addis Ababa
-				</p>
-				<h1
-					use:reveal={{ delay: 70, y: 32 }}
-					class="hero-headline max-w-3xl text-4xl text-balance drop-shadow-[0_2px_24px_oklch(0.18_0.04_170/60%)] md:text-6xl lg:text-7xl"
-				>
-					{s('hero.headline') || 'Nobody should face the hardest days alone.'}
-				</h1>
-				<span
-					use:reveal={{ delay: 110, x: -24, y: 0 }}
-					class="hero-rule h-1.5 w-24 rounded-full"
-					aria-hidden="true"
-				></span>
-				{#if s('hero.subheadline')}
-					<p
-						use:reveal={{ delay: 150, y: 28 }}
-						class="max-w-xl text-lg text-(--hero-cream)/90 md:text-xl"
+				<!-- The photographs come first on a phone: a person, before a sentence. -->
+				<div class="relative order-2 flex flex-col gap-7 md:order-1">
+					{#if greeting}
+						<p use:reveal={{ orchestrate: true }} class="text-lg font-medium text-(--gold)">
+							{#if greetingHref}
+								<a href={greetingHref} class="link-quiet">{greeting}</a>
+							{:else}
+								{greeting}
+							{/if}
+						</p>
+					{/if}
+
+					<h1
+						use:reveal={{ orchestrate: true, delay: 80 }}
+						class="text-[clamp(2.6rem,6.2vw,4.9rem)] text-[#f6f3e6]"
 					>
-						{s('hero.subheadline')}
-					</p>
-				{/if}
-				<div use:reveal={{ delay: 230, y: 24 }} class="flex flex-wrap items-center gap-3 pt-2">
-					<a
-						href="/donate"
-						class={cn(
-							buttonVariants({ size: 'lg' }),
-							'hero-give bg-olive text-(--hero-shade) hover:bg-olive-bright'
-						)}
+						{s('hero.headline') || 'Nobody should face the hardest days alone.'}
+					</h1>
+
+					{#if s('hero.subheadline')}
+						<p
+							use:reveal={{ orchestrate: true, delay: 160 }}
+							class="max-w-xl text-lg leading-relaxed md:text-xl"
+						>
+							{s('hero.subheadline')}
+						</p>
+					{/if}
+
+					<div
+						use:reveal={{ orchestrate: true, delay: 240 }}
+						class="flex flex-wrap items-center gap-x-7 gap-y-4 pt-1"
 					>
-						<Heart class="size-4" fill="currentColor" />
-						Give to the Foundation
-						<ArrowRight class="size-4" />
-					</a>
-					<a
-						href="/programs"
-						class={cn(
-							buttonVariants({ variant: 'outline', size: 'lg' }),
-							'border-(--hero-cream)/40 bg-(--hero-cream)/10 text-(--hero-cream) backdrop-blur-sm hover:bg-(--hero-cream)/20 hover:text-(--hero-cream) dark:border-(--hero-cream)/40 dark:bg-(--hero-cream)/10'
-						)}
-					>
-						See our programmes
-					</a>
+						<a href="/donate" class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-12 px-7')}>
+							Give to the Foundation
+						</a>
+						<a href="/programs" class="link-quiet text-lg font-medium text-[#f6f3e6]">
+							See our programmes
+						</a>
+					</div>
+
+					{#if familiesSupported > 0}
+						<p class="text-base text-(--honey)/80">
+							<span class="font-serif text-2xl font-bold text-(--gold) lining-nums">
+								{familiesSupported.toLocaleString()}
+							</span>
+							{familiesSupported === 1 ? 'family' : 'families'} supported so far
+						</p>
+					{/if}
 				</div>
 
-				{#if familiesSupported > 0}
+				<!-- The arch. A gold sun rises behind it as the page opens, and a gold
+				     outline of the same doorway sits just off its shoulder. -->
+				<div
+					class="relative order-1 w-[78%] max-w-[26rem] md:order-2 md:w-full md:justify-self-end"
+				>
 					<div
-						use:reveal={{ delay: 320, y: 20 }}
-						class="mt-6 flex w-fit items-center gap-3 rounded-2xl border border-olive/30 bg-(--hero-shade)/45 px-4 py-3 backdrop-blur-md"
-					>
-						<span
-							class="flex size-10 items-center justify-center rounded-full bg-olive text-(--hero-shade)"
-						>
-							<Users class="size-5" />
-						</span>
-						<span class="flex flex-col leading-tight">
-							<span class="font-heading text-xl font-bold text-olive-bright">
-								{familiesSupported.toLocaleString()}+
-							</span>
-							<span class="text-xs text-(--hero-cream)/80">Families supported</span>
-						</span>
-					</div>
-				{/if}
+						class="hero-sun pointer-events-none absolute -top-10 -right-12 -z-10 size-44 rounded-full md:-top-16 md:-right-20 md:size-72"
+						aria-hidden="true"
+					></div>
+					<div
+						class="arch-line pointer-events-none absolute inset-x-0 top-0 -z-10 translate-x-4 translate-y-4 md:translate-x-6 md:translate-y-6"
+						aria-hidden="true"
+					></div>
+					<HeroSlideshow
+						images={data.heroGallery}
+						fallbackImage={s('hero.image')}
+						class="arch w-full"
+					/>
+				</div>
 			</div>
-
-			<TrimBand festive class="relative" />
-		</div>
+		</section>
 	{/snippet}
 
 	{#if data.gallery.length}
-		<TrimBand festive class="mt-20 rounded-full md:mt-28" />
-		<section class="mt-16 md:mt-20">
-			<div class="mb-8 flex flex-col gap-2">
-				<h2 class="text-3xl md:text-4xl">Moments from the work</h2>
-				<span class="h-3 w-14 rounded-full bg-olive"></span>
-			</div>
+		<section class="mt-24 md:mt-32">
+			<h2 class="mb-10 text-[clamp(1.9rem,3.4vw,2.7rem)]">Moments from the work</h2>
 			<Gallery images={data.gallery} />
 		</section>
 	{/if}
