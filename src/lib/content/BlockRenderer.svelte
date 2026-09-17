@@ -318,14 +318,24 @@
 					{#each pillars as pillar (pillar.id)}
 						<article class="flex flex-col gap-4">
 							{#if pillar.image}
-								<img
-									src={assetUrl(pillar.image)}
-									srcset={imageSrcset(pillar.image)}
-									sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
-									alt={pillar.name}
-									loading="lazy"
-									class="aspect-[4/5] w-full rounded-[1.25rem] object-cover"
-								/>
+								<!-- The photograph opens the programme too. Out of the tab order and
+								     hidden from screen readers, because the name just below is the
+								     same link: one programme, one stop, not two identical anchors. -->
+								<a
+									href={`/programs/${pillar.slug}`}
+									tabindex="-1"
+									aria-hidden="true"
+									class="group block overflow-hidden rounded-[1.25rem]"
+								>
+									<img
+										src={assetUrl(pillar.image)}
+										srcset={imageSrcset(pillar.image)}
+										sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+										alt=""
+										loading="lazy"
+										class="aspect-[4/5] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] motion-reduce:transition-none"
+									/>
+								</a>
 							{/if}
 							<h3 class="mt-2 text-[clamp(1.6rem,1.1rem+1vw,2.2rem)]">
 								<a
