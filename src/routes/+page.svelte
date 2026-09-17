@@ -204,12 +204,12 @@
 				</div>
 
 				<!-- What has been done so far, as its own object in the bottom right: a
-				     pane of dark glass with a gold edge and a gold glow, one tile per
-				     figure. The tiles spring up one after another once the headline has
+				     pane of clear, frosted glass the photograph shows through, lit along
+				     its top edge, with a gold rim and a gold glow, one tile per figure. The tiles spring up one after another once the headline has
 				     landed, and the figures count up to their value. -->
 				{#if accomplishments.length}
 					<dl
-						class="impact-panel grid shrink-0 grid-cols-1 gap-px overflow-hidden rounded-[1.5rem] border border-(--gold)/45 sm:grid-cols-2 lg:min-w-[28rem]"
+						class="impact-panel grid shrink-0 grid-cols-1 overflow-hidden rounded-[1.75rem] sm:grid-cols-2 lg:min-w-[28rem]"
 					>
 						{#each accomplishments as item, index (item.key)}
 							{@const Icon = item.icon}
