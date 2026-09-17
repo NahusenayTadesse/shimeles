@@ -59,7 +59,7 @@
 		>
 			<div class="flex flex-col gap-3">
 				<p
-					class="max-w-2xl font-serif text-[clamp(2.4rem,1rem+5vw,7rem)] leading-[1.05] font-bold text-[#f6f3e6]"
+					class="max-w-2xl font-serif text-[clamp(2.2rem,1rem+3.8vw,5.25rem)] leading-[1.05] font-bold text-[#f6f3e6]"
 				>
 					{s('site.name') || 'Shimeles Abera Foundation'}
 				</p>

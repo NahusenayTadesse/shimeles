@@ -143,7 +143,7 @@
 
 {#snippet heading(block: RenderBlock, className = '')}
 	{#if block.heading}
-		<h2 class={cn('mb-12 max-w-3xl text-[clamp(2.4rem,1.4rem+3.2vw,5rem)]', className)}>
+		<h2 class={cn('mb-12 max-w-3xl text-[clamp(2.1rem,1.2rem+2.6vw,4rem)]', className)}>
 			{block.heading}
 		</h2>
 	{/if}
@@ -186,7 +186,7 @@
 					/>
 					{#if str(block, 'caption')}
 						<figcaption
-							class="flex items-center px-[clamp(1.5rem,5vw,7rem)] py-14 font-serif text-[clamp(2rem,1rem+2.8vw,4.25rem)] leading-[1.15] font-bold text-balance"
+							class="flex items-center px-[clamp(1.5rem,5vw,7rem)] py-14 font-serif text-[clamp(1.8rem,1rem+2.2vw,3.4rem)] leading-[1.15] font-bold text-balance"
 						>
 							{str(block, 'caption')}
 						</figcaption>
@@ -216,7 +216,7 @@
 							<div class="flex flex-col gap-3 border-t border-(--gold)/40 pt-6">
 								{#if money}
 									<div
-										class="font-serif text-[clamp(1.6rem,1rem+1.6vw,2.6rem)] leading-tight font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(1.5rem,1rem+1.2vw,2.2rem)] leading-tight font-bold text-(--gold) tabular-nums"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -236,7 +236,7 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-serif text-[clamp(3.5rem,2rem+5vw,7.5rem)] leading-none font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(3rem,1.8rem+3.8vw,5.75rem)] leading-none font-bold text-(--gold) tabular-nums"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
@@ -294,7 +294,7 @@
 						class="wrap flex flex-col items-start gap-10 md:flex-row md:items-center md:justify-between"
 					>
 						<p
-							class="max-w-[22ch] font-serif text-[clamp(2.4rem,1rem+4.2vw,6rem)] leading-[1.05] font-bold"
+							class="max-w-[22ch] font-serif text-[clamp(2.1rem,1rem+3.2vw,4.5rem)] leading-[1.05] font-bold"
 						>
 							{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
 						</p>
@@ -327,7 +327,7 @@
 									class="aspect-[4/5] w-full rounded-[1.25rem] object-cover"
 								/>
 							{/if}
-							<h3 class="mt-2 text-[clamp(1.75rem,1.2rem+1.3vw,2.6rem)]">
+							<h3 class="mt-2 text-[clamp(1.6rem,1.1rem+1vw,2.2rem)]">
 								<a
 									href={`/programs/${pillar.slug}`}
 									class="hover:underline hover:decoration-(--gold) hover:decoration-2 hover:underline-offset-4"
@@ -368,7 +368,7 @@
 								name={String(value.icon ?? '')}
 								class="size-10 text-(--gold-deep) md:size-14 [&_*]:[stroke-width:1.25]"
 							/>
-							<h3 class="text-[clamp(1.9rem,1.2rem+1.6vw,3rem)]">
+							<h3 class="text-[clamp(1.7rem,1.1rem+1.2vw,2.5rem)]">
 								{value.title}
 							</h3>
 							<p class="text-muted-foreground">
@@ -554,12 +554,12 @@
 						{/if}
 						<div class="flex flex-col items-start gap-7">
 							{#if str(block, 'name')}
-								<h3 class="text-[clamp(2.4rem,1.2rem+3.6vw,4.75rem)]">
+								<h3 class="text-[clamp(2.2rem,1.1rem+2.8vw,3.75rem)]">
 									{str(block, 'name')}
 								</h3>
 							{/if}
 							<div
-								class="prose-block max-w-[46ch] font-serif text-[clamp(1.25rem,0.9rem+1vw,2rem)] leading-relaxed text-foreground/85 [&_p]:font-serif"
+								class="prose-block max-w-[46ch] font-serif text-[clamp(1.2rem,0.9rem+0.8vw,1.7rem)] leading-relaxed text-foreground/85 [&_p]:font-serif"
 							>
 								{@html str(block, 'body')}
 							</div>

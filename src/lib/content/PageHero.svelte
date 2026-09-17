@@ -56,21 +56,21 @@
 			{#if eyebrow}
 				<p
 					use:reveal={{ orchestrate: true }}
-					class="text-[clamp(1.15rem,0.9rem+0.6vw,1.6rem)] font-medium text-(--gold)"
+					class="text-[clamp(1.1rem,0.9rem+0.5vw,1.4rem)] font-medium text-(--gold)"
 				>
 					{eyebrow}
 				</p>
 			{/if}
 			<h1
 				use:reveal={{ orchestrate: true, delay: 60 }}
-				class="max-w-3xl text-[clamp(2.8rem,1.4rem+4.4vw,6.25rem)] text-[#f6f3e6]"
+				class="max-w-3xl text-[clamp(2.5rem,1.3rem+3.6vw,5rem)] text-[#f6f3e6]"
 			>
 				{title}
 			</h1>
 			{#if description}
 				<p
 					use:reveal={{ orchestrate: true, delay: 120 }}
-					class="max-w-[40ch] text-[clamp(1.2rem,0.9rem+0.8vw,1.8rem)] leading-relaxed"
+					class="max-w-[40ch] text-[clamp(1.15rem,0.9rem+0.7vw,1.6rem)] leading-relaxed"
 				>
 					{description}
 				</p>

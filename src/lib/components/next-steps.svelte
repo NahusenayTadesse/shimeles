@@ -47,7 +47,7 @@
 					<li>
 						<a
 							href={item.href}
-							class="link-quiet font-serif text-[clamp(1.75rem,1rem+2.2vw,3.5rem)] font-bold"
+							class="link-quiet font-serif text-[clamp(1.6rem,1rem+1.7vw,2.75rem)] font-bold"
 						>
 							{item.label}
 						</a>

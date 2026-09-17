@@ -599,7 +599,7 @@
 }
 .site-shell .prose-block.prose-lede > :where(p):first-of-type {
 	font-family: var(--font-serif);
-	font-size: clamp(1.45rem, 1rem + 1.25vw, 2.3rem);
+	font-size: clamp(1.35rem, 1rem + 1vw, 2rem);
 	line-height: 1.4;
 	color: var(--ink);
 }
@@ -726,36 +726,39 @@
 }
 
 /* ---------------------------------------------------------------------------
-   The sun
+   The hero's shade
 
-   The homepage's single moment of motion: a gold sun rising behind the arch
-   as the page opens, once. Under reduced motion it is simply already up.
+   The homepage photographs run full-bleed behind the headline. The shade is
+   forest, deepest behind the words on the left and along the foot where the
+   figures sit, lifting toward the top right so the people in the pictures are
+   still seen — with a little of the gold's warmth pooled in the bottom corner
+   under the figures.
 --------------------------------------------------------------------------- */
 
-.hero-sun {
-	background: radial-gradient(
-		circle at 50% 50%,
-		#e6cc84 0%,
-		var(--gold) 58%,
-		color-mix(in oklch, var(--gold) 0%, transparent) 71%
-	);
-	animation: sun-rise 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+.hero-shade {
+	background:
+		radial-gradient(55% 45% at 100% 100%, rgb(204 171 89 / 0.2), transparent 70%),
+		linear-gradient(
+			to top,
+			rgb(9 42 32 / 0.94) 0%,
+			rgb(9 42 32 / 0.55) 40%,
+			rgb(9 42 32 / 0.08) 72%
+		),
+		linear-gradient(to right, rgb(9 42 32 / 0.88) 0%, rgb(9 42 32 / 0.5) 48%, rgb(9 42 32 / 0) 82%);
 }
 
-@keyframes sun-rise {
-	from {
-		transform: translateY(45%);
-		opacity: 0;
-	}
-	to {
-		transform: none;
-		opacity: 1;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.hero-sun {
-		animation: none;
+/* On a phone the words run the full width of the photograph, so the whole
+   picture takes an even layer of shade as well. */
+@media (max-width: 767px) {
+	.hero-shade {
+		background:
+			linear-gradient(rgb(9 42 32 / 0.45), rgb(9 42 32 / 0.45)),
+			linear-gradient(
+				to top,
+				rgb(9 42 32 / 0.94) 0%,
+				rgb(9 42 32 / 0.5) 45%,
+				rgb(9 42 32 / 0.2) 100%
+			);
 	}
 }
 

@@ -21,11 +21,17 @@
 		images,
 		fallbackImage,
 		interval = 6500,
+		sizes = '(min-width: 768px) 32rem, 80vw',
+		dotsClass = 'mt-5',
 		class: className = ''
 	}: {
 		images: { id: number; storagePath: string; caption?: string | null }[];
 		fallbackImage?: string | null;
 		interval?: number;
+		/** The `sizes` for each photograph — `100vw` when it is the whole background. */
+		sizes?: string;
+		/** Where the row of dots sits: in flow under a frame, or pinned over a background. */
+		dotsClass?: string;
 		/** The frame: its shape, size and radius. The slides fill it. */
 		class?: string;
 	} = $props();
@@ -106,7 +112,7 @@
 					<img
 						src={slide.src}
 						srcset={slide.srcset}
-						sizes="(min-width: 768px) 32rem, 80vw"
+						{sizes}
 						alt={slide.alt}
 						class={cn(
 							'size-full object-cover',
@@ -123,7 +129,7 @@
 	</div>
 
 	{#if shown.length > 1}
-		<div class="mt-5 flex items-center gap-2">
+		<div class={cn('flex items-center gap-2', dotsClass)}>
 			{#each shown as slide, index (slide.key)}
 				<button
 					type="button"
