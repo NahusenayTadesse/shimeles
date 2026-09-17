@@ -11,7 +11,7 @@
 </script>
 
 <div class={align === 'center' ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}>
-	<h2 class="text-[clamp(1.9rem,3.4vw,2.7rem)]">{title}</h2>
+	<h2 class="text-[clamp(2.4rem,1.4rem+3.2vw,5rem)]">{title}</h2>
 	{#if subtitle}
 		<p class="mt-4 text-lg text-muted-foreground">
 			{subtitle}

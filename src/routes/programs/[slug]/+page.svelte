@@ -50,7 +50,7 @@
 </PageHero>
 
 {#if pillar.description}
-	<div class="mx-auto w-full max-w-6xl px-4 pt-16 md:pt-24">
+	<div class="wrap pt-16 md:pt-24">
 		<!-- Authored in the dashboard's rich-text editor, per §3.2. -->
 		<div class="prose-block prose-lede max-w-prose">
 			{@html pillar.description}
@@ -68,7 +68,7 @@
 {/if}
 
 {#if data.media.gallery.length}
-	<div class="mx-auto w-full max-w-6xl px-4 pt-16 md:pt-24">
+	<div class="wrap pt-16 md:pt-24">
 		<SectionHeading title="From this programme" />
 		<div class="mt-8">
 			<Gallery images={data.media.gallery} />

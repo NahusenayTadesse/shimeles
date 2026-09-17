@@ -42,8 +42,8 @@
 <div class="on-forest relative isolate overflow-hidden bg-(--forest)">
 	<div
 		class={cn(
-			'relative mx-auto grid w-full max-w-6xl gap-10 px-4 pt-10 pb-16 md:pt-16 md:pb-24',
-			image && 'md:grid-cols-[1.25fr_0.75fr] md:items-center md:gap-16'
+			'wrap relative grid gap-10 pt-10 pb-16 md:pt-16 md:pb-24',
+			image && 'md:grid-cols-2 md:items-center md:gap-[clamp(3rem,6vw,9rem)]'
 		)}
 	>
 		<div class="flex flex-col gap-5">
@@ -54,20 +54,23 @@
 				</div>
 			{/if}
 			{#if eyebrow}
-				<p use:reveal={{ orchestrate: true }} class="text-lg font-medium text-(--gold)">
+				<p
+					use:reveal={{ orchestrate: true }}
+					class="text-[clamp(1.15rem,0.9rem+0.6vw,1.6rem)] font-medium text-(--gold)"
+				>
 					{eyebrow}
 				</p>
 			{/if}
 			<h1
 				use:reveal={{ orchestrate: true, delay: 60 }}
-				class="max-w-3xl text-[clamp(2.3rem,5vw,3.9rem)] text-[#f6f3e6]"
+				class="max-w-3xl text-[clamp(2.8rem,1.4rem+4.4vw,6.25rem)] text-[#f6f3e6]"
 			>
 				{title}
 			</h1>
 			{#if description}
 				<p
 					use:reveal={{ orchestrate: true, delay: 120 }}
-					class="max-w-prose text-lg leading-relaxed md:text-xl"
+					class="max-w-[40ch] text-[clamp(1.2rem,0.9rem+0.8vw,1.8rem)] leading-relaxed"
 				>
 					{description}
 				</p>
@@ -83,7 +86,9 @@
 			<!-- No `use:reveal` on the photograph, deliberately: it is the
 			     largest-contentful-paint element on every page that has one, and an
 			     entrance would hold it invisible after it had arrived. -->
-			<div class="relative w-[70%] max-w-[22rem] md:w-full md:justify-self-end">
+			<div
+				class="relative w-[75%] max-w-[26rem] md:w-[min(100%,calc((100svh-14rem)*0.8))] md:max-w-none md:justify-self-end"
+			>
 				<div
 					class="arch-line pointer-events-none absolute inset-x-0 top-0 -z-10 translate-x-4 translate-y-4"
 					aria-hidden="true"
@@ -94,7 +99,7 @@
 				<img
 					src={assetUrl(image)}
 					srcset={imageSrcset(image)}
-					sizes="(min-width: 768px) 22rem, 70vw"
+					sizes="(min-width: 768px) 45vw, 75vw"
 					alt={imageAlt}
 					width="640"
 					height="800"

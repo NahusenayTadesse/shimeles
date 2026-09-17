@@ -30,7 +30,7 @@
 	description="The families, elders, students and volunteers we work alongside, in their own words."
 />
 
-<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+<div class="wrap py-16 md:py-24">
 	{#if data.pillars.length > 1}
 		<div class="mb-10 flex flex-wrap items-center gap-2">
 			<Button

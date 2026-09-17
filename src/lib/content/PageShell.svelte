@@ -89,7 +89,7 @@
 	<PageHero title={page.title} description={page.metaDescription} image={page.shareImage} />
 {/if}
 
-<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+<div class="wrap py-16 md:py-24">
 	<BlockRenderer
 		blocks={page.blocks}
 		{pillars}

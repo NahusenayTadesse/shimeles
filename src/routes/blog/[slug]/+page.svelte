@@ -101,7 +101,7 @@
 
 {#if data.related.length}
 	<section class="border-t bg-muted/40">
-		<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+		<div class="wrap py-16 md:py-24">
 			<SectionHeading title="More from the Foundation" />
 			<div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.related as related, index (related.id)}

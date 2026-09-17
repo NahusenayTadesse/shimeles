@@ -81,7 +81,7 @@
 	description="Programme updates, field notes, and stories from the families and volunteers we work alongside."
 />
 
-<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+<div class="wrap py-16 md:py-24">
 	<!-- Filters -->
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center gap-2">

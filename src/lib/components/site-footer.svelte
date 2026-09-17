@@ -51,7 +51,7 @@
 </script>
 
 <footer class="on-forest mt-24 bg-(--night)">
-	<div class="mx-auto w-full max-w-6xl px-4 pt-20 pb-10">
+	<div class="wrap pt-20 pb-10">
 		<!-- The name, large, in the serif: the last thing on every page is who
 		     this is, said plainly. -->
 		<div
@@ -59,7 +59,7 @@
 		>
 			<div class="flex flex-col gap-3">
 				<p
-					class="max-w-2xl font-serif text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05] font-bold text-[#f6f3e6]"
+					class="max-w-2xl font-serif text-[clamp(2.4rem,1rem+5vw,7rem)] leading-[1.05] font-bold text-[#f6f3e6]"
 				>
 					{s('site.name') || 'Shimeles Abera Foundation'}
 				</p>
@@ -181,7 +181,7 @@
 
 	<div class="border-t border-(--honey)/15">
 		<div
-			class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-(--honey)/85 sm:flex-row sm:justify-between"
+			class="wrap flex flex-col gap-2 py-6 text-sm text-(--honey)/85 sm:flex-row sm:justify-between"
 		>
 			<p>
 				© {new Date().getFullYear()}

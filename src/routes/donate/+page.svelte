@@ -576,7 +576,7 @@
 <!-- Where the gift goes. Below the form rather than beside it: somebody who
      arrived ready to give should not have to scroll past the case for giving. -->
 {#if data.page && data.blocks}
-	<div class="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-16 md:pb-24">
+	<div class="wrap flex flex-col gap-10 pb-16 md:pb-24">
 		<BlockRenderer
 			blocks={data.page.blocks}
 			pillars={data.blocks.pillars}

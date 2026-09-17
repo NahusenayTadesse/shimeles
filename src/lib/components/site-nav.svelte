@@ -60,33 +60,37 @@
 		hidden && !focusInside && !open && '-translate-y-full'
 	)}
 >
-	<div class="mx-auto flex h-20 w-full max-w-6xl items-center gap-4 px-4">
+	<div class="wrap flex h-20 items-center gap-4 md:h-24">
 		<a href="/" class="flex min-w-0 items-center gap-3">
 			<img
 				src="/favicon.png"
 				alt=""
 				width="44"
 				height="44"
-				class="size-11 shrink-0 rounded-full object-contain ring-1 ring-(--gold)/60"
+				class="size-11 shrink-0 rounded-full object-contain ring-1 ring-(--gold)/60 md:size-14"
 			/>
 			<!-- The two names are the same name, so they are one link: English in the
 			     serif, the Amharic beneath it smaller, as a subtitle rather than a
 			     second line competing for the same weight. -->
 			<span class="flex min-w-0 flex-col">
-				<span class="truncate font-serif text-lg leading-tight font-bold text-[#f6f3e6]">
+				<span
+					class="truncate font-serif text-lg leading-tight font-bold text-[#f6f3e6] md:text-[1.6rem]"
+				>
 					{siteName}
 				</span>
-				<span class="truncate text-sm leading-tight text-(--honey)/80">{siteNameAmharic}</span>
+				<span class="truncate text-sm leading-tight text-(--honey)/80 md:text-base"
+					>{siteNameAmharic}</span
+				>
 			</span>
 		</a>
 
-		<nav class="ml-auto hidden items-center gap-1 lg:flex">
+		<nav class="ml-auto hidden items-center gap-2 lg:flex">
 			{#each items.filter((item) => !item.isCta) as item (item.id)}
 				<a
 					href={item.href}
 					aria-current={isActive(item.href) ? 'page' : undefined}
 					class={cn(
-						'relative px-3 py-2 text-base font-medium text-(--honey)/80 transition-colors hover:text-[#f6f3e6]',
+						'relative px-3 py-2 text-[1.15rem] font-medium text-(--honey)/80 transition-colors hover:text-[#f6f3e6]',
 						isActive(item.href) && 'text-[#f6f3e6]'
 					)}
 				>
@@ -102,7 +106,10 @@
 			<DarkMode />
 
 			{#each items.filter((item) => item.isCta) as item (item.id)}
-				<a href={item.href} class={cn(buttonVariants(), 'btn-gold hidden sm:inline-flex')}>
+				<a
+					href={item.href}
+					class={cn(buttonVariants(), 'btn-gold hidden h-12 px-7 text-[1.1rem] sm:inline-flex')}
+				>
 					{item.label}
 				</a>
 			{/each}

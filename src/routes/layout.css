@@ -501,7 +501,9 @@
 	--chart-4: #9a7b2c;
 
 	font-family: var(--font-sans-public);
-	font-size: 1.125rem;
+	/* 18px on a phone, rising to 21px on a wide screen: set for reading at
+	   arm's length on a laptop, not for fitting more on the page. */
+	font-size: clamp(1.125rem, 0.95rem + 0.4vw, 1.3125rem);
 	line-height: 1.6;
 	color: var(--ink);
 	background: var(--mist);
@@ -593,13 +595,12 @@
 /* Prose. The opening paragraph of a page is set in the serif, larger — the
    Foundation introducing itself — instead of a dropped capital. */
 .site-shell .prose-block {
-	font-size: 1.125rem;
 	line-height: 1.7;
 }
 .site-shell .prose-block.prose-lede > :where(p):first-of-type {
 	font-family: var(--font-serif);
-	font-size: clamp(1.3rem, 2.2vw, 1.6rem);
-	line-height: 1.45;
+	font-size: clamp(1.45rem, 1rem + 1.25vw, 2.3rem);
+	line-height: 1.4;
 	color: var(--ink);
 }
 .site-shell .prose-block.prose-lede > :where(p):first-of-type::first-letter {
@@ -642,8 +643,34 @@
 .site-shell [data-slot='button'],
 .site-shell a[class*='tracking-widest'],
 .site-shell button[class*='tracking-widest'] {
-	font-size: 1rem;
+	font-size: 1.0625rem;
 	font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+   Width
+
+   The page uses the screen it is given. `.wrap` is the one frame every public
+   section sits in — wide, with side margins that grow with the window — and
+   `.bleed` takes a band past it to both edges of the window, the way a colour
+   field or a photograph runs edge to edge on a printed spread.
+--------------------------------------------------------------------------- */
+
+.site-shell .wrap {
+	width: 100%;
+	max-width: 118rem;
+	margin-inline: auto;
+	padding-inline: clamp(1rem, 4.5vw, 6rem);
+}
+
+.site-shell .bleed {
+	margin-inline: calc(50% - 50vw);
+}
+
+/* `100vw` counts the scrollbar on desktop, so a bleed is a few pixels wider
+   than the page. Clipped, not hidden, so sticky elements still work. */
+.site-shell main {
+	overflow-x: clip;
 }
 
 /* The gold button: the one place a visitor is asked to act. */
@@ -729,5 +756,15 @@
 @media (prefers-reduced-motion: reduce) {
 	.hero-sun {
 		animation: none;
+	}
+}
+
+/* Prose on the public site reads at the site's own body size rather than the
+   dashboard's 16px. In the components layer, beside the base `.prose-block`
+   rule, so a size utility on a particular block (the memoriam letter) still
+   wins over it. */
+@layer components {
+	.site-shell .prose-block {
+		font-size: inherit;
 	}
 }

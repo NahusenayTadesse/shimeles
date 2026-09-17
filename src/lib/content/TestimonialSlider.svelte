@@ -28,7 +28,7 @@
 						     large, with the person beneath it. No card, no quotation-mark
 						     ornament — the typographic quotes already say it. -->
 						<figure class="flex max-w-4xl flex-col gap-8 md:px-14">
-							<blockquote class="text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.2] text-pretty">
+							<blockquote class="text-[clamp(1.9rem,1rem+2.8vw,3.75rem)] leading-[1.2] text-pretty">
 								“{testimonial.quote}”
 							</blockquote>
 							<figcaption class="flex items-center gap-4">

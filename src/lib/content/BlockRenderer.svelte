@@ -130,22 +130,37 @@
 	 * document that opens with a label — on the privacy policy it turned
 	 * "Website:" into a giant W sitting apart from "ebsite:".
 	 */
+	/**
+	 * Blocks drawn as edge-to-edge bands. Their heading goes inside the band,
+	 * on its colour, rather than hanging above it on the paper — a heading
+	 * outside a full-width band reads as a label for the gap.
+	 */
+	const bands = new Set(['stat_counter', 'cta_button', 'memoriam']);
+
 	const isLede = (block: RenderBlock, index: number) =>
 		block.type === 'rich_text' && index === 0 && block.content.lede !== false;
 </script>
 
-<div class={cn('flex flex-col gap-20 md:gap-28', className)}>
+{#snippet heading(block: RenderBlock, className = '')}
+	{#if block.heading}
+		<h2 class={cn('mb-12 max-w-3xl text-[clamp(2.4rem,1.4rem+3.2vw,5rem)]', className)}>
+			{block.heading}
+		</h2>
+	{/if}
+{/snippet}
+
+<div class={cn('flex flex-col gap-24 md:gap-40', className)}>
 	{#each blocks as block, index (block.id)}
 		<section id={block.type === 'memoriam' ? 'in-memoriam' : undefined}>
-			{#if block.heading}
-				<h2 class="mb-10 max-w-3xl text-[clamp(1.9rem,3.4vw,2.7rem)]">{block.heading}</h2>
+			{#if !bands.has(block.type)}
+				{@render heading(block)}
 			{/if}
 
 			{#if block.type === 'rich_text'}
 				<!-- `{ body }` — HTML authored in the dashboard editor. -->
 				{#if isLede(block, index) && ledeAside}
-					<div class="grid items-center gap-10 md:grid-cols-[minmax(0,1.3fr)_1fr] lg:gap-16">
-						<div class="prose-block prose-lede max-w-prose">
+					<div class="grid items-center gap-10 md:grid-cols-[minmax(0,1.5fr)_1fr] lg:gap-24">
+						<div class="prose-block prose-lede max-w-[48ch]">
 							{@html str(block, 'body')}
 						</div>
 						{@render ledeAside()}
@@ -157,21 +172,21 @@
 				{/if}
 			{:else if block.type === 'image'}
 				<!-- `{ src, alt, caption }` -->
-				<!-- The words sit under the photograph, not over it: the picture is of
-     people and deserves to be seen whole, and the sentence reads better
-     on paper than through a dark gradient. -->
-				<figure class="grid gap-6 md:grid-cols-[1.6fr_1fr] md:items-end md:gap-10">
+				<!-- A split spread, edge to edge: the photograph fills one half of the
+     window and the sentence has the other half to itself, on paper rather
+     than through a dark gradient over the picture. -->
+				<figure class="bleed grid bg-(--accent) md:min-h-[80svh] md:grid-cols-2">
 					<img
 						src={assetUrl(str(block, 'src'))}
 						srcset={imageSrcset(str(block, 'src'))}
-						sizes="(min-width: 768px) 60vw, 100vw"
+						sizes="(min-width: 768px) 50vw, 100vw"
 						alt={str(block, 'alt')}
 						loading="lazy"
-						class="aspect-[4/3] w-full rounded-[1.25rem] object-cover"
+						class="aspect-[4/3] size-full object-cover md:aspect-auto"
 					/>
 					{#if str(block, 'caption')}
 						<figcaption
-							class="border-l-2 border-(--gold) pl-6 font-serif text-2xl leading-snug md:mb-4 md:text-3xl"
+							class="flex items-center px-[clamp(1.5rem,5vw,7rem)] py-14 font-serif text-[clamp(2rem,1rem+2.8vw,4.25rem)] leading-[1.15] font-bold text-balance"
 						>
 							{str(block, 'caption')}
 						</figcaption>
@@ -182,8 +197,9 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
-				<div class="on-forest rounded-[1.5rem] bg-(--forest) px-6 py-10 md:px-10">
-					<div class="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+				<div class="on-forest bleed bg-(--forest) py-16 md:py-28">
+					{@render heading(block, 'wrap max-w-none text-[#f6f3e6]')}
+					<div class="wrap grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							<!-- Derived from the metric, never read from the block. A stat block
@@ -197,10 +213,10 @@
 							     `moneyTotals` is empty until the cache is first warmed, so a
 							     cold homepage still shows a zero rather than a blank panel. -->
 							{@const totals = money ? (moneyTotals[key] ?? [{ currency: 'ETB', amount: 0 }]) : []}
-							<div class="flex flex-col gap-2 border-t border-(--gold)/40 pt-5">
+							<div class="flex flex-col gap-3 border-t border-(--gold)/40 pt-6">
 								{#if money}
 									<div
-										class="font-serif text-2xl leading-tight font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(1.6rem,1rem+1.6vw,2.6rem)] leading-tight font-bold text-(--gold) tabular-nums"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -220,12 +236,12 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-serif text-5xl leading-none font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(3.5rem,2rem+5vw,7.5rem)] leading-none font-bold text-(--gold) tabular-nums"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
 								{/if}
-								<p class="text-base">
+								<p class="text-[clamp(1.1rem,0.9rem+0.5vw,1.45rem)]">
 									{stat.label ?? key}
 								</p>
 							</div>
@@ -250,12 +266,12 @@
 						member typed into "heading above the block", and a second one drew
 						the same words twice.
 					-->
-					<div use:reveal class="max-w-2xl">
+					<div use:reveal class="max-w-5xl">
 						{#if block.content.caption}
 							<p class="text-muted-foreground">{block.content.caption}</p>
 						{/if}
 						<div class="mt-6">
-							<ChartCanvas {series} kind={series.kinds[0]} height={320} />
+							<ChartCanvas {series} kind={series.kinds[0]} height={460} />
 						</div>
 					</div>
 				{/if}
@@ -272,38 +288,46 @@
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
 				<!-- The one forest band in the middle of a page: the sentence, and the gold button. -->
-				<div
-					class="on-forest relative isolate flex flex-col items-start gap-7 overflow-hidden rounded-[1.5rem] bg-(--forest) px-7 py-12 text-[#f6f3e6] sm:px-12 md:flex-row md:items-center md:justify-between md:py-14"
-				>
-					<p class="max-w-xl font-serif text-[clamp(1.6rem,3vw,2.3rem)] leading-tight font-bold">
-						{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
-					</p>
-					<a
-						href={str(block, 'url') || '#'}
-						class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-12 shrink-0 px-7')}
+				<div class="on-forest bleed bg-(--forest) py-20 text-[#f6f3e6] md:py-32">
+					{@render heading(block, 'wrap max-w-none')}
+					<div
+						class="wrap flex flex-col items-start gap-10 md:flex-row md:items-center md:justify-between"
 					>
-						{str(block, 'label') || 'Learn more'}
-					</a>
+						<p
+							class="max-w-[22ch] font-serif text-[clamp(2.4rem,1rem+4.2vw,6rem)] leading-[1.05] font-bold"
+						>
+							{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
+						</p>
+						<a
+							href={str(block, 'url') || '#'}
+							class={cn(
+								buttonVariants({ size: 'lg' }),
+								'btn-gold h-16 shrink-0 px-11 text-[1.3rem]'
+							)}
+						>
+							{str(block, 'label') || 'Learn more'}
+						</a>
+					</div>
 				</div>
 			{:else if block.type === 'pillar_grid'}
 				<!-- `{ show_apply_links }` — the pillars themselves come from the
 				     `pillars` table, never from this block's JSON. -->
 				<!-- No card around each programme: a photograph, its name and a line
      about it, the way a printed report would set them. -->
-				<div class="grid gap-x-10 gap-y-14 md:grid-cols-2">
+				<div class="grid gap-x-[clamp(1.5rem,2.5vw,3.5rem)] gap-y-16 md:grid-cols-2 xl:grid-cols-4">
 					{#each pillars as pillar (pillar.id)}
 						<article class="flex flex-col gap-4">
 							{#if pillar.image}
 								<img
 									src={assetUrl(pillar.image)}
 									srcset={imageSrcset(pillar.image)}
-									sizes="(min-width: 768px) 50vw, 100vw"
+									sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
 									alt={pillar.name}
 									loading="lazy"
-									class="aspect-[3/2] w-full rounded-[1.25rem] object-cover"
+									class="aspect-[4/5] w-full rounded-[1.25rem] object-cover"
 								/>
 							{/if}
-							<h3 class="mt-2 text-[1.75rem]">
+							<h3 class="mt-2 text-[clamp(1.75rem,1.2rem+1.3vw,2.6rem)]">
 								<a
 									href={`/programs/${pillar.slug}`}
 									class="hover:underline hover:decoration-(--gold) hover:decoration-2 hover:underline-offset-4"
@@ -337,14 +361,14 @@
 				</div>
 			{:else if block.type === 'values_list'}
 				<!-- `{ values: [{ icon, title, body }] }` -->
-				<div class="grid gap-10 md:grid-cols-3 md:gap-12">
+				<div class="grid gap-12 md:grid-cols-3 md:gap-[clamp(2rem,4vw,6rem)]">
 					{#each list<Record<string, unknown>>(block, 'values') as value, valueIndex (valueIndex)}
 						<div class="flex flex-col gap-3">
 							<DynamicIcon
 								name={String(value.icon ?? '')}
-								class="size-8 text-(--gold-deep) [&_*]:[stroke-width:1.5]"
+								class="size-10 text-(--gold-deep) md:size-14 [&_*]:[stroke-width:1.25]"
 							/>
-							<h3 class="text-2xl">
+							<h3 class="text-[clamp(1.9rem,1.2rem+1.6vw,3rem)]">
 								{value.title}
 							</h3>
 							<p class="text-muted-foreground">
@@ -509,40 +533,45 @@
 				<!-- Set like a letter: centred, in the serif, on a slightly deeper paper,
      with his portrait in the arch. A tribute to a life, not a notice of a
      death, so there is no black here. -->
-				<div class="rounded-[1.5rem] bg-(--accent) px-6 py-14 text-center sm:px-12 md:py-20">
-					<div class="mx-auto flex max-w-2xl flex-col items-center gap-6">
+				<div class="bleed bg-(--accent) py-20 md:py-32">
+					{@render heading(block, 'wrap max-w-none')}
+					<div
+						class="wrap grid items-center gap-12 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-[clamp(3rem,7vw,10rem)]"
+					>
 						{#if str(block, 'photo')}
 							<div
-								class="arch-portrait w-32 ring-1 ring-(--gold) ring-offset-4 ring-offset-(--accent) md:w-36"
+								class="arch-portrait mx-auto w-[min(70%,22rem)] ring-1 ring-(--gold) ring-offset-8 ring-offset-(--accent) md:w-full md:max-w-[34rem]"
 							>
 								<img
 									src={assetUrl(str(block, 'photo'))}
 									srcset={imageSrcset(str(block, 'photo'))}
-									sizes="144px"
+									sizes="(min-width: 768px) 34rem, 70vw"
 									alt={str(block, 'name')}
 									loading="lazy"
 									class="size-full object-cover"
 								/>
 							</div>
 						{/if}
-						{#if str(block, 'name')}
-							<h3 class="text-[clamp(2rem,4vw,3rem)]">
-								{str(block, 'name')}
-							</h3>
-						{/if}
-						<div
-							class="prose-block font-serif text-lg leading-relaxed text-foreground/85 md:text-xl [&_p]:font-serif"
-						>
-							{@html str(block, 'body')}
-						</div>
-						{#if str(block, 'linkHref')}
-							<a
-								href={str(block, 'linkHref')}
-								class={cn(buttonVariants({ size: 'lg' }), 'mt-2 h-12 px-7')}
+						<div class="flex flex-col items-start gap-7">
+							{#if str(block, 'name')}
+								<h3 class="text-[clamp(2.4rem,1.2rem+3.6vw,4.75rem)]">
+									{str(block, 'name')}
+								</h3>
+							{/if}
+							<div
+								class="prose-block max-w-[46ch] font-serif text-[clamp(1.25rem,0.9rem+1vw,2rem)] leading-relaxed text-foreground/85 [&_p]:font-serif"
 							>
-								{str(block, 'linkLabel') || 'Read more'}
-							</a>
-						{/if}
+								{@html str(block, 'body')}
+							</div>
+							{#if str(block, 'linkHref')}
+								<a
+									href={str(block, 'linkHref')}
+									class={cn(buttonVariants({ size: 'lg' }), 'mt-2 h-14 px-9 text-[1.15rem]')}
+								>
+									{str(block, 'linkLabel') || 'Read more'}
+								</a>
+							{/if}
+						</div>
 					</div>
 				</div>
 			{/if}

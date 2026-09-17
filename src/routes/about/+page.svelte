@@ -70,7 +70,7 @@
 	imageAlt="The Shimeles Abera Foundation at work"
 />
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-16 md:gap-28 md:py-24">
+<div class="wrap flex flex-col gap-20 py-16 md:gap-28 md:py-24">
 	<!-- Our Story -->
 	<section class="mx-auto flex max-w-3xl flex-col gap-6">
 		<div class="flex items-center gap-3">
@@ -309,7 +309,7 @@
 
 <!-- What we're building next -->
 {#if data.initiatives.length}
-	<div class="mx-auto flex w-full max-w-6xl flex-col px-4 pb-16 md:pb-24">
+	<div class="wrap flex flex-col pb-16 md:pb-24">
 		<section class="flex flex-col gap-8">
 			<div class="flex flex-col gap-2">
 				<h2 class="text-3xl md:text-4xl">What we are building next</h2>

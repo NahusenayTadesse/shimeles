@@ -32,24 +32,33 @@
 	<!-- A row of plain serif links over a gold hairline, and the call to action
 	     as the one gold button. It sits at the foot of the page, so it should
 	     read as the page's last sentence, not as another section of cards. -->
-	<nav aria-labelledby="next-steps-heading" class="mx-auto mt-8 w-full max-w-6xl px-4">
+	<nav aria-labelledby="next-steps-heading" class="wrap mt-8">
 		<div
 			class="flex flex-col gap-6 border-t border-(--gold)/50 pt-10 md:flex-row md:items-baseline md:gap-12"
 		>
-			<h2 id="next-steps-heading" class="shrink-0 font-sans text-lg font-medium text-(--gold-deep)">
+			<h2
+				id="next-steps-heading"
+				class="shrink-0 font-sans text-[clamp(1.1rem,0.9rem+0.5vw,1.45rem)] font-medium text-(--gold-deep)"
+			>
 				{heading}
 			</h2>
-			<ul class="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+			<ul class="flex flex-wrap items-baseline gap-x-[clamp(1.5rem,3vw,4rem)] gap-y-4">
 				{#each next as item (item.id)}
 					<li>
-						<a href={item.href} class="link-quiet font-serif text-2xl font-bold md:text-3xl">
+						<a
+							href={item.href}
+							class="link-quiet font-serif text-[clamp(1.75rem,1rem+2.2vw,3.5rem)] font-bold"
+						>
 							{item.label}
 						</a>
 					</li>
 				{/each}
 				{#if cta}
 					<li>
-						<a href={cta.href} class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-12 px-7')}>
+						<a
+							href={cta.href}
+							class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-14 px-9 text-[1.15rem]')}
+						>
 							{cta.label}
 						</a>
 					</li>
