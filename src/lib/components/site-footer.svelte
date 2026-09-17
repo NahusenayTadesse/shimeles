@@ -50,7 +50,7 @@
 	let subscribing = $state(false);
 </script>
 
-<footer class="on-forest mt-24 bg-(--night)">
+<footer class="on-forest forest-glow mt-24">
 	<div class="wrap pt-20 pb-10">
 		<!-- The name, large, in the serif: the last thing on every page is who
 		     this is, said plainly. -->

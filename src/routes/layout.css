@@ -460,11 +460,14 @@
 	--forest: #0e3b2e;
 	--night: #092a20;
 	--gold: #ccab59;
-	--gold-deep: #7d6420;
+	--gold-bright: #ebc865;
+	--gold-deep: #6f5514;
 	--honey: #ecdcae;
-	--mist: #f1f3ec;
-	--ink: #1a231e;
-	--paper: #f8f9f4;
+	/* The ground is sunlit cream, not paper-white or green-grey: gold is the
+	   site's main colour, and the forest green is the ink it is written in. */
+	--mist: #fbf3de;
+	--ink: #15352a;
+	--paper: #fffaec;
 
 	--clay: var(--forest);
 	--clay-bright: #1b5a47;
@@ -481,14 +484,14 @@
 	--popover-foreground: var(--ink);
 	--primary: var(--forest);
 	--primary-foreground: #f6f3e6;
-	--secondary: #e3e8dc;
+	--secondary: #f3e5bd;
 	--secondary-foreground: var(--ink);
-	--muted: #e3e8dc;
-	--muted-foreground: #3f4b44;
-	--accent: #ebe2c2;
+	--muted: #f3e7c6;
+	--muted-foreground: #4a5646;
+	--accent: #f4e1ad;
 	--accent-foreground: #3b3113;
-	--border: #d4dbcc;
-	--input: #c9d1c0;
+	--border: #e5d4a3;
+	--input: #dcc996;
 	--ring: var(--gold-deep);
 
 	--font-serif: 'Alegreya Variable', 'Alegreya', Georgia, 'Times New Roman', serif;
@@ -506,13 +509,19 @@
 	font-size: clamp(1.125rem, 0.95rem + 0.4vw, 1.3125rem);
 	line-height: 1.6;
 	color: var(--ink);
-	background: var(--mist);
+	/* Sunlight: a warm glow high on the right, and a fainter one lower on the
+	   left, fixed to the window so the page moves through the light rather
+	   than carrying it. */
+	background:
+		radial-gradient(70rem 50rem at 100% -10%, rgb(244 205 105 / 0.42), transparent 65%),
+		radial-gradient(55rem 45rem at -10% 60%, rgb(236 196 98 / 0.18), transparent 70%), var(--mist);
+	background-attachment: fixed;
 }
 
 .dark .site-shell {
-	--gold-deep: var(--gold);
-	--mist: #0b231b;
-	--paper: #0f2c23;
+	--gold-deep: var(--gold-bright);
+	--mist: #13201a;
+	--paper: #1a2a21;
 	--ink: #e8ebdf;
 
 	--background: var(--mist);
@@ -527,7 +536,7 @@
 	--secondary-foreground: var(--ink);
 	--muted: #143429;
 	--muted-foreground: #b9c4b8;
-	--accent: #2b3a23;
+	--accent: #3a3418;
 	--accent-foreground: var(--honey);
 	--border: rgb(232 235 223 / 0.13);
 	--input: rgb(232 235 223 / 0.18);
@@ -673,13 +682,76 @@
 	overflow-x: clip;
 }
 
-/* The gold button: the one place a visitor is asked to act. */
+/* The gold button: the one place a visitor is asked to act, and it glows. */
 .site-shell .btn-gold {
-	background: var(--gold);
+	background: linear-gradient(180deg, var(--gold-bright), var(--gold));
 	color: var(--night);
+	box-shadow:
+		0 0 0 1px rgb(255 240 190 / 0.35) inset,
+		0 10px 30px -10px rgb(214 168 60 / 0.75);
+	transition:
+		box-shadow 250ms var(--ease-soft),
+		transform 250ms var(--ease-soft);
 }
 .site-shell .btn-gold:hover {
-	background: #d9bd72;
+	box-shadow:
+		0 0 0 1px rgb(255 240 190 / 0.5) inset,
+		0 14px 40px -8px rgb(226 180 70 / 0.9);
+	transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+   Sun surfaces
+
+   `.sun-surface` is a band of gold lit from its upper right, for the places
+   the site asks to be looked at: page headers and the counters. `.on-sun`
+   flips the tokens for what sits on it — forest ink, forest buttons — the
+   mirror of `.on-forest`. `.sun-soft` is the same light at a whisper, for
+   the memoriam; `.forest-glow` is the green ground with the sun coming up in
+   its corner, for the bands that stay dark.
+--------------------------------------------------------------------------- */
+
+.site-shell .sun-surface {
+	background:
+		radial-gradient(60% 90% at 88% 0%, rgb(255 246 214 / 0.95), transparent 62%),
+		radial-gradient(45% 70% at 0% 100%, rgb(214 164 58 / 0.35), transparent 70%),
+		linear-gradient(135deg, #f6e2a4 0%, #ebc96f 55%, #dcb052 100%);
+}
+
+.site-shell .sun-soft {
+	background:
+		radial-gradient(55% 80% at 90% 0%, rgb(255 248 224 / 0.9), transparent 65%),
+		linear-gradient(160deg, #f8e9c1 0%, #f1dba0 100%);
+}
+
+.site-shell .forest-glow {
+	background:
+		radial-gradient(45% 110% at 100% 100%, rgb(235 200 101 / 0.34), transparent 70%),
+		radial-gradient(30% 60% at 0% 0%, rgb(235 200 101 / 0.1), transparent 70%), var(--forest);
+}
+
+.site-shell .on-sun,
+.dark .site-shell .on-sun {
+	--background: transparent;
+	--foreground: var(--forest);
+	--primary: var(--forest);
+	--primary-foreground: #fcf1d2;
+	--secondary: rgb(14 59 46 / 0.08);
+	--secondary-foreground: var(--forest);
+	--muted: rgb(14 59 46 / 0.08);
+	--muted-foreground: rgb(14 59 46 / 0.82);
+	--accent: rgb(14 59 46 / 0.08);
+	--accent-foreground: var(--forest);
+	--border: rgb(14 59 46 / 0.28);
+	--input: rgb(14 59 46 / 0.28);
+	--gold-deep: #5a4410;
+	color: var(--forest);
+}
+.site-shell .on-sun .arch-line {
+	border-color: rgb(14 59 46 / 0.4);
+}
+.site-shell .on-sun :focus-visible {
+	outline-color: var(--forest);
 }
 
 /* A text link that behaves like one. */
@@ -745,6 +817,18 @@
 			rgb(9 42 32 / 0.08) 72%
 		),
 		linear-gradient(to right, rgb(9 42 32 / 0.88) 0%, rgb(9 42 32 / 0.5) 48%, rgb(9 42 32 / 0) 82%);
+}
+
+.hero-sunlight {
+	background:
+		radial-gradient(
+			38% 55% at 86% 6%,
+			rgb(255 226 140 / 0.6),
+			rgb(240 190 80 / 0.22) 42%,
+			transparent 72%
+		),
+		radial-gradient(70% 40% at 60% 100%, rgb(235 190 90 / 0.18), transparent 70%);
+	mix-blend-mode: screen;
 }
 
 /* On a phone the words run the full width of the photograph, so the whole

@@ -56,7 +56,7 @@
 	onfocusin={() => (focusInside = true)}
 	onfocusout={() => (focusInside = false)}
 	class={cn(
-		'site-header on-forest sticky top-0 z-40 w-full bg-(--forest) transition-transform duration-300 ease-out motion-reduce:transition-none',
+		'site-header sticky top-0 z-40 w-full border-b border-(--gold)/35 bg-(--mist)/85 backdrop-blur-md transition-transform duration-300 ease-out motion-reduce:transition-none',
 		hidden && !focusInside && !open && '-translate-y-full'
 	)}
 >
@@ -74,11 +74,11 @@
 			     second line competing for the same weight. -->
 			<span class="flex min-w-0 flex-col">
 				<span
-					class="truncate font-serif text-lg leading-tight font-bold text-[#f6f3e6] md:text-[1.6rem]"
+					class="truncate font-serif text-lg leading-tight font-bold text-(--ink) md:text-[1.6rem]"
 				>
 					{siteName}
 				</span>
-				<span class="truncate text-sm leading-tight text-(--honey)/80 md:text-base"
+				<span class="truncate text-sm leading-tight text-muted-foreground md:text-base"
 					>{siteNameAmharic}</span
 				>
 			</span>
@@ -90,8 +90,8 @@
 					href={item.href}
 					aria-current={isActive(item.href) ? 'page' : undefined}
 					class={cn(
-						'relative px-3 py-2 text-[1.15rem] font-medium text-(--honey)/80 transition-colors hover:text-[#f6f3e6]',
-						isActive(item.href) && 'text-[#f6f3e6]'
+						'relative px-3 py-2 text-[1.15rem] font-medium text-(--ink)/75 transition-colors hover:text-(--ink)',
+						isActive(item.href) && 'text-(--ink)'
 					)}
 				>
 					{item.label}

@@ -39,7 +39,7 @@
 	} = $props();
 </script>
 
-<div class="on-forest relative isolate overflow-hidden bg-(--forest)">
+<div class="on-sun sun-surface relative isolate overflow-hidden">
 	<div
 		class={cn(
 			'wrap relative grid gap-10 pt-10 pb-16 md:pt-16 md:pb-24',
@@ -56,14 +56,14 @@
 			{#if eyebrow}
 				<p
 					use:reveal={{ orchestrate: true }}
-					class="text-[clamp(1.1rem,0.9rem+0.5vw,1.4rem)] font-medium text-(--gold)"
+					class="text-[clamp(1.1rem,0.9rem+0.5vw,1.4rem)] font-medium text-(--gold-deep)"
 				>
 					{eyebrow}
 				</p>
 			{/if}
 			<h1
 				use:reveal={{ orchestrate: true, delay: 60 }}
-				class="max-w-3xl text-[clamp(2.5rem,1.3rem+3.6vw,5rem)] text-[#f6f3e6]"
+				class="max-w-3xl text-[clamp(2.5rem,1.3rem+3.6vw,5rem)] text-(--forest)"
 			>
 				{title}
 			</h1>

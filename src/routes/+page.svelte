@@ -120,6 +120,11 @@
 				dotsClass="wrap absolute inset-x-0 top-5 z-10 justify-end md:top-7"
 			/>
 			<div class="hero-shade pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+			<!-- The sun: warm light breaking over the top of the photographs. -->
+			<div
+				class="hero-sunlight pointer-events-none absolute inset-0 -z-10"
+				aria-hidden="true"
+			></div>
 
 			<div
 				class="wrap flex flex-1 flex-col justify-end gap-12 pt-24 pb-10 md:pt-28 md:pb-16 lg:flex-row lg:items-end lg:justify-between lg:gap-16"
@@ -127,7 +132,7 @@
 				<div class="flex max-w-[52rem] flex-col gap-6 md:gap-7">
 					<h1
 						use:reveal={{ orchestrate: true }}
-						class="text-[clamp(2.6rem,1.3rem+4.4vw,6.25rem)] text-[#f6f3e6]"
+						class="text-[clamp(2.6rem,1.3rem+4.4vw,6.25rem)] text-[#fdf0cc]"
 					>
 						{s('hero.headline') || 'Nobody should face the hardest days alone.'}
 					</h1>
@@ -177,7 +182,7 @@
 								</dt>
 								{#each item.lines as line (line)}
 									<dd
-										class="order-1 font-serif text-[clamp(2rem,1.2rem+2.2vw,3.5rem)] leading-none font-bold text-(--gold) lining-nums"
+										class="order-1 font-serif text-[clamp(2rem,1.2rem+2.2vw,3.5rem)] leading-none font-bold text-(--gold-bright) lining-nums"
 									>
 										{line}
 									</dd>

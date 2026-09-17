@@ -175,7 +175,7 @@
 				<!-- A split spread, edge to edge: the photograph fills one half of the
      window and the sentence has the other half to itself, on paper rather
      than through a dark gradient over the picture. -->
-				<figure class="bleed grid bg-(--accent) md:min-h-[80svh] md:grid-cols-2">
+				<figure class="bleed sun-soft grid md:min-h-[80svh] md:grid-cols-2">
 					<img
 						src={assetUrl(str(block, 'src'))}
 						srcset={imageSrcset(str(block, 'src'))}
@@ -197,8 +197,8 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
-				<div class="on-forest bleed bg-(--forest) py-16 md:py-28">
-					{@render heading(block, 'wrap max-w-none text-[#f6f3e6]')}
+				<div class="on-sun sun-surface bleed py-16 md:py-28">
+					{@render heading(block, 'wrap max-w-none text-(--forest)')}
 					<div class="wrap grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
 						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
@@ -213,10 +213,10 @@
 							     `moneyTotals` is empty until the cache is first warmed, so a
 							     cold homepage still shows a zero rather than a blank panel. -->
 							{@const totals = money ? (moneyTotals[key] ?? [{ currency: 'ETB', amount: 0 }]) : []}
-							<div class="flex flex-col gap-3 border-t border-(--gold)/40 pt-6">
+							<div class="flex flex-col gap-3 border-t border-(--forest)/25 pt-6">
 								{#if money}
 									<div
-										class="font-serif text-[clamp(1.5rem,1rem+1.2vw,2.2rem)] leading-tight font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(1.5rem,1rem+1.2vw,2.2rem)] leading-tight font-bold text-(--forest) tabular-nums"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -236,7 +236,7 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-serif text-[clamp(3rem,1.8rem+3.8vw,5.75rem)] leading-none font-bold text-(--gold) tabular-nums"
+										class="font-serif text-[clamp(3rem,1.8rem+3.8vw,5.75rem)] leading-none font-bold text-(--forest) tabular-nums"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
@@ -288,7 +288,7 @@
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
 				<!-- The one forest band in the middle of a page: the sentence, and the gold button. -->
-				<div class="on-forest bleed bg-(--forest) py-20 text-[#f6f3e6] md:py-32">
+				<div class="on-forest forest-glow bleed py-20 text-[#fcefc9] md:py-32">
 					{@render heading(block, 'wrap max-w-none')}
 					<div
 						class="wrap flex flex-col items-start gap-10 md:flex-row md:items-center md:justify-between"
@@ -533,7 +533,7 @@
 				<!-- Set like a letter: centred, in the serif, on a slightly deeper paper,
      with his portrait in the arch. A tribute to a life, not a notice of a
      death, so there is no black here. -->
-				<div class="bleed bg-(--accent) py-20 md:py-32">
+				<div class="bleed sun-soft py-20 md:py-32">
 					{@render heading(block, 'wrap max-w-none')}
 					<div
 						class="wrap grid items-center gap-12 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-[clamp(3rem,7vw,10rem)]"
