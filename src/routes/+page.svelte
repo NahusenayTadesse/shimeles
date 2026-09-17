@@ -2,6 +2,8 @@
 	import PageShell from '$lib/content/PageShell.svelte';
 	import HeroSlideshow from '$lib/components/hero-slideshow.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
+	import LinkCue from '$lib/components/link-cue.svelte';
+	import { ArrowDown } from '@lucide/svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { isMoneyMetric, METRIC, METRIC_LABELS, type MetricKey } from '$lib/metrics';
@@ -162,7 +164,7 @@
 			></div>
 
 			<div
-				class="wrap flex flex-1 flex-col justify-end gap-12 pt-24 pb-10 md:pt-28 md:pb-16 lg:flex-row lg:items-end lg:justify-between lg:gap-16"
+				class="wrap flex flex-1 flex-col justify-end gap-12 pt-24 pb-20 md:pt-28 md:pb-20 lg:flex-row lg:items-end lg:justify-between lg:gap-16"
 			>
 				<div class="flex max-w-[52rem] flex-col gap-6 md:gap-7">
 					<h1
@@ -192,6 +194,7 @@
 								'btn-gold h-14 px-9 text-[1.15rem] md:h-15 md:px-10 md:text-[1.25rem]'
 							)}
 						>
+							<LinkCue kind="give" />
 							Give to the Foundation
 						</a>
 						<a
@@ -199,6 +202,7 @@
 							class="link-quiet text-[clamp(1.1rem,0.9rem+0.5vw,1.4rem)] font-medium text-[#f6f3e6]"
 						>
 							See our programmes
+							<LinkCue />
 						</a>
 					</div>
 				</div>
@@ -246,7 +250,24 @@
 					</dl>
 				{/if}
 			</div>
+
+			<!-- The page does not end here. On a desktop the hero fills the window,
+			     so without this a visitor can reasonably take it for the whole page.
+			     A plain link to the content below: it works with JavaScript off, and
+			     the page's smooth scrolling carries it the rest of the way. -->
+			<a
+				href="#after-hero"
+				class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full"
+				aria-label={data.strings?.['nav.scroll_down'] ?? 'See more below'}
+			>
+				<span
+					class="hero-scroll-cue grid size-11 place-items-center rounded-full border border-(--gold)/60 bg-(--night)/30 text-(--gold-bright) backdrop-blur-sm transition-colors hover:bg-(--night)/55 md:size-12"
+				>
+					<ArrowDown class="size-5" aria-hidden="true" />
+				</span>
+			</a>
 		</section>
+		<div id="after-hero" class="scroll-mt-28"></div>
 	{/snippet}
 
 	{#if data.gallery.length}

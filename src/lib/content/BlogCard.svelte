@@ -63,7 +63,9 @@
 			</span>
 		</div>
 
-		<h3 class="font-heading text-xl leading-snug group-hover:underline">{post.title}</h3>
+		<h3 class="font-heading text-xl leading-snug">
+			<span class="link-title">{post.title}</span>
+		</h3>
 
 		{#if post.excerpt}
 			<p class="line-clamp-3 text-sm text-muted-foreground">{post.excerpt}</p>

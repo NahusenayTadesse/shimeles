@@ -5,6 +5,7 @@
 	import { formatCompact, formatMoney, type MoneyTotal } from '$lib/money';
 	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -305,6 +306,7 @@
 								'btn-gold h-16 shrink-0 px-11 text-[1.3rem]'
 							)}
 						>
+							<LinkCue kind={str(block, 'url').startsWith('/donate') ? 'give' : 'next'} />
 							{str(block, 'label') || 'Learn more'}
 						</a>
 					</div>
@@ -338,11 +340,7 @@
 								</a>
 							{/if}
 							<h3 class="mt-2 text-[clamp(1.6rem,1.1rem+1vw,2.2rem)]">
-								<a
-									href={`/programs/${pillar.slug}`}
-									class="hover:underline hover:decoration-(--gold) hover:decoration-2 hover:underline-offset-4"
-									>{pillar.name}</a
-								>
+								<a href={`/programs/${pillar.slug}`} class="link-title">{pillar.name}</a>
 							</h3>
 							{#if pillar.summary}
 								<p class="max-w-prose text-muted-foreground">{pillar.summary}</p>
@@ -359,10 +357,12 @@
 										     both. -->
 								<a href={`/programs/${pillar.slug}`} class="link-quiet font-medium">
 									Learn more<span class="sr-only"> about {pillar.name}</span>
+									<LinkCue />
 								</a>
 								{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
 									<a href={`/programs/${pillar.slug}#apply`} class="link-quiet font-medium">
 										Apply for support<span class="sr-only"> from {pillar.name}</span>
+										<LinkCue />
 									</a>
 								{/if}
 							</div>
@@ -579,6 +579,7 @@
 									class={cn(buttonVariants({ size: 'lg' }), 'mt-2 h-14 px-9 text-[1.15rem]')}
 								>
 									{str(block, 'linkLabel') || 'Read more'}
+									<LinkCue />
 								</a>
 							{/if}
 						</div>

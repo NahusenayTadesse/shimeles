@@ -17,6 +17,7 @@
 	import SiteNav from '$lib/components/site-nav.svelte';
 	import SiteFooter from '$lib/components/site-footer.svelte';
 	import NextSteps from '$lib/components/next-steps.svelte';
+	import BackToTop from '$lib/components/back-to-top.svelte';
 
 	let { children, data } = $props();
 
@@ -122,5 +123,6 @@
 			heading={str('nav.next_heading', 'Where to next')}
 		/>
 		<SiteFooter items={data.navigation?.footer ?? []} settings={data.settings ?? {}} />
+		<BackToTop label={str('nav.back_to_top', 'Back to top')} />
 	</div>
 {/if}

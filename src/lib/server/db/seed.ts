@@ -2933,6 +2933,8 @@ async function seedTranslations() {
 		{ key: 'nav.next_heading', en: 'Where to next', group: 'nav' },
 		{ key: 'nav.breadcrumb_label', en: 'You are here', group: 'nav' },
 		{ key: 'nav.skip_to_content', en: 'Skip to content', group: 'nav' },
+		{ key: 'nav.scroll_down', en: 'See more below', group: 'nav' },
+		{ key: 'nav.back_to_top', en: 'Back to top', group: 'nav' },
 		{ key: 'form.submit', en: 'Submit', group: 'form' },
 		{ key: 'form.sending', en: 'Sending', group: 'form' },
 		{ key: 'form.your_name', en: 'Your name', group: 'form' },

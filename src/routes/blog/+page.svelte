@@ -6,6 +6,7 @@
 	import BlogCard, { accentClass, formatPostDate } from '$lib/content/BlogCard.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
@@ -192,8 +193,9 @@
 						{featured.readMinutes} min read
 					</span>
 				</div>
-				<span class="inline-flex w-fit items-center gap-2 font-medium text-primary">
+				<span class="link-quiet w-fit font-medium text-primary">
 					Read the story
+					<LinkCue />
 				</span>
 			</div>
 		</a>

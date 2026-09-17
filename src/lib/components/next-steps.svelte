@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import type { RenderNavItem } from '$lib/content/types';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils';
@@ -50,6 +51,7 @@
 							class="link-quiet font-serif text-[clamp(1.6rem,1rem+1.7vw,2.75rem)] font-bold"
 						>
 							{item.label}
+							<LinkCue class="size-[0.6em]" />
 						</a>
 					</li>
 				{/each}
@@ -59,6 +61,7 @@
 							href={cta.href}
 							class={cn(buttonVariants({ size: 'lg' }), 'btn-gold h-14 px-9 text-[1.15rem]')}
 						>
+							<LinkCue kind={cta.href.startsWith('/donate') ? 'give' : 'next'} />
 							{cta.label}
 						</a>
 					</li>

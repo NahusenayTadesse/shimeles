@@ -762,16 +762,82 @@
 	outline-color: var(--forest);
 }
 
-/* A text link that behaves like one. */
-.site-shell .link-quiet {
-	text-decoration: underline;
-	text-decoration-color: color-mix(in oklch, currentColor 35%, transparent);
-	text-decoration-thickness: 1.5px;
-	text-underline-offset: 0.3em;
-	transition: text-decoration-color 150ms;
-}
-.site-shell .link-quiet:hover {
+/* ---------------------------------------------------------------------------
+   Wayfinding
+
+   One visual language for "this goes somewhere", used the same way on every
+   public page so a visitor can learn it once:
+
+   - A gold underline means a link. Text links (`.link-quiet`) and clickable
+     titles (`.link-title`) carry it all the time, not only on hover; a
+     heading that is not a link never does. On a gold surface the underline
+     turns forest so it still shows.
+   - The mark after a link says where it leads (`link-cue.svelte`): an arrow
+     right for another page, an arrow down for further down this page, a heart
+     for giving. It nudges that way on hover.
+--------------------------------------------------------------------------- */
+
+.site-shell .link-quiet,
+.site-shell .link-title {
+	text-decoration-line: underline;
 	text-decoration-color: var(--gold);
+	text-decoration-thickness: 2px;
+	text-underline-offset: 0.28em;
+	text-decoration-skip-ink: auto;
+	transition:
+		text-decoration-thickness 150ms var(--ease-soft),
+		text-decoration-color 150ms var(--ease-soft);
+}
+.site-shell .link-quiet:hover,
+.site-shell a:hover .link-title,
+.site-shell .link-title:hover {
+	text-decoration-thickness: 3.5px;
+	text-decoration-color: var(--gold-bright);
+}
+.site-shell .link-quiet {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+}
+.site-shell :is(.on-sun, .sun-soft) :is(.link-quiet, .link-title) {
+	text-decoration-color: var(--forest);
+}
+
+.site-shell .link-cue {
+	transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.site-shell a:hover .link-cue--next,
+.site-shell button:hover .link-cue--next {
+	transform: translateX(3px);
+}
+.site-shell a:hover .link-cue--down {
+	transform: translateY(3px);
+}
+.site-shell a:hover .link-cue--give {
+	transform: scale(1.18);
+}
+/* The arrow at the foot of the homepage hero bobs gently, so it reads as
+   "keep going" rather than as an ornament. */
+.site-shell .hero-scroll-cue {
+	animation: scroll-cue-bob 2.4s ease-in-out 2s infinite;
+}
+@keyframes scroll-cue-bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(6px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.site-shell .hero-scroll-cue {
+		animation: none;
+	}
+	.site-shell .link-cue {
+		transition: none;
+	}
 }
 
 :where(.site-shell) :focus-visible {

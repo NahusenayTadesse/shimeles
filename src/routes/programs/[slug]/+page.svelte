@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHero from '$lib/content/PageHero.svelte';
 	import Seo from '$lib/components/Seo.svelte';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import Gallery from '$lib/components/Gallery.svelte';
@@ -38,12 +39,16 @@
 >
 	{#snippet actions()}
 		{#if data.applicationForm}
-			<a href="#apply" class={buttonVariants({ size: 'lg' })}> Apply for support </a>
+			<a href="#apply" class={buttonVariants({ size: 'lg' })}>
+				Apply for support
+				<LinkCue kind="down" />
+			</a>
 		{/if}
 		<a
 			href={`/donate?pillar=${pillar.slug}`}
 			class={buttonVariants({ variant: 'outline', size: 'lg' })}
 		>
+			<LinkCue kind="give" />
 			Give to this programme
 		</a>
 	{/snippet}

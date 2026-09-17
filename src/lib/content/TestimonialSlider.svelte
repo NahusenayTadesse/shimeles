@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import type { RenderTestimonial } from '$lib/content/types';
 
@@ -65,7 +66,10 @@
 		</Carousel.Root>
 
 		<div class="mt-24 md:mt-10 md:pl-14">
-			<a href={showAllHref} class="link-quiet font-medium">Read more of what people say</a>
+			<a href={showAllHref} class="link-quiet font-medium">
+				Read more of what people say
+				<LinkCue />
+			</a>
 		</div>
 	</div>
 {/if}

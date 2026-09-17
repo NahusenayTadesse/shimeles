@@ -4,6 +4,7 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import DarkMode from '$lib/components/DarkMode.svelte';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import { Menu } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import type { RenderNavItem } from '$lib/content/types';
@@ -110,6 +111,7 @@
 					href={item.href}
 					class={cn(buttonVariants(), 'btn-gold hidden h-12 px-7 text-[1.1rem] sm:inline-flex')}
 				>
+					<LinkCue kind={item.href.startsWith('/donate') ? 'give' : 'next'} />
 					{item.label}
 				</a>
 			{/each}
