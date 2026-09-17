@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
+	import { enhance as formEnhance } from '$app/forms';
 	import Seo from '$lib/components/Seo.svelte';
 	import { toast } from 'svelte-sonner';
 	import PageHero from '$lib/content/PageHero.svelte';
@@ -20,10 +21,11 @@
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import HelpPanel from '$lib/components/help-panel.svelte';
 	import PaymentNotice from '$lib/components/payment-notice.svelte';
-	import { CircleCheck, Copy, HeartHandshake, Package } from '@lucide/svelte';
+	import { CircleCheck, Copy, HeartHandshake, Package, Receipt, Upload } from '@lucide/svelte';
+	import { UPLOAD_ACCEPT_ATTRIBUTE, MAX_UPLOAD_MB } from '$lib/forms/uploads';
 	import { cn } from '$lib/utils';
 
-	let { data } = $props();
+	let { data, form: actionResult } = $props();
 
 	const s = (key: string, fallback: string) => data.strings?.[key] ?? fallback;
 
@@ -75,6 +77,9 @@
 			toast.success($message.text);
 			if ($message.reference) {
 				confirmation = { reference: $message.reference, amount: $message.amount ?? '' };
+				// A second gift starts with its own empty receipt slot.
+				receiptUploaded = false;
+				receiptName = '';
 				try {
 					localStorage.setItem(
 						LAST_GIFT_KEY,
@@ -99,6 +104,37 @@
 			}
 		} catch {
 			// Nothing to recover.
+		}
+	});
+
+	/**
+	 * The transfer receipt.
+	 *
+	 * Ethiopian donors finish a transfer by screenshotting the bank app, so the
+	 * screenshot is the proof they already have in hand. Asked for here and
+	 * nowhere else: this card only appears once the gift is recorded and only on
+	 * the bank-transfer path, where there is something to prove. Card gifts go
+	 * through the campaign links further down and come with the platform's own
+	 * receipt.
+	 */
+	let receiptName = $state('');
+	let receiptUploaded = $state(false);
+	let uploadingReceipt = $state(false);
+
+	/**
+	 * The page's action result is a union across every action on the route, so
+	 * the receipt's own keys are read through a narrowing rather than off the
+	 * union — the donate form's own outcome arrives on superforms' `message`.
+	 */
+	const receiptResult = $derived(
+		(actionResult ?? {}) as { receiptError?: string; receiptUploaded?: boolean }
+	);
+
+	$effect(() => {
+		if (receiptResult.receiptError) toast.error(receiptResult.receiptError);
+		else if (receiptResult.receiptUploaded && !receiptUploaded) {
+			receiptUploaded = true;
+			toast.success('Receipt received. Thank you — this speeds up confirming your gift.');
 		}
 	});
 
@@ -166,9 +202,30 @@
 					</button>
 					for {recoveredReference.amount}.
 				</span>
-				<Button variant="ghost" size="sm" onclick={() => (recoveredReference = null)}>
-					Dismiss
-				</Button>
+				<div class="flex items-center gap-1">
+					<!-- The donor who transferred yesterday and came back with the
+					     screenshot today: the confirmation card is where the upload
+					     lives, so this puts them back on it. -->
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={() => {
+							confirmation = {
+								reference: recoveredReference?.reference ?? '',
+								amount: recoveredReference?.amount ?? ''
+							};
+							recoveredReference = null;
+							receiptUploaded = false;
+							receiptName = '';
+						}}
+					>
+						<Receipt class="size-4" />
+						Send receipt
+					</Button>
+					<Button variant="ghost" size="sm" onclick={() => (recoveredReference = null)}>
+						Dismiss
+					</Button>
+				</div>
 			</div>
 		{/if}
 
@@ -255,6 +312,79 @@
 						{/if}
 					</dl>
 					<PaymentNotice {...notice('bank')} class="w-full text-left" />
+				{/if}
+
+				<!-- The receipt. Last on the card, below the account details, because
+				     the donor reads down to the account number, leaves to make the
+				     transfer, and comes back with a screenshot — this is where they
+				     land when they do. Only on this path: a card gift through a
+				     campaign link already has the platform's own receipt. -->
+				{#if selectedAccount}
+					<div class="w-full rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
+						{#if receiptUploaded}
+							<p class="flex items-center justify-center gap-2 text-sm font-medium text-success">
+								<CircleCheck class="size-4" />
+								We have your receipt. Nothing else to do.
+							</p>
+						{:else}
+							<form
+								method="post"
+								action="?/uploadReceipt"
+								enctype="multipart/form-data"
+								use:formEnhance={() => {
+									uploadingReceipt = true;
+									return async ({ update }) => {
+										uploadingReceipt = false;
+										await update({ reset: false });
+									};
+								}}
+								class="flex flex-col gap-3 text-left"
+							>
+								<input type="hidden" name="reference" value={confirmation.reference} />
+
+								<div class="flex items-center gap-2">
+									<Receipt class="size-4 text-primary" />
+									<h3 class="text-sm font-semibold">
+										{s('donate.receipt_title', 'Already transferred? Send us the receipt')}
+									</h3>
+								</div>
+								<p class="text-xs text-muted-foreground">
+									{s(
+										'donate.receipt_hint',
+										'The screenshot or SMS your bank gave you. It is the fastest way for us to confirm your gift, and you will not have to be called about it.'
+									)}
+								</p>
+
+								<Input
+									id="donation-receipt"
+									type="file"
+									name="receipt"
+									accept={UPLOAD_ACCEPT_ATTRIBUTE}
+									required
+									onchange={(event) => {
+										const input = event.currentTarget as HTMLInputElement;
+										receiptName = input.files?.[0]?.name ?? '';
+									}}
+								/>
+								{#if receiptName}
+									<Badge variant="secondary" class="w-fit">{receiptName}</Badge>
+								{/if}
+								<p class="text-xs text-muted-foreground">
+									A photo or PDF, under {MAX_UPLOAD_MB} MB. Optional — we will still match your transfer
+									without it.
+								</p>
+
+								<Button type="submit" variant="secondary" class="w-full sm:w-fit">
+									{#if uploadingReceipt}
+										<LoadingBtn name={s('donate.receipt_sending', 'Sending')} />
+									{:else}
+										<Upload class="size-4" />
+										{s('donate.receipt_submit', 'Send receipt')}
+									{/if}
+								</Button>
+							</form>
+						{/if}
+					</div>
 				{/if}
 
 				<Button variant="outline" onclick={() => (confirmation = null)} class="mt-2">

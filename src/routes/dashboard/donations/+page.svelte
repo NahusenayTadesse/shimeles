@@ -13,11 +13,12 @@
 	import TwoLineCell from '$lib/dashboard/two-line-cell.svelte';
 	import DonationReferenceCell from './donation-reference-cell.svelte';
 	import DonationActionsCell from './donation-actions-cell.svelte';
+	import DonationReceiptCell from './donation-receipt-cell.svelte';
 	import { indexColumn } from '$lib/dashboard/columns';
 	import { renderComponent } from '$lib/components/ui/data-table/index.js';
 	import { formatMoney, toMajor, toMoneyTotals } from '$lib/money';
 	import MoneyTotals from '$lib/dashboard/money-totals.svelte';
-	import { CheckCircle2 } from '@lucide/svelte';
+	import { CheckCircle2, ExternalLink, Paperclip } from '@lucide/svelte';
 	import { formatDate } from '$lib/dates';
 
 	let { data, form } = $props();
@@ -157,6 +158,21 @@
 			cell: ({ row }: any) => (row.original.frequency === 'monthly' ? 'Monthly' : 'One-off')
 		},
 		{
+			/*
+			 * Next to the method, where finance is already looking to work out what
+			 * kind of transfer to expect. Sorts so the rows carrying evidence group
+			 * together — those are the ones that can be matched without waiting.
+			 */
+			id: 'receipt',
+			header: 'Receipt',
+			accessorFn: (row: any) => (row.receiptFile ? 'Attached' : 'None'),
+			cell: ({ row }: any) =>
+				renderComponent(DonationReceiptCell, {
+					file: row.original.receiptFile,
+					filename: row.original.receiptFilename
+				})
+		},
+		{
 			id: 'createdAt',
 			header: 'Pledged',
 			accessorFn: (row: any) => new Date(row.createdAt ?? 0).getTime(),
@@ -275,6 +291,33 @@
 				class="flex flex-col gap-4"
 			>
 				<input type="hidden" name="id" value={row.id} />
+
+				<!-- The donor's own evidence, opened before the statement line is
+				     typed: it usually carries the bank's transaction number, which is
+				     the very thing the field below wants. -->
+				{#if row.receiptFile}
+					<a
+						href="/files/{row.receiptFile}"
+						target="_blank"
+						rel="noopener"
+						class="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm"
+					>
+						<span class="flex min-w-0 items-center gap-2">
+							<Paperclip class="size-4 shrink-0 text-primary" />
+							<span class="truncate">
+								{row.receiptFilename ?? 'Transfer receipt'}
+								<span class="text-xs text-muted-foreground">
+									· sent {fmt(row.receiptUploadedAt)}
+								</span>
+							</span>
+						</span>
+						<ExternalLink class="size-4 shrink-0 opacity-60" />
+					</a>
+				{:else}
+					<p class="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+						The donor did not attach a transfer receipt. Match this against the statement itself.
+					</p>
+				{/if}
 
 				<div class="flex flex-col gap-2">
 					<Label for="bankReference">Bank reference or statement line</Label>

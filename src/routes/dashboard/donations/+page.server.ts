@@ -5,6 +5,7 @@ import {
 	donationReconciliationLog,
 	donations,
 	donors,
+	files,
 	futureInitiatives,
 	paymentAccounts,
 	paymentMethods,
@@ -71,6 +72,12 @@ export const load: PageServerLoad = async (event) => {
 				createdAt: donations.createdAt,
 				completedAt: donations.completedAt,
 				receiptSentAt: donations.receiptSentAt,
+				// The donor's own proof of transfer, uploaded on the donate page.
+				// Joined here rather than fetched per row: it is the first thing
+				// finance looks for when matching a statement line.
+				receiptFile: files.storagePath,
+				receiptFilename: files.originalFilename,
+				receiptUploadedAt: files.createdAt,
 				donorId: donors.id,
 				donorName: donors.fullName,
 				donorEmail: donors.email,
@@ -88,6 +95,7 @@ export const load: PageServerLoad = async (event) => {
 			.leftJoin(futureInitiatives, eq(futureInitiatives.id, donations.designationInitiativeId))
 			.leftJoin(paymentMethods, eq(paymentMethods.id, donations.paymentMethodId))
 			.leftJoin(paymentAccounts, eq(paymentAccounts.id, donations.paymentAccountId))
+			.leftJoin(files, and(eq(files.id, donations.receiptFileId), isNull(files.deletedAt)))
 			.where(and(...(clauses.filter(Boolean) as SQL[])))
 			.orderBy(desc(donations.createdAt))
 			.limit(500),

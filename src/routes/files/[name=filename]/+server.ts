@@ -5,7 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
-import { files, inKindDonationPhotos } from '$lib/server/db/schema';
+import { donations, files, inKindDonationPhotos } from '$lib/server/db/schema';
 import { getCachedStats } from '$lib/server/fileCache';
 import { cached, peek } from '$lib/server/cache';
 import { audit } from '$lib/server/audit';
@@ -22,12 +22,13 @@ import type { RequestHandler } from './$types';
  *  1. Refuses any path that escapes `FILES_DIR`.
  *  2. Looks the file up in `files`. An unknown name is a 404 whether or not
  *     the bytes exist — an orphaned file on disk is not a public URL.
- *  3. For a private file, requires a session and either of two claims on it:
+ *  3. For a private file, requires a session and any one of three claims on it:
  *     `submissions.read` plus the pillar scope matching the file's own pillar,
  *     which is the case-document rule — a Mental Wellness caseworker guessing a
- *     Medical Hardship document's UUID gets nothing — or `inkind.read` for a
+ *     Medical Hardship document's UUID gets nothing — `inkind.read` for a
  *     photo attached to an offer of goods, which is private but is not case
- *     data and belongs to no programme.
+ *     data and belongs to no programme, or `donations.read` for a donor's
+ *     uploaded transfer receipt, which is the same shape of thing for finance.
  *
  * Reads of private files are audited, because "who downloaded which document"
  * is exactly what §3.11 exists to answer.
@@ -122,6 +123,22 @@ const lookup = async (name: string) => {
 	return row;
 };
 
+/**
+ * Whether this file is a donor's transfer receipt.
+ *
+ * Uploaded by the public on `/donate`, so it is private — a bank screenshot
+ * carries an account number and a balance — but it is not case data and it
+ * belongs to no pillar. Whoever reconciles gifts is who needs to see it.
+ */
+const isDonationReceipt = async (fileId: number) => {
+	const [row] = await db
+		.select({ id: donations.id })
+		.from(donations)
+		.where(and(eq(donations.receiptFileId, fileId), isNull(donations.deletedAt)))
+		.limit(1);
+	return Boolean(row);
+};
+
 /** Whether this file is a photo hanging off an in-kind offer. */
 const isInKindPhoto = async (fileId: number) => {
 	const [row] = await db
@@ -193,7 +210,17 @@ export const GET: RequestHandler = async (event) => {
 		const inKindPhoto =
 			!caseDocument && access.permissions.has('inkind.read') && (await isInKindPhoto(record.id));
 
-		const allowed = !access.isBanned && (caseDocument || inKindPhoto);
+		// Same shape as the in-kind fallback and for the same reason: a transfer
+		// receipt carries no pillar, so the case-document rule above can never
+		// admit anybody to one. Checked last, so the common path is still one
+		// query.
+		const donationReceipt =
+			!caseDocument &&
+			!inKindPhoto &&
+			access.permissions.has('donations.read') &&
+			(await isDonationReceipt(record.id));
+
+		const allowed = !access.isBanned && (caseDocument || inKindPhoto || donationReceipt);
 
 		if (!allowed) {
 			audit({
