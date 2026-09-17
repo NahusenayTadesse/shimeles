@@ -42,7 +42,7 @@
 <div class="on-sun sun-surface relative isolate overflow-hidden">
 	<div
 		class={cn(
-			'wrap relative grid gap-10 pt-10 pb-16 md:pt-16 md:pb-24',
+			'wrap relative grid gap-8 pt-8 pb-12 md:pt-12 md:pb-16',
 			image && 'md:grid-cols-2 md:items-center md:gap-[clamp(3rem,6vw,9rem)]'
 		)}
 	>
@@ -87,7 +87,7 @@
 			     largest-contentful-paint element on every page that has one, and an
 			     entrance would hold it invisible after it had arrived. -->
 			<div
-				class="relative w-[75%] max-w-[26rem] md:w-[min(100%,calc((100svh-14rem)*0.8))] md:max-w-none md:justify-self-end"
+				class="relative w-[62%] max-w-[20rem] md:w-[min(100%,calc((100svh-22rem)*0.8))] md:max-w-[30rem] md:justify-self-end"
 			>
 				<div
 					class="arch-line pointer-events-none absolute inset-x-0 top-0 -z-10 translate-x-4 translate-y-4"
@@ -99,7 +99,7 @@
 				<img
 					src={assetUrl(image)}
 					srcset={imageSrcset(image)}
-					sizes="(min-width: 768px) 45vw, 75vw"
+					sizes="(min-width: 768px) 30rem, 62vw"
 					alt={imageAlt}
 					width="640"
 					height="800"
