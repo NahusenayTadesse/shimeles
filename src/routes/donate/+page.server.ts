@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { randomUUID } from 'node:crypto';
+import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import {
 	donations,
@@ -27,8 +28,9 @@ import { hydrateBlocks } from '$lib/server/pageData';
 import { getImpactMetrics } from '$lib/server/impact';
 import { createInKindOffer, getInKindCategories } from '$lib/server/inKind';
 import { upsertDonor } from '$lib/server/donors';
+import { saveUploadedFile, deleteStoredFile } from '$lib/server/upload';
 import { notifyNewInKindOffer } from '$lib/server/notify';
-import { nextDonationReference, withReference } from '$lib/server/reference';
+import { nextDonationReference, withReference, REFERENCE_PATTERN } from '$lib/server/reference';
 import { sendEmail, donationPledgeTemplate, inKindOfferTemplate } from '$lib/server/email';
 import { formatMoney } from '$lib/money';
 import { blankInKindItem, inKindSchema } from '$lib/inKind';
@@ -396,6 +398,107 @@ export const actions: Actions = {
 				{ type: 'error', text: 'We could not record your gift. Please try again.' },
 				{ status: 500 }
 			);
+		}
+	},
+
+	/**
+	 * The donor's own proof of transfer.
+	 *
+	 * In Ethiopia a transfer is finished by screenshotting the bank app, and
+	 * donors send that picture to whoever they gave to — by Telegram, by
+	 * WhatsApp, to a phone number on a poster. Asking them to send it here
+	 * instead puts it on the donation row, so finance opens one screen to match
+	 * a statement line rather than a screen and a phone.
+	 *
+	 * Offered only after the gift is recorded and only on the bank-transfer
+	 * path: a card donation through a campaign link already has the platform's
+	 * own receipt, and asking for a second one would suggest the card payment
+	 * had not gone through.
+	 *
+	 * Addressed by reference code, because the donor has no account and the
+	 * reference is the only thing they hold. References are sequential, so a
+	 * guessed one is a real one — which is why this attaches a picture and
+	 * nothing else. It cannot move money, change an amount or reconcile a gift;
+	 * the worst a guesser achieves is putting a wrong screenshot in front of
+	 * finance, who are matching against a bank statement either way. The upload
+	 * is refused once a receipt is attached or the gift has been confirmed, so
+	 * it cannot be used to paper over a completed match, and `/donate` is
+	 * already behind `PUBLIC_FORM_POLICY` in `hooks.server.ts`.
+	 */
+	uploadReceipt: async (event) => {
+		const body = await event.request.formData();
+		const reference = String(body.get('reference') ?? '')
+			.trim()
+			.toUpperCase();
+		const file = body.get('receipt');
+
+		if (!REFERENCE_PATTERN.test(reference)) {
+			return fail(400, { receiptError: 'That reference does not look right.' });
+		}
+		if (!(file instanceof File) || file.size === 0) {
+			return fail(400, { receiptError: 'Choose a photo or PDF of your transfer.' });
+		}
+
+		const [donation] = await db
+			.select({
+				id: donations.id,
+				status: donations.status,
+				receiptFileId: donations.receiptFileId
+			})
+			.from(donations)
+			.where(and(eq(donations.referenceCode, reference), isNull(donations.deletedAt)))
+			.limit(1);
+
+		// One answer for "no such gift" and "already has one": neither tells a
+		// guesser whether the reference they tried exists.
+		if (
+			!donation ||
+			donation.receiptFileId ||
+			!['pending_reconciliation', 'pledged'].includes(donation.status)
+		) {
+			return fail(422, {
+				receiptError: 'We cannot attach a receipt to that gift. Please contact us instead.'
+			});
+		}
+
+		try {
+			// Private, and belonging to no pillar: this is a bank document, not case
+			// data. `/files/[name]` lets `donations.read` open it.
+			const saved = await saveUploadedFile(file, {
+				isPublic: false,
+				uploadedBy: event.locals.user?.id ?? null
+			});
+
+			// Conditional on the receipt still being unset, so two taps on a slow
+			// connection cannot leave the first upload orphaned on the row.
+			const updated = await db
+				.update(donations)
+				.set({ receiptFileId: saved.id, updatedAt: new Date() })
+				.where(and(eq(donations.id, donation.id), isNull(donations.receiptFileId)))
+				.returning({ id: donations.id });
+
+			if (updated.length === 0) {
+				await deleteStoredFile(saved.id);
+				return fail(422, { receiptError: 'A receipt is already attached to that gift.' });
+			}
+
+			audit({
+				event,
+				action: 'updated',
+				entityType: 'donation',
+				entityId: donation.id,
+				metadata: { reference, receiptFileId: saved.id }
+			});
+
+			return { receiptUploaded: true };
+		} catch (err) {
+			console.error('Receipt upload failed:', err);
+			return fail(400, {
+				receiptError:
+					err instanceof Error && err.message.includes('not accepted')
+						? err.message
+						: 'We could not save that file. A photo or PDF under 10 MB works best.'
+			});
 		}
 	},
 
