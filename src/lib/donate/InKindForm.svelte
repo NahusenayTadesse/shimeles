@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { superForm, type Infer, type SuperValidated } from 'sveltekit-superforms';
+	import { zod4 } from 'sveltekit-superforms/adapters';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -7,7 +8,7 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Errors from '$lib/formComponents/Errors.svelte';
-	import { focusFirstError } from '$lib/formComponents/form-errors';
+	import { fieldId, focusFirstError } from '$lib/formComponents/form-errors';
 	import { formDraft } from '$lib/formComponents/form-draft.svelte';
 	import DraftBanner from '$lib/formComponents/DraftBanner.svelte';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
@@ -15,7 +16,16 @@
 	import SelectComp from '$lib/formComponents/SelectComp.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
-	import { Copy, CircleCheck, Package, Plus, Trash2, TriangleAlert } from '@lucide/svelte';
+	import {
+		ChevronLeft,
+		ChevronRight,
+		Copy,
+		CircleCheck,
+		Package,
+		Plus,
+		Trash2,
+		TriangleAlert
+	} from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import {
 		CONTACT_CHANNELS,
@@ -28,6 +38,7 @@
 		UNIT_SUGGESTIONS,
 		VALUATION_BASES,
 		blankInKindItem,
+		inKindSchema,
 		AGE_GROUP_LABELS as AGE_LABELS,
 		CONDITION_LABELS,
 		CONTACT_CHANNEL_LABELS as CHANNEL_LABELS,
@@ -84,12 +95,15 @@
 	 * quantity, condition and dates. Photos ride alongside as a plain file input
 	 * read off the body on the server.
 	 */
-	const { form, errors, enhance, delayed, message, allErrors, tainted } = superForm(formData, {
-		id: 'in-kind',
-		dataType: 'json',
-		resetForm: false,
-		taintedMessage: 'You have not finished this form. Leave anyway?'
-	});
+	const { form, errors, enhance, delayed, message, allErrors, tainted, validateForm } = superForm(
+		formData,
+		{
+			id: 'in-kind',
+			dataType: 'json',
+			resetForm: false,
+			taintedMessage: 'You have not finished this form. Leave anyway?'
+		}
+	);
 
 	/** Set once the offer is recorded; the page then shows its reference. */
 	let confirmation = $state<{ reference: string; summary: string } | null>(null);
@@ -121,6 +135,11 @@
 		if (!$message) return;
 		if ($message.type === 'error') {
 			toast.error($message.text);
+			// The step that holds the first complaint, before focusing it: the
+			// field is on a hidden step as often as not, and focusing something
+			// `display:none` moves nobody.
+			const landing = STEPS.findIndex((_, index) => errorsOnStep(index).length > 0);
+			if (landing >= 0 && landing !== step) goTo(landing);
 			// The toast fades and the summary is a long way up the page; this is
 			// what actually takes the person to the question they missed.
 			focusFirstError($allErrors);
@@ -138,6 +157,141 @@
 			}
 		}
 	});
+
+	/**
+	 * The form in four steps.
+	 *
+	 * Everything it asks is worth asking — a coordinator would otherwise ring
+	 * up and ask it — but all of it at once is a page you scroll for a minute
+	 * before you reach a submit button, and people were not reaching it. The
+	 * questions are unchanged; they are just dealt out four screens at a time,
+	 * in the order the conversation would go: what have you got, how do we get
+	 * it, who are you, and the paperwork.
+	 *
+	 * Steps are hidden with CSS rather than unmounted. The photographs ride on
+	 * a native file input that the server reads straight off the body, and a
+	 * step that leaves the DOM takes the chosen files with it — along with
+	 * every uncommitted combobox and date field on it.
+	 *
+	 * `fields` is what a step owns, and it is what decides two things: whether
+	 * "Next" may pass, and which step a failed submit jumps to. Anything not
+	 * listed is optional and cannot block anybody.
+	 */
+	const STEPS = [
+		{
+			title: 'What you are giving',
+			hint: 'The things themselves, and a photograph if you have one.',
+			fields: ['items']
+		},
+		{
+			title: 'Getting it to us',
+			hint: 'How it reaches us, and which programme it should go to.',
+			fields: [
+				'handoverMethod',
+				'pickupContactName',
+				'pickupContactPhone',
+				'pickupAddressLine',
+				'pickupCity',
+				'pickupLandmark',
+				'accessNotes',
+				'regionId',
+				'loadSize',
+				'estimatedWeightKg',
+				'requiresVehicle',
+				'requiresHelpLoading',
+				'availableFrom',
+				'availableUntil',
+				'designationType',
+				'designationPillarId',
+				'designationInitiativeId'
+			]
+		},
+		{
+			title: 'About you',
+			hint: 'Who we should call, and when.',
+			fields: [
+				'donorType',
+				'donorName',
+				'organisationName',
+				'donorEmail',
+				'donorPhone',
+				'preferredContactChannel',
+				'bestTimeToContact'
+			]
+		},
+		{
+			title: 'Last few things',
+			hint: 'Receipts, recognition, and your permission to ring you.',
+			fields: [
+				'valuationBasis',
+				'hasRestrictedItems',
+				'restrictedItemsNote',
+				'receiptRequested',
+				'taxReceiptRequired',
+				'taxIdNumber',
+				'isAnonymous',
+				'recognitionName',
+				'donorMessage',
+				'heardAbout',
+				'isDiaspora',
+				'joinNewsletter',
+				'consentToContact'
+			]
+		}
+	];
+
+	let step = $state(0);
+	const isLastStep = $derived(step === STEPS.length - 1);
+
+	/** `items.0.description` belongs to `items`, so only the root is compared. */
+	const rootOf = (path: unknown) => String(fieldId(path) ?? '').split('.')[0];
+
+	const errorsOnStep = (index: number) =>
+		$allErrors.filter((entry) => STEPS[index].fields.includes(rootOf(entry.path)));
+
+	/**
+	 * Which steps have been left behind, so the header can mark them done and
+	 * let somebody click back to one. A step ahead is not clickable: it would
+	 * skip the check below and land them on a submit button with three
+	 * unanswered questions behind it.
+	 */
+	let furthest = $state(0);
+
+	const goTo = (index: number) => {
+		step = index;
+		if (index > furthest) furthest = index;
+		// The header, not the top of the document: the page above this form is
+		// the hero and the payment notices, and re-reading them at every step
+		// is not progress.
+		stepHeader?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+	};
+
+	let stepHeader: HTMLElement | undefined = $state();
+
+	/**
+	 * Checked against the whole schema, then filtered to this step.
+	 *
+	 * Superforms has no notion of a partial form, and asking it for one would
+	 * mean a second schema to keep in step with the first — so the real one
+	 * runs and the complaints belonging to a question not yet asked are simply
+	 * dropped. The step's own complaints are written back to `errors`, which is
+	 * what draws the red text under each field and fills the summary; the form
+	 * sets no `validators` of its own, so nothing else is writing to that store
+	 * between submits and this cannot fight with it.
+	 */
+	async function next() {
+		const result = await validateForm({ schema: zod4(inKindSchema) });
+		const mine = Object.fromEntries(
+			Object.entries(result.errors).filter(([key]) => STEPS[step].fields.includes(key))
+		);
+
+		$errors = mine as typeof $errors;
+		if (Object.keys(mine).length) {
+			focusFirstError($allErrors);
+			return;
+		}
+		goTo(step + 1);
+	}
 
 	const DONOR_TYPE_LABELS: Record<string, string> = {
 		individual: 'Myself',
@@ -328,632 +482,700 @@
 
 		<Errors allErrors={$allErrors} />
 
-		<!-- ==================== What you are giving ==================== -->
-		<div class="flex flex-col gap-3">
-			<Label>{s('donate.goods_items', 'What would you like to give?')}</Label>
-
-			{#each $form.items as item, index (index)}
-				{@const category = categoryById.get(item.categoryId ?? -1)}
-				<div class="flex flex-col gap-3 rounded-2xl border bg-muted/30 p-4">
-					<div class="flex items-start justify-between gap-2">
-						<span class="text-sm font-medium">Item {index + 1}</span>
-						{#if $form.items.length > 1}
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								class="size-7"
-								onclick={() => removeItem(index)}
-								aria-label="Remove item {index + 1}"
-							>
-								<Trash2 class="size-4" />
-							</Button>
+		<!-- The header doubles as the progress bar and the way back. A step
+		     already left behind is a button; a step ahead is not, because
+		     reaching it means passing the check on the one before. -->
+		<div bind:this={stepHeader} class="flex scroll-mt-28 flex-col gap-3">
+			<ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+				{#each STEPS as entry, index (entry.title)}
+					<li class="flex items-center gap-2">
+						{#if index > 0}
+							<span class="text-muted-foreground/40" aria-hidden="true">/</span>
 						{/if}
-					</div>
+						<button
+							type="button"
+							disabled={index > furthest}
+							onclick={() => goTo(index)}
+							aria-current={index === step ? 'step' : undefined}
+							class={cn(
+								'flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
+								index === step
+									? 'bg-primary/10 font-semibold text-primary'
+									: index <= furthest
+										? 'text-muted-foreground hover:bg-muted'
+										: 'text-muted-foreground/50'
+							)}
+						>
+							<span
+								class={cn(
+									'flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]',
+									index === step
+										? 'border-primary bg-primary text-primary-foreground'
+										: index < furthest
+											? 'border-success/40 bg-success/10 text-success'
+											: 'border-muted-foreground/30'
+								)}
+							>
+								{#if index < furthest}
+									<CircleCheck class="size-3" />
+								{:else}
+									{index + 1}
+								{/if}
+							</span>
+							{entry.title}
+						</button>
+					</li>
+				{/each}
+			</ol>
 
-					<div class="grid gap-3 md:grid-cols-2">
-						<div class="flex flex-col gap-2">
-							<Label for="category-{index}">Kind of thing</Label>
-							<SelectComp
-								id="category-{index}"
-								name="categoryId-{index}"
-								value={item.categoryId ? String(item.categoryId) : ''}
-								items={categoryItems}
-								triggerClass="normal-case"
-								placeholder="Choose a category"
-								onValueChange={(value) => chooseCategory(index, value ? Number(value) : null)}
-							/>
-							{#if category?.description}
-								<p class="text-xs text-muted-foreground">{category.description}</p>
+			<div class="h-1 w-full overflow-hidden rounded-full bg-muted">
+				<div
+					class="h-full rounded-full bg-primary transition-all duration-300"
+					style="width: {((step + 1) / STEPS.length) * 100}%"
+				></div>
+			</div>
+
+			<p class="text-sm text-muted-foreground">{STEPS[step].hint}</p>
+		</div>
+
+		<!-- ==================== What you are giving ==================== -->
+		<div class={cn('flex flex-col gap-5', step !== 0 && 'hidden')}>
+			<div class="flex flex-col gap-3">
+				<Label>{s('donate.goods_items', 'What would you like to give?')}</Label>
+
+				{#each $form.items as item, index (index)}
+					{@const category = categoryById.get(item.categoryId ?? -1)}
+					<div class="flex flex-col gap-3 rounded-2xl border bg-muted/30 p-4">
+						<div class="flex items-start justify-between gap-2">
+							<span class="text-sm font-medium">Item {index + 1}</span>
+							{#if $form.items.length > 1}
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									class="size-7"
+									onclick={() => removeItem(index)}
+									aria-label="Remove item {index + 1}"
+								>
+									<Trash2 class="size-4" />
+								</Button>
 							{/if}
 						</div>
 
-						<InputComp
-							{errors}
-							bind:value={item.description}
-							name="description-{index}"
-							label="Describe it"
-							type="text"
-							placeholder="Children's winter coats"
-							labelClass=""
-						/>
-					</div>
-
-					<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-						<InputComp
-							{errors}
-							bind:value={item.quantity}
-							name="quantity-{index}"
-							label="How many"
-							type="number"
-							min="1"
-							labelClass=""
-						/>
-						<InputComp
-							{errors}
-							bind:value={item.unit}
-							name="unit-{index}"
-							label="Counted in"
-							type="text"
-							placeholder="bags, boxes, kg…"
-							labelClass=""
-						/>
-						<div class="flex flex-col gap-2">
-							<Label for="condition-{index}">Condition</Label>
-							<SelectComp
-								id="condition-{index}"
-								name="condition-{index}"
-								value={item.condition}
-								items={conditionItems}
-								searchable={false}
-								triggerClass="normal-case"
-								onValueChange={(value) =>
-									(item.condition = (value || 'good') as typeof item.condition)}
-							/>
-						</div>
-					</div>
-
-					<!-- Sizing, for anything that has to fit somebody. Driven by the
-					     category, so a new clothing category asks these too. -->
-					{#if category?.requiresSizing}
-						<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+						<div class="grid gap-3 md:grid-cols-2">
 							<div class="flex flex-col gap-2">
-								<Label for="ageGroup-{index}">Who would it fit?</Label>
+								<Label for="category-{index}">Kind of thing</Label>
 								<SelectComp
-									id="ageGroup-{index}"
-									name="ageGroup-{index}"
-									value={item.ageGroup}
-									items={ageGroupItems}
-									searchable={false}
+									id="category-{index}"
+									name="categoryId-{index}"
+									value={item.categoryId ? String(item.categoryId) : ''}
+									items={categoryItems}
 									triggerClass="normal-case"
-									onValueChange={(value) =>
-										(item.ageGroup = (value || 'any') as typeof item.ageGroup)}
+									placeholder="Choose a category"
+									onValueChange={(value) => chooseCategory(index, value ? Number(value) : null)}
 								/>
+								{#if category?.description}
+									<p class="text-xs text-muted-foreground">{category.description}</p>
+								{/if}
 							</div>
-							<div class="flex flex-col gap-2">
-								<Label for="gender-{index}">Made for</Label>
-								<SelectComp
-									id="gender-{index}"
-									name="gender-{index}"
-									value={item.gender}
-									items={itemGenderItems}
-									searchable={false}
-									triggerClass="normal-case"
-									onValueChange={(value) =>
-										(item.gender = (value || 'unisex') as typeof item.gender)}
-								/>
-							</div>
-							<div class="flex flex-col gap-2 sm:col-span-2 md:col-span-1">
-								<Label for="sizeRange-{index}">Sizes</Label>
-								<Input
-									id="sizeRange-{index}"
-									bind:value={item.sizeRange}
-									placeholder="4–6 years, or EU 38–42"
-								/>
-							</div>
-						</div>
-					{/if}
 
-					<!-- Anything with a clock on it: food, medicine, formula. -->
-					{#if category?.requiresExpiry}
-						<div class="grid gap-3 sm:grid-cols-2">
 							<InputComp
 								{errors}
-								bind:value={item.expiresOn}
-								name="expiresOn-{index}"
-								label="Use by"
-								type="date"
+								bind:value={item.description}
+								name="description-{index}"
+								label="Describe it"
+								type="text"
+								placeholder="Children's winter coats"
 								labelClass=""
 							/>
-							<div class="flex flex-col justify-end gap-2 pb-2">
-								<CheckboxField bind:checked={item.needsRefrigeration} label="Needs to stay cold" />
-								<CheckboxField bind:checked={item.isPerishable} label="Spoils quickly" />
+						</div>
+
+						<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+							<InputComp
+								{errors}
+								bind:value={item.quantity}
+								name="quantity-{index}"
+								label="How many"
+								type="number"
+								min="1"
+								labelClass=""
+							/>
+							<InputComp
+								{errors}
+								bind:value={item.unit}
+								name="unit-{index}"
+								label="Counted in"
+								type="text"
+								placeholder="bags, boxes, kg…"
+								labelClass=""
+							/>
+							<div class="flex flex-col gap-2">
+								<Label for="condition-{index}">Condition</Label>
+								<SelectComp
+									id="condition-{index}"
+									name="condition-{index}"
+									value={item.condition}
+									items={conditionItems}
+									searchable={false}
+									triggerClass="normal-case"
+									onValueChange={(value) =>
+										(item.condition = (value || 'good') as typeof item.condition)}
+								/>
 							</div>
 						</div>
-					{/if}
 
-					<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-						<div class="flex flex-col gap-2">
-							<Label for="brandOrModel-{index}">Make or model</Label>
-							<Input
-								id="brandOrModel-{index}"
-								bind:value={item.brandOrModel}
+						<!-- Sizing, for anything that has to fit somebody. Driven by the
+					     category, so a new clothing category asks these too. -->
+						{#if category?.requiresSizing}
+							<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+								<div class="flex flex-col gap-2">
+									<Label for="ageGroup-{index}">Who would it fit?</Label>
+									<SelectComp
+										id="ageGroup-{index}"
+										name="ageGroup-{index}"
+										value={item.ageGroup}
+										items={ageGroupItems}
+										searchable={false}
+										triggerClass="normal-case"
+										onValueChange={(value) =>
+											(item.ageGroup = (value || 'any') as typeof item.ageGroup)}
+									/>
+								</div>
+								<div class="flex flex-col gap-2">
+									<Label for="gender-{index}">Made for</Label>
+									<SelectComp
+										id="gender-{index}"
+										name="gender-{index}"
+										value={item.gender}
+										items={itemGenderItems}
+										searchable={false}
+										triggerClass="normal-case"
+										onValueChange={(value) =>
+											(item.gender = (value || 'unisex') as typeof item.gender)}
+									/>
+								</div>
+								<div class="flex flex-col gap-2 sm:col-span-2 md:col-span-1">
+									<Label for="sizeRange-{index}">Sizes</Label>
+									<Input
+										id="sizeRange-{index}"
+										bind:value={item.sizeRange}
+										placeholder="4–6 years, or EU 38–42"
+									/>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Anything with a clock on it: food, medicine, formula. -->
+						{#if category?.requiresExpiry}
+							<div class="grid gap-3 sm:grid-cols-2">
+								<InputComp
+									{errors}
+									bind:value={item.expiresOn}
+									name="expiresOn-{index}"
+									label="Use by"
+									type="date"
+									labelClass=""
+								/>
+								<div class="flex flex-col justify-end gap-2 pb-2">
+									<CheckboxField
+										bind:checked={item.needsRefrigeration}
+										label="Needs to stay cold"
+									/>
+									<CheckboxField bind:checked={item.isPerishable} label="Spoils quickly" />
+								</div>
+							</div>
+						{/if}
+
+						<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+							<div class="flex flex-col gap-2">
+								<Label for="brandOrModel-{index}">Make or model</Label>
+								<Input
+									id="brandOrModel-{index}"
+									bind:value={item.brandOrModel}
+									placeholder="Optional"
+								/>
+							</div>
+							<div class="flex flex-col gap-2">
+								<Label for="estimatedValue-{index}">Worth (ETB)</Label>
+								<Input
+									id="estimatedValue-{index}"
+									type="number"
+									min="0"
+									value={item.estimatedValue ?? ''}
+									oninput={(event) => {
+										const raw = (event.currentTarget as HTMLInputElement).value;
+										item.estimatedValue = raw === '' ? null : Number(raw);
+									}}
+									placeholder="If you know"
+								/>
+							</div>
+							<InputComp
+								{errors}
+								bind:value={item.notes}
+								name="notes-{index}"
+								label="Anything else about it?"
+								type="text"
 								placeholder="Optional"
+								labelClass=""
 							/>
 						</div>
-						<div class="flex flex-col gap-2">
-							<Label for="estimatedValue-{index}">Worth (ETB)</Label>
-							<Input
-								id="estimatedValue-{index}"
-								type="number"
-								min="0"
-								value={item.estimatedValue ?? ''}
-								oninput={(event) => {
-									const raw = (event.currentTarget as HTMLInputElement).value;
-									item.estimatedValue = raw === '' ? null : Number(raw);
-								}}
-								placeholder="If you know"
-							/>
-						</div>
-						<InputComp
-							{errors}
-							bind:value={item.notes}
-							name="notes-{index}"
-							label="Anything else about it?"
-							type="text"
-							placeholder="Optional"
-							labelClass=""
-						/>
 					</div>
-				</div>
-			{/each}
-
-			<datalist id="in-kind-units">
-				{#each UNIT_SUGGESTIONS as unit (unit)}
-					<option value={unit}></option>
 				{/each}
-			</datalist>
 
-			<div>
-				<Button type="button" variant="outline" size="sm" onclick={addItem}>
-					<Plus class="size-4" />
-					Add another item
-				</Button>
+				<datalist id="in-kind-units">
+					{#each UNIT_SUGGESTIONS as unit (unit)}
+						<option value={unit}></option>
+					{/each}
+				</datalist>
+
+				<div>
+					<Button type="button" variant="outline" size="sm" onclick={addItem}>
+						<Plus class="size-4" />
+						Add another item
+					</Button>
+				</div>
+
+				{#if $errors.items?._errors}
+					<p class="text-sm text-destructive">{$errors.items._errors}</p>
+				{/if}
+
+				{#if acceptanceNotes.length}
+					<div class="rounded-lg border border-dashed p-3">
+						<p class="mb-1 text-xs font-medium">Worth knowing before you pack:</p>
+						<ul class="ml-4 list-disc text-xs text-muted-foreground">
+							{#each acceptanceNotes as note (note.name)}
+								<li>{note.name}: {note.note}</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 			</div>
 
-			{#if $errors.items?._errors}
-				<p class="text-sm text-destructive">{$errors.items._errors}</p>
-			{/if}
-
-			{#if acceptanceNotes.length}
-				<div class="rounded-lg border border-dashed p-3">
-					<p class="mb-1 text-xs font-medium">Worth knowing before you pack:</p>
-					<ul class="ml-4 list-disc text-xs text-muted-foreground">
-						{#each acceptanceNotes as note (note.name)}
-							<li>{note.name}: {note.note}</li>
+			<!-- Photos. The difference between accepting a donation and guessing. -->
+			<div class="flex flex-col gap-2">
+				<Label for="in-kind-photos">Photographs</Label>
+				<Input
+					id="in-kind-photos"
+					type="file"
+					name="photos"
+					multiple
+					accept="image/*"
+					onchange={onPhotos}
+				/>
+				<p class="text-xs text-muted-foreground">
+					Optional, and the single most useful thing you can send: a photo answers most of what we
+					would otherwise have to ask on the phone. Up to eight.
+				</p>
+				{#if photoNames.length}
+					<div class="flex flex-wrap gap-2">
+						{#each photoNames as name (name)}
+							<Badge variant="secondary">{name}</Badge>
 						{/each}
-					</ul>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Photos. The difference between accepting a donation and guessing. -->
-		<div class="flex flex-col gap-2">
-			<Label for="in-kind-photos">Photographs</Label>
-			<Input
-				id="in-kind-photos"
-				type="file"
-				name="photos"
-				multiple
-				accept="image/*"
-				onchange={onPhotos}
-			/>
-			<p class="text-xs text-muted-foreground">
-				Optional, and the single most useful thing you can send: a photo answers most of what we
-				would otherwise have to ask on the phone. Up to eight.
-			</p>
-			{#if photoNames.length}
-				<div class="flex flex-wrap gap-2">
-					{#each photoNames as name (name)}
-						<Badge variant="secondary">{name}</Badge>
-					{/each}
-				</div>
-			{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<!-- ==================== Getting hold of it ==================== -->
-		<div class="flex flex-col gap-2">
-			<Label>{s('donate.goods_handover', 'How should we take it from you?')}</Label>
-			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-				{#each HANDOVER_METHODS as method (method)}
-					<button
-						type="button"
-						onclick={() => ($form.handoverMethod = method)}
-						class={cn(
-							'flex flex-col gap-0.5 rounded-2xl border p-3.5 text-left text-sm transition-colors',
-							$form.handoverMethod === method ? 'border-primary bg-primary/5' : 'hover:bg-muted'
-						)}
-					>
-						<span class="font-medium">{HANDOVER_LABELS[method].title}</span>
-						<span class="text-xs text-muted-foreground">{HANDOVER_LABELS[method].hint}</span>
-					</button>
-				{/each}
+		<div class={cn('flex flex-col gap-5', step !== 1 && 'hidden')}>
+			<div class="flex flex-col gap-2">
+				<Label>{s('donate.goods_handover', 'How should we take it from you?')}</Label>
+				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+					{#each HANDOVER_METHODS as method (method)}
+						<button
+							type="button"
+							onclick={() => ($form.handoverMethod = method)}
+							class={cn(
+								'flex flex-col gap-0.5 rounded-2xl border p-3.5 text-left text-sm transition-colors',
+								$form.handoverMethod === method ? 'border-primary bg-primary/5' : 'hover:bg-muted'
+							)}
+						>
+							<span class="font-medium">{HANDOVER_LABELS[method].title}</span>
+							<span class="text-xs text-muted-foreground">{HANDOVER_LABELS[method].hint}</span>
+						</button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
-		{#if suggestsTransport && $form.handoverMethod === 'dropoff'}
-			<p class="-mt-2 flex items-start gap-2 text-xs text-muted-foreground">
-				<TriangleAlert class="mt-0.5 size-3.5 shrink-0" />
-				Furniture and appliances are usually easier for us to collect, so choose "please collect it" if
-				that suits you better.
-			</p>
-		{/if}
+			{#if suggestsTransport && $form.handoverMethod === 'dropoff'}
+				<p class="-mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+					<TriangleAlert class="mt-0.5 size-3.5 shrink-0" />
+					Furniture and appliances are usually easier for us to collect, so choose "please collect it"
+					if that suits you better.
+				</p>
+			{/if}
 
-		{#if $form.handoverMethod === 'pickup'}
-			<div class="flex flex-col gap-3 rounded-2xl border bg-muted/30 p-4">
-				<p class="text-sm font-medium">Where should we come?</p>
+			{#if $form.handoverMethod === 'pickup'}
+				<div class="flex flex-col gap-3 rounded-2xl border bg-muted/30 p-4">
+					<p class="text-sm font-medium">Where should we come?</p>
 
-				<div class="grid gap-2 sm:grid-cols-2">
-					<InputComp
-						{errors}
-						bind:value={$form.pickupContactName}
-						name="pickupContactName"
-						label="Who will be there?"
-						type="text"
-						placeholder="If it is not you"
-						labelClass=""
-					/>
-					<InputComp
-						{errors}
-						bind:value={$form.pickupContactPhone}
-						name="pickupContactPhone"
-						label="Their phone"
-						type="tel"
-						labelClass=""
-					/>
-				</div>
-
-				<InputComp
-					{errors}
-					bind:value={$form.pickupAddressLine}
-					name="pickupAddressLine"
-					label="Address"
-					type="text"
-					labelClass=""
-				/>
-
-				<div class="grid gap-2 sm:grid-cols-2">
-					<InputComp
-						{errors}
-						bind:value={$form.pickupCity}
-						name="pickupCity"
-						label="Town or sub-city"
-						type="text"
-						labelClass=""
-					/>
-					<InputComp
-						{errors}
-						bind:value={$form.pickupLandmark}
-						name="pickupLandmark"
-						label="Nearest landmark"
-						type="text"
-						placeholder="Behind the Total station"
-						labelClass=""
-					/>
-				</div>
-
-				{#if regions.length > 1}
-					<div class="flex flex-col gap-2">
-						<Label for="in-kind-region">Region</Label>
-						<SelectComp
-							id="in-kind-region"
-							name="regionId"
-							value={$form.regionId ? String($form.regionId) : ''}
-							items={regionItems}
-							triggerClass="normal-case"
-							placeholder="Choose a region"
-							onValueChange={(value) => ($form.regionId = value ? Number(value) : null)}
+					<div class="grid gap-2 sm:grid-cols-2">
+						<InputComp
+							{errors}
+							bind:value={$form.pickupContactName}
+							name="pickupContactName"
+							label="Who will be there?"
+							type="text"
+							placeholder="If it is not you"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={$form.pickupContactPhone}
+							name="pickupContactPhone"
+							label="Their phone"
+							type="tel"
+							labelClass=""
 						/>
 					</div>
-				{/if}
 
+					<InputComp
+						{errors}
+						bind:value={$form.pickupAddressLine}
+						name="pickupAddressLine"
+						label="Address"
+						type="text"
+						labelClass=""
+					/>
+
+					<div class="grid gap-2 sm:grid-cols-2">
+						<InputComp
+							{errors}
+							bind:value={$form.pickupCity}
+							name="pickupCity"
+							label="Town or sub-city"
+							type="text"
+							labelClass=""
+						/>
+						<InputComp
+							{errors}
+							bind:value={$form.pickupLandmark}
+							name="pickupLandmark"
+							label="Nearest landmark"
+							type="text"
+							placeholder="Behind the Total station"
+							labelClass=""
+						/>
+					</div>
+
+					{#if regions.length > 1}
+						<div class="flex flex-col gap-2">
+							<Label for="in-kind-region">Region</Label>
+							<SelectComp
+								id="in-kind-region"
+								name="regionId"
+								value={$form.regionId ? String($form.regionId) : ''}
+								items={regionItems}
+								triggerClass="normal-case"
+								placeholder="Choose a region"
+								onValueChange={(value) => ($form.regionId = value ? Number(value) : null)}
+							/>
+						</div>
+					{/if}
+
+					<InputComp
+						{errors}
+						bind:value={$form.accessNotes}
+						name="accessNotes"
+						label="Anything the driver should know?"
+						type="textarea"
+						placeholder="Third floor, no lift. Gate locked after six."
+						rows={2}
+						labelClass=""
+					/>
+				</div>
+			{/if}
+
+			<div class="flex flex-col gap-2">
+				<Label for="loadSize">How much is there?</Label>
+				<SelectComp
+					id="loadSize"
+					name="loadSize"
+					value={$form.loadSize}
+					items={loadSizeItems}
+					searchable={false}
+					triggerClass="normal-case"
+					onValueChange={(value) =>
+						($form.loadSize = (value || 'car_boot') as typeof $form.loadSize)}
+				/>
+			</div>
+
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div class="flex flex-col gap-2">
+					<Label for="estimatedWeightKg">Rough weight (kg)</Label>
+					<Input
+						id="estimatedWeightKg"
+						type="number"
+						min="0"
+						value={$form.estimatedWeightKg ?? ''}
+						oninput={(event) => {
+							const raw = (event.currentTarget as HTMLInputElement).value;
+							$form.estimatedWeightKg = raw === '' ? null : Number(raw);
+						}}
+						placeholder="If you know"
+					/>
+				</div>
+				<div class="flex flex-col justify-end gap-2 pb-2">
+					<CheckboxField bind:checked={$form.requiresVehicle} label="A vehicle will be needed" />
+					<CheckboxField
+						bind:checked={$form.requiresHelpLoading}
+						label="Help with lifting will be needed"
+					/>
+				</div>
+			</div>
+
+			<div class="grid gap-3 sm:grid-cols-2">
 				<InputComp
 					{errors}
-					bind:value={$form.accessNotes}
-					name="accessNotes"
-					label="Anything the driver should know?"
-					type="textarea"
-					placeholder="Third floor, no lift. Gate locked after six."
-					rows={2}
+					bind:value={$form.availableFrom}
+					name="availableFrom"
+					label="Ready from"
+					type="date"
+					labelClass=""
+				/>
+				<InputComp
+					{errors}
+					bind:value={$form.availableUntil}
+					name="availableUntil"
+					label="And available until"
+					type="date"
 					labelClass=""
 				/>
 			</div>
-		{/if}
 
-		<div class="flex flex-col gap-2">
-			<Label for="loadSize">How much is there?</Label>
-			<SelectComp
-				id="loadSize"
-				name="loadSize"
-				value={$form.loadSize}
-				items={loadSizeItems}
-				searchable={false}
-				triggerClass="normal-case"
-				onValueChange={(value) => ($form.loadSize = (value || 'car_boot') as typeof $form.loadSize)}
-			/>
-		</div>
-
-		<div class="grid gap-3 sm:grid-cols-2">
+			<!-- Designation. Same programmes as a cash gift, from the database. -->
 			<div class="flex flex-col gap-2">
-				<Label for="estimatedWeightKg">Rough weight (kg)</Label>
-				<Input
-					id="estimatedWeightKg"
-					type="number"
-					min="0"
-					value={$form.estimatedWeightKg ?? ''}
-					oninput={(event) => {
-						const raw = (event.currentTarget as HTMLInputElement).value;
-						$form.estimatedWeightKg = raw === '' ? null : Number(raw);
-					}}
-					placeholder="If you know"
-				/>
-			</div>
-			<div class="flex flex-col justify-end gap-2 pb-2">
-				<CheckboxField bind:checked={$form.requiresVehicle} label="A vehicle will be needed" />
-				<CheckboxField
-					bind:checked={$form.requiresHelpLoading}
-					label="Help with lifting will be needed"
-				/>
-			</div>
-		</div>
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<InputComp
-				{errors}
-				bind:value={$form.availableFrom}
-				name="availableFrom"
-				label="Ready from"
-				type="date"
-				labelClass=""
-			/>
-			<InputComp
-				{errors}
-				bind:value={$form.availableUntil}
-				name="availableUntil"
-				label="And available until"
-				type="date"
-				labelClass=""
-			/>
-		</div>
-
-		<!-- Designation. Same programmes as a cash gift, from the database. -->
-		<div class="flex flex-col gap-2">
-			<Label>{s('donate.designation', 'Where should it go?')}</Label>
-			<div class="flex flex-wrap gap-2">
-				<Button
-					type="button"
-					variant={$form.designationType === 'general_fund' ? 'default' : 'outline'}
-					size="sm"
-					onclick={() => {
-						$form.designationType = 'general_fund';
-						$form.designationPillarId = null;
-						$form.designationInitiativeId = null;
-					}}
-				>
-					{s('donate.general_fund', 'Where most needed')}
-				</Button>
-				{#each pillars as pillar (pillar.id)}
+				<Label>{s('donate.designation', 'Where should it go?')}</Label>
+				<div class="flex flex-wrap gap-2">
 					<Button
 						type="button"
-						variant={$form.designationPillarId === pillar.id ? 'default' : 'outline'}
+						variant={$form.designationType === 'general_fund' ? 'default' : 'outline'}
 						size="sm"
 						onclick={() => {
-							$form.designationType = 'pillar';
-							$form.designationPillarId = pillar.id;
+							$form.designationType = 'general_fund';
+							$form.designationPillarId = null;
 							$form.designationInitiativeId = null;
 						}}
 					>
-						<DynamicIcon name={pillar.icon} class="size-4" />
-						{pillar.name}
+						{s('donate.general_fund', 'Where most needed')}
 					</Button>
-				{/each}
-				{#each initiatives as initiative (initiative.id)}
-					<Button
-						type="button"
-						variant={$form.designationInitiativeId === initiative.id ? 'default' : 'outline'}
-						size="sm"
-						onclick={() => {
-							$form.designationType = 'future_initiative';
-							$form.designationInitiativeId = initiative.id;
-							$form.designationPillarId = null;
-						}}
-					>
-						{initiative.name}
-					</Button>
-				{/each}
+					{#each pillars as pillar (pillar.id)}
+						<Button
+							type="button"
+							variant={$form.designationPillarId === pillar.id ? 'default' : 'outline'}
+							size="sm"
+							onclick={() => {
+								$form.designationType = 'pillar';
+								$form.designationPillarId = pillar.id;
+								$form.designationInitiativeId = null;
+							}}
+						>
+							<DynamicIcon name={pillar.icon} class="size-4" />
+							{pillar.name}
+						</Button>
+					{/each}
+					{#each initiatives as initiative (initiative.id)}
+						<Button
+							type="button"
+							variant={$form.designationInitiativeId === initiative.id ? 'default' : 'outline'}
+							size="sm"
+							onclick={() => {
+								$form.designationType = 'future_initiative';
+								$form.designationInitiativeId = initiative.id;
+								$form.designationPillarId = null;
+							}}
+						>
+							{initiative.name}
+						</Button>
+					{/each}
+				</div>
 			</div>
 		</div>
 
 		<!-- ==================== Who is giving ==================== -->
-		<div class="grid gap-3 md:grid-cols-2">
-			<div class="flex flex-col gap-2">
-				<Label for="in-kind-donorType">This gift is from</Label>
-				<SelectComp
-					id="in-kind-donorType"
-					name="donorType"
-					value={$form.donorType}
-					items={donorTypeItems}
-					triggerClass="normal-case"
-					onValueChange={(value) =>
-						($form.donorType = (value || 'individual') as typeof $form.donorType)}
-				/>
-			</div>
+		<div class={cn('flex flex-col gap-5', step !== 2 && 'hidden')}>
+			<div class="grid gap-3 md:grid-cols-2">
+				<div class="flex flex-col gap-2">
+					<Label for="in-kind-donorType">This gift is from</Label>
+					<SelectComp
+						id="in-kind-donorType"
+						name="donorType"
+						value={$form.donorType}
+						items={donorTypeItems}
+						triggerClass="normal-case"
+						onValueChange={(value) =>
+							($form.donorType = (value || 'individual') as typeof $form.donorType)}
+					/>
+				</div>
 
-			<InputComp
-				{errors}
-				bind:value={$form.donorName}
-				name="in-kind-donorName"
-				label={s('donate.name', 'Your name')}
-				type="text"
-				required
-				labelClass=""
-			/>
-		</div>
-
-		{#if isOrganisation}
-			<InputComp
-				{errors}
-				bind:value={$form.organisationName}
-				name="organisationName"
-				label="Name of the organisation"
-				type="text"
-				labelClass=""
-			/>
-		{/if}
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<InputComp
-				{errors}
-				bind:value={$form.donorEmail}
-				name="in-kind-donorEmail"
-				label={s('donate.email', 'Email')}
-				type="email"
-				labelClass=""
-			/>
-			<InputComp
-				{errors}
-				bind:value={$form.donorPhone}
-				name="in-kind-donorPhone"
-				label={s('donate.phone', 'Phone')}
-				type="tel"
-				labelClass=""
-			/>
-		</div>
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<div class="flex flex-col gap-2">
-				<Label for="preferredContactChannel">Best way to reach you</Label>
-				<SelectComp
-					id="preferredContactChannel"
-					name="preferredContactChannel"
-					value={$form.preferredContactChannel}
-					items={channelItems}
-					searchable={false}
-					triggerClass="normal-case"
-					onValueChange={(value) =>
-						($form.preferredContactChannel = (value ||
-							'phone') as typeof $form.preferredContactChannel)}
-				/>
-			</div>
-			<InputComp
-				{errors}
-				bind:value={$form.bestTimeToContact}
-				name="bestTimeToContact"
-				label="Best time"
-				type="text"
-				placeholder="Afternoons, after 6pm…"
-				labelClass=""
-			/>
-		</div>
-
-		<!-- ==================== Paperwork ==================== -->
-		<div class="flex flex-col gap-2">
-			<Label for="valuationBasis">Where the values above come from</Label>
-			<SelectComp
-				id="valuationBasis"
-				name="valuationBasis"
-				value={$form.valuationBasis}
-				items={valuationItems}
-				triggerClass="normal-case"
-				onValueChange={(value) =>
-					($form.valuationBasis = (value || 'donor_estimate') as typeof $form.valuationBasis)}
-			/>
-			<p class="text-xs text-muted-foreground">
-				Only ever an estimate, kept for our records and your receipt. It is never counted as money
-				raised.
-			</p>
-		</div>
-
-		<div class="flex flex-col gap-2">
-			<CheckboxField
-				bind:checked={$form.hasRestrictedItems}
-				label="Some of it is medicine, or equipment with rules attached"
-			/>
-			{#if $form.hasRestrictedItems}
-				<Textarea
-					rows={2}
-					bind:value={$form.restrictedItemsNote}
-					placeholder="Tell us what, and where it came from. It decides whether we may accept it."
-				/>
-			{/if}
-
-			<CheckboxField bind:checked={$form.receiptRequested} label="Please send me a receipt" />
-			<CheckboxField
-				bind:checked={$form.taxReceiptRequired}
-				label="I need a receipt valid for tax"
-			/>
-			{#if $form.taxReceiptRequired}
 				<InputComp
 					{errors}
-					bind:value={$form.taxIdNumber}
-					name="taxIdNumber"
-					label="TIN"
+					bind:value={$form.donorName}
+					name="in-kind-donorName"
+					label={s('donate.name', 'Your name')}
+					type="text"
+					showRequired
+					labelClass=""
+				/>
+			</div>
+
+			{#if isOrganisation}
+				<InputComp
+					{errors}
+					bind:value={$form.organisationName}
+					name="organisationName"
+					label="Name of the organisation"
 					type="text"
 					labelClass=""
 				/>
 			{/if}
 
-			<CheckboxField
-				bind:checked={$form.isAnonymous}
-				label={s('donate.anonymous', 'Keep my gift anonymous')}
-			/>
-			{#if !$form.isAnonymous}
-				<div class="mt-2 flex flex-col gap-2">
-					<Label for="recognitionName">Name us to thank, if not your own</Label>
-					<Input
-						id="recognitionName"
-						bind:value={$form.recognitionName}
-						placeholder="The Abera family, or your company"
+			<div class="grid gap-3 sm:grid-cols-2">
+				<InputComp
+					{errors}
+					bind:value={$form.donorEmail}
+					name="in-kind-donorEmail"
+					label={s('donate.email', 'Email')}
+					type="email"
+					labelClass=""
+				/>
+				<InputComp
+					{errors}
+					bind:value={$form.donorPhone}
+					name="in-kind-donorPhone"
+					label={s('donate.phone', 'Phone')}
+					type="tel"
+					labelClass=""
+				/>
+			</div>
+
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div class="flex flex-col gap-2">
+					<Label for="preferredContactChannel">Best way to reach you</Label>
+					<SelectComp
+						id="preferredContactChannel"
+						name="preferredContactChannel"
+						value={$form.preferredContactChannel}
+						items={channelItems}
+						searchable={false}
+						triggerClass="normal-case"
+						onValueChange={(value) =>
+							($form.preferredContactChannel = (value ||
+								'phone') as typeof $form.preferredContactChannel)}
 					/>
 				</div>
-			{/if}
+				<InputComp
+					{errors}
+					bind:value={$form.bestTimeToContact}
+					name="bestTimeToContact"
+					label="Best time"
+					type="text"
+					placeholder="Afternoons, after 6pm…"
+					labelClass=""
+				/>
+			</div>
 		</div>
 
-		<InputComp
-			{errors}
-			bind:value={$form.donorMessage}
-			name="in-kind-message"
-			label={s('donate.message', 'A message, if you would like')}
-			type="textarea"
-			rows={3}
-			labelClass=""
-		/>
+		<!-- ==================== Paperwork ==================== -->
+		<div class={cn('flex flex-col gap-5', step !== 3 && 'hidden')}>
+			<div class="flex flex-col gap-2">
+				<Label for="valuationBasis">Where the values above come from</Label>
+				<SelectComp
+					id="valuationBasis"
+					name="valuationBasis"
+					value={$form.valuationBasis}
+					items={valuationItems}
+					triggerClass="normal-case"
+					onValueChange={(value) =>
+						($form.valuationBasis = (value || 'donor_estimate') as typeof $form.valuationBasis)}
+				/>
+				<p class="text-xs text-muted-foreground">
+					Only ever an estimate, kept for our records and your receipt. It is never counted as money
+					raised.
+				</p>
+			</div>
 
-		<InputComp
-			{errors}
-			bind:value={$form.heardAbout}
-			name="heardAbout"
-			label="How did you hear about us?"
-			type="text"
-			placeholder="Optional"
-			labelClass=""
-		/>
+			<div class="flex flex-col gap-2">
+				<CheckboxField
+					bind:checked={$form.hasRestrictedItems}
+					label="Some of it is medicine, or equipment with rules attached"
+				/>
+				{#if $form.hasRestrictedItems}
+					<Textarea
+						rows={2}
+						bind:value={$form.restrictedItemsNote}
+						placeholder="Tell us what, and where it came from. It decides whether we may accept it."
+					/>
+				{/if}
 
-		<div class="flex flex-col gap-2">
-			<CheckboxField
-				bind:checked={$form.isDiaspora}
-				label={s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
-			/>
-			<CheckboxField
-				bind:checked={$form.joinNewsletter}
-				label={s('donate.newsletter', 'Send me occasional updates')}
-			/>
-			<CheckboxField
+				<CheckboxField bind:checked={$form.receiptRequested} label="Please send me a receipt" />
+				<CheckboxField
+					bind:checked={$form.taxReceiptRequired}
+					label="I need a receipt valid for tax"
+				/>
+				{#if $form.taxReceiptRequired}
+					<InputComp
+						{errors}
+						bind:value={$form.taxIdNumber}
+						name="taxIdNumber"
+						label="TIN"
+						type="text"
+						labelClass=""
+					/>
+				{/if}
+
+				<CheckboxField
+					bind:checked={$form.isAnonymous}
+					label={s('donate.anonymous', 'Keep my gift anonymous')}
+				/>
+				{#if !$form.isAnonymous}
+					<div class="mt-2 flex flex-col gap-2">
+						<Label for="recognitionName">Name us to thank, if not your own</Label>
+						<Input
+							id="recognitionName"
+							bind:value={$form.recognitionName}
+							placeholder="The Abera family, or your company"
+						/>
+					</div>
+				{/if}
+			</div>
+
+			<InputComp
 				{errors}
-				bind:checked={$form.consentToContact}
-				name="consentToContact"
-				label="You may keep these details and contact me to arrange the handover."
+				bind:value={$form.donorMessage}
+				name="in-kind-message"
+				label={s('donate.message', 'A message, if you would like')}
+				type="textarea"
+				rows={3}
+				labelClass=""
 			/>
+
+			<InputComp
+				{errors}
+				bind:value={$form.heardAbout}
+				name="heardAbout"
+				label="How did you hear about us?"
+				type="text"
+				placeholder="Optional"
+				labelClass=""
+			/>
+
+			<div class="flex flex-col gap-2">
+				<CheckboxField
+					bind:checked={$form.isDiaspora}
+					label={s('donate.is_diaspora', 'I am giving from outside Ethiopia')}
+				/>
+				<CheckboxField
+					bind:checked={$form.joinNewsletter}
+					label={s('donate.newsletter', 'Send me occasional updates')}
+				/>
+				<CheckboxField
+					{errors}
+					bind:checked={$form.consentToContact}
+					name="consentToContact"
+					label="You may keep these details and contact me to arrange the handover."
+				/>
+			</div>
 		</div>
 
 		<div class="hidden" aria-hidden="true">
@@ -966,13 +1188,40 @@
 			/>
 		</div>
 
-		<Button type="submit" size="lg" class="lg:w-fit lg:self-end lg:px-10">
-			{#if $delayed}
-				<LoadingBtn name={s('donate.goods_sending', 'Recording your offer')} />
+		<!-- One submit button, on the last step only. A `type="button"` Next
+		     everywhere else, so pressing Enter in a text field on step one does
+		     not post a form the donor has answered a quarter of. -->
+		<div class="flex items-center justify-between gap-3 border-t pt-5">
+			<Button
+				type="button"
+				variant="ghost"
+				disabled={step === 0}
+				onclick={() => goTo(step - 1)}
+				class={step === 0 ? 'invisible' : ''}
+			>
+				<ChevronLeft class="size-4" />
+				Back
+			</Button>
+
+			<span class="text-xs text-muted-foreground">
+				Step {step + 1} of {STEPS.length}
+			</span>
+
+			{#if isLastStep}
+				<Button type="submit" size="lg" class="px-8">
+					{#if $delayed}
+						<LoadingBtn name={s('donate.goods_sending', 'Recording your offer')} />
+					{:else}
+						<Package class="size-4" />
+						{s('donate.goods_submit', 'Offer these goods')}
+					{/if}
+				</Button>
 			{:else}
-				<Package class="size-4" />
-				{s('donate.goods_submit', 'Offer these goods')}
+				<Button type="button" size="lg" class="px-8" onclick={next}>
+					{s('donate.goods_next', 'Next')}
+					<ChevronRight class="size-4" />
+				</Button>
 			{/if}
-		</Button>
+		</div>
 	</form>
 {/if}
