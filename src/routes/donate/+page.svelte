@@ -17,6 +17,7 @@
 	import { focusFirstError } from '$lib/formComponents/form-errors';
 	import LoadingBtn from '$lib/formComponents/LoadingBtn.svelte';
 	import InputComp from '$lib/formComponents/InputComp.svelte';
+	import FileUpload from '$lib/formComponents/FileUpload.svelte';
 	import CheckboxField from '$lib/formComponents/CheckboxField.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import HelpPanel from '$lib/components/help-panel.svelte';
@@ -79,7 +80,6 @@
 				confirmation = { reference: $message.reference, amount: $message.amount ?? '' };
 				// A second gift starts with its own empty receipt slot.
 				receiptUploaded = false;
-				receiptName = '';
 				try {
 					localStorage.setItem(
 						LAST_GIFT_KEY,
@@ -117,7 +117,6 @@
 	 * through the campaign links further down and come with the platform's own
 	 * receipt.
 	 */
-	let receiptName = $state('');
 	let receiptUploaded = $state(false);
 	let uploadingReceipt = $state(false);
 
@@ -216,7 +215,6 @@
 							};
 							recoveredReference = null;
 							receiptUploaded = false;
-							receiptName = '';
 						}}
 					>
 						<Receipt class="size-4" />
@@ -331,7 +329,19 @@
 								method="post"
 								action="?/uploadReceipt"
 								enctype="multipart/form-data"
-								use:formEnhance={() => {
+								use:formEnhance={({ formData, cancel }) => {
+									// Checked here rather than with `required` on the input:
+									// `FileUpload` hides its own input behind the dropzone, and
+									// a hidden required control is one the browser refuses to
+									// submit *and* cannot focus to explain why. This reads the
+									// body that is about to be sent, so it cannot disagree with
+									// what was chosen.
+									const chosen = formData.get('receipt');
+									if (!(chosen instanceof File) || chosen.size === 0) {
+										toast.error('Choose a photo or PDF of your transfer first.');
+										cancel();
+										return;
+									}
 									uploadingReceipt = true;
 									return async ({ update }) => {
 										uploadingReceipt = false;
@@ -355,20 +365,21 @@
 									)}
 								</p>
 
-								<Input
-									id="donation-receipt"
-									type="file"
+								<!-- The shared dropzone rather than a bare file input: it
+								     compresses the photograph to WebP in the browser before it
+								     is sent. A bank screenshot off a modern phone is 2–4 MB and
+								     lands around 150 KB, which on an Ethiopian mobile
+								     connection is the difference between an upload that
+								     finishes and one the donor gives up on — and the receipts
+								     accumulate on the same volume as the case documents. -->
+								<FileUpload
 									name="receipt"
 									accept={UPLOAD_ACCEPT_ATTRIBUTE}
-									required
-									onchange={(event) => {
-										const input = event.currentTarget as HTMLInputElement;
-										receiptName = input.files?.[0]?.name ?? '';
-									}}
+									placeholder={s(
+										'donate.receipt_placeholder',
+										'Tap to choose the screenshot, or drag it here'
+									)}
 								/>
-								{#if receiptName}
-									<Badge variant="secondary" class="w-fit">{receiptName}</Badge>
-								{/if}
 								<p class="text-xs text-muted-foreground">
 									A photo or PDF, under {MAX_UPLOAD_MB} MB. Optional — we will still match your transfer
 									without it.

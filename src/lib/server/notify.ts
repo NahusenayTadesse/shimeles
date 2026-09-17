@@ -136,6 +136,55 @@ export async function notifyNewInKindOffer(offer: {
 	);
 }
 
+/**
+ * A donor has attached their transfer receipt.
+ *
+ * Worth a mail where the rest of the donation flow is not: this is the moment
+ * a pending gift becomes matchable, and finance opens the reconciliation
+ * queue on a schedule rather than watching it. The alternative is a receipt
+ * sitting unseen for a week while the donor waits to be thanked.
+ *
+ * The reference and the amount, and then a link. The file itself is a bank
+ * screenshot — an account number and a balance — so it stays behind
+ * `/files/[name]`, where the read is audited and needs `donations.read`;
+ * attaching it to an email would put it in every inbox that forwards.
+ */
+export async function notifyDonationReceipt(donation: {
+	id: number;
+	referenceCode: string;
+	amountLabel: string;
+	donorName: string | null;
+}): Promise<void> {
+	const recipients = await staffRecipients();
+	if (recipients.length === 0) return;
+
+	const origin = await setting('site.url');
+	const body = [
+		'A donor has uploaded their transfer receipt. This gift can now be matched.',
+		'',
+		`Reference: ${donation.referenceCode}`,
+		`Pledged: ${donation.amountLabel}`,
+		donation.donorName ? `Donor: ${donation.donorName}` : '',
+		'',
+		origin ? `Open it here: ${origin}/dashboard/donations?q=${donation.referenceCode}` : ''
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	await sendEmailToEach(
+		recipients,
+		plainTemplate(
+			'Transfer receipt received',
+			body,
+			`Receipt received: ${donation.referenceCode}`,
+			{
+				label: 'Open the reconciliation queue',
+				href: `/dashboard/donations?q=${donation.referenceCode}`
+			}
+		)
+	);
+}
+
 /** Reminder for a standing pledge that has come due (§3.5). */
 export async function notifyPledgeReminder(
 	to: string,

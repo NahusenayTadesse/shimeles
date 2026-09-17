@@ -6,6 +6,7 @@ import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import {
 	donations,
+	donors,
 	futureInitiatives,
 	newsletterSubscribers,
 	paymentAccounts,
@@ -29,7 +30,7 @@ import { getImpactMetrics } from '$lib/server/impact';
 import { createInKindOffer, getInKindCategories } from '$lib/server/inKind';
 import { upsertDonor } from '$lib/server/donors';
 import { saveUploadedFile, deleteStoredFile } from '$lib/server/upload';
-import { notifyNewInKindOffer } from '$lib/server/notify';
+import { notifyDonationReceipt, notifyNewInKindOffer } from '$lib/server/notify';
 import { nextDonationReference, withReference, REFERENCE_PATTERN } from '$lib/server/reference';
 import { sendEmail, donationPledgeTemplate, inKindOfferTemplate } from '$lib/server/email';
 import { formatMoney } from '$lib/money';
@@ -443,9 +444,16 @@ export const actions: Actions = {
 			.select({
 				id: donations.id,
 				status: donations.status,
-				receiptFileId: donations.receiptFileId
+				receiptFileId: donations.receiptFileId,
+				// For the staff notification below, so it can say what arrived
+				// without a second query once the file is saved.
+				amount: donations.amount,
+				currency: donations.currency,
+				isAnonymous: donations.isAnonymous,
+				donorName: donors.fullName
 			})
 			.from(donations)
+			.leftJoin(donors, eq(donors.id, donations.donorId))
 			.where(and(eq(donations.referenceCode, reference), isNull(donations.deletedAt)))
 			.limit(1);
 
@@ -489,6 +497,18 @@ export const actions: Actions = {
 				entityId: donation.id,
 				metadata: { reference, receiptFileId: saved.id }
 			});
+
+			// Non-blocking, like every other notification here: the receipt is
+			// already on the row, and a slow mail server must not turn a saved
+			// upload into an error the donor sees.
+			void notifyDonationReceipt({
+				id: donation.id,
+				referenceCode: reference,
+				amountLabel: formatMoney(donation.amount, donation.currency),
+				// The queue shows an anonymous gift as anonymous; the email should
+				// not be the one place a name leaks out of that.
+				donorName: donation.isAnonymous ? null : donation.donorName
+			}).catch((err) => console.error('receipt notification failed', err));
 
 			return { receiptUploaded: true };
 		} catch (err) {
