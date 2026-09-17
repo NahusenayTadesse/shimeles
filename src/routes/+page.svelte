@@ -6,7 +6,17 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { isMoneyMetric, METRIC, METRIC_LABELS, type MetricKey } from '$lib/metrics';
 	import { toMajor } from '$lib/money';
+	import { countUp } from '$lib/actions/count-up';
 	import { cn } from '$lib/utils';
+	import {
+		FolderOpen,
+		GraduationCap,
+		HandCoins,
+		HandHeart,
+		HeartHandshake,
+		Sparkles,
+		Users
+	} from '@lucide/svelte';
 
 	let { data } = $props();
 
@@ -46,31 +56,56 @@
 			const key = String(stat.metric ?? '');
 			const label = stat.label || METRIC_LABELS[key as MetricKey] || key;
 
+			const icon = metricIcons[key] ?? Sparkles;
+
 			if (isMoneyMetric(key)) {
 				// One line per currency: birr and dollars are never added together.
 				const lines = (data.moneyTotals?.[key] ?? [])
 					.filter((total) => total.amount > 0)
-					.map((total) => compactMoney(total.amount, total.currency));
-				return lines.length ? [{ key, label, lines }] : [];
+					.map((total) => ({
+						id: total.currency,
+						value: toMajor(total.amount, total.currency),
+						format: (n: number) => compactMoney(n, total.currency)
+					}));
+				return lines.length ? [{ key, label, icon, money: true, lines }] : [];
 			}
 
 			const value = data.metrics?.[key] ?? 0;
 			if (value <= 0) return [];
-			return [{ key, label, lines: [`${compactCount(value)}${stat.suffix ?? ''}`] }];
+			const suffix = stat.suffix ?? '';
+			return [
+				{
+					key,
+					label,
+					icon,
+					money: false,
+					lines: [{ id: key, value, format: (n: number) => `${compactCount(n)}${suffix}` }]
+				}
+			];
 		});
 	});
 
-	/** `228000000` santim → `ETB 2.3M`: a corner of a photograph is not a ledger. */
-	function compactMoney(minor: number, currency: string) {
+	/** A picture beside each figure, by metric; anything new gets a spark. */
+	const metricIcons: Record<string, typeof Users> = {
+		[METRIC.FAMILIES_SUPPORTED]: Users,
+		[METRIC.STUDENTS_SPONSORED]: GraduationCap,
+		[METRIC.ELDERS_CARED_FOR]: HandHeart,
+		[METRIC.FUNDS_RAISED]: HandCoins,
+		[METRIC.VOLUNTEERS_ACTIVE]: HeartHandshake,
+		[METRIC.CASES_OPEN]: FolderOpen
+	};
+
+	/** `228000` birr → `ETB 228K`: a corner of a photograph is not a ledger. */
+	function compactMoney(major: number, currency: string) {
 		try {
 			return new Intl.NumberFormat('en', {
 				style: 'currency',
 				currency: currency.toUpperCase(),
 				notation: 'compact',
 				maximumFractionDigits: 1
-			}).format(toMajor(minor, currency));
+			}).format(major);
 		} catch {
-			return `${currency.toUpperCase()} ${compactCount(toMajor(minor, currency))}`;
+			return `${currency.toUpperCase()} ${compactCount(major)}`;
 		}
 	}
 
@@ -168,25 +203,44 @@
 					</div>
 				</div>
 
-				<!-- What has been done so far, in the bottom right corner: gold figures
-				     over a gold hairline, the way a caption sits in the corner of a
-				     photograph. -->
+				<!-- What has been done so far, as its own object in the bottom right: a
+				     pane of dark glass with a gold edge and a gold glow, one tile per
+				     figure. The tiles spring up one after another once the headline has
+				     landed, and the figures count up to their value. -->
 				{#if accomplishments.length}
 					<dl
-						class="grid shrink-0 grid-cols-2 items-end gap-x-8 gap-y-6 border-t border-(--gold)/40 pt-6 lg:gap-x-[clamp(2.5rem,3.5vw,4.5rem)] lg:gap-y-8 lg:border-t-0 lg:pt-0"
+						class="impact-panel grid shrink-0 grid-cols-1 gap-px overflow-hidden rounded-[1.5rem] border border-(--gold)/45 sm:grid-cols-2 lg:min-w-[28rem]"
 					>
-						{#each accomplishments as item (item.key)}
-							<div class="flex flex-col gap-1 lg:text-right">
-								<dt class="order-2 text-[clamp(0.95rem,0.85rem+0.3vw,1.15rem)] text-(--honey)/90">
-									{item.label}
-								</dt>
-								{#each item.lines as line (line)}
-									<dd
-										class="order-1 font-serif text-[clamp(2rem,1.2rem+2.2vw,3.5rem)] leading-none font-bold text-(--gold-bright) lining-nums"
-									>
-										{line}
-									</dd>
-								{/each}
+						{#each accomplishments as item, index (item.key)}
+							{@const Icon = item.icon}
+							<div
+								class="impact-tile flex items-center gap-4 px-5 py-5 md:px-6 md:py-6 sm:[&:last-child:nth-child(odd)]:col-span-2"
+								style:--i={index}
+							>
+								<span
+									class="impact-icon grid size-12 shrink-0 place-items-center rounded-full md:size-14"
+									aria-hidden="true"
+								>
+									<Icon class="size-6 md:size-7" />
+								</span>
+								<div class="flex min-w-0 flex-col">
+									<dt class="order-2 text-[clamp(0.95rem,0.85rem+0.25vw,1.1rem)] text-(--honey)">
+										{item.label}
+									</dt>
+									{#each item.lines as line (line.id)}
+										<dd
+											use:countUp={{ value: line.value, format: line.format, duration: 1600 }}
+											class={cn(
+												'order-1 font-serif leading-[1.05] font-bold text-(--gold-bright) lining-nums',
+												item.money && item.lines.length > 1
+													? 'text-[clamp(1.5rem,1rem+1.2vw,2.2rem)]'
+													: 'text-[clamp(2.1rem,1.3rem+2vw,3.4rem)]'
+											)}
+										>
+											{line.format(line.value)}
+										</dd>
+									{/each}
+								</div>
 							</div>
 						{/each}
 					</dl>
