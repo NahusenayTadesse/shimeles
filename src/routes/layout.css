@@ -730,8 +730,14 @@
 		radial-gradient(30% 60% at 0% 0%, rgb(235 200 101 / 0.1), transparent 70%), var(--forest);
 }
 
+/* `.sun-soft` is always a light surface, in either theme, so it always takes
+   the same forest ink as `.on-sun`. Folded into the selector rather than
+   added at each use: a soft gold band that forgot the class set light
+   dark-mode text on light gold (the memoriam did). */
 .site-shell .on-sun,
-.dark .site-shell .on-sun {
+.dark .site-shell .on-sun,
+.site-shell .sun-soft,
+.dark .site-shell .sun-soft {
 	--background: transparent;
 	--foreground: var(--forest);
 	--primary: var(--forest);
@@ -747,10 +753,12 @@
 	--gold-deep: #5a4410;
 	color: var(--forest);
 }
-.site-shell .on-sun .arch-line {
+.site-shell .on-sun .arch-line,
+.site-shell .sun-soft .arch-line {
 	border-color: rgb(14 59 46 / 0.4);
 }
-.site-shell .on-sun :focus-visible {
+.site-shell .on-sun :focus-visible,
+.site-shell .sun-soft :focus-visible {
 	outline-color: var(--forest);
 }
 
