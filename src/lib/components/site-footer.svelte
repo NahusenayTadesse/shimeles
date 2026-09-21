@@ -52,11 +52,22 @@
 
 <footer class="on-forest forest-glow mt-24">
 	<div class="wrap pt-20 pb-10">
-		<!-- The name, large, in the serif: the last thing on every page is who
-		     this is, said plainly. -->
+		<!-- The name, large, in the serif, with the mark beside it: the last thing
+		     on every page is who this is, said plainly and in one place. Both sit
+		     to the left rather than the name and the mark facing each other across
+		     the width. -->
 		<div
-			class="flex flex-col gap-6 border-b border-(--honey)/15 pb-14 md:flex-row md:items-end md:justify-between"
+			class="flex flex-col items-start gap-6 border-b border-(--honey)/15 pb-14 md:flex-row md:items-end md:gap-8"
 		>
+			<img
+				src="/logo.png"
+				alt=""
+				width="720"
+				height="238"
+				loading="lazy"
+				decoding="async"
+				class="h-16 w-auto shrink-0 object-contain"
+			/>
 			<div class="flex flex-col gap-3">
 				<p
 					class="max-w-2xl font-serif text-[clamp(2.2rem,1rem+3.8vw,5.25rem)] leading-[1.05] font-bold text-[#f6f3e6]"
@@ -67,15 +78,6 @@
 					<p class="font-serif text-xl text-(--gold)">{s('site.tagline')}</p>
 				{/if}
 			</div>
-			<img
-				src="/logo.png"
-				alt=""
-				width="720"
-				height="238"
-				loading="lazy"
-				decoding="async"
-				class="h-16 w-auto shrink-0 self-start object-contain md:self-end"
-			/>
 		</div>
 
 		<div class="grid gap-12 pt-12 md:grid-cols-[1.4fr_1fr_1.2fr]">
