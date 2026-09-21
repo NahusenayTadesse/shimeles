@@ -1455,13 +1455,13 @@ async function seedPages() {
 			blockType: 'stat_counter',
 			heading: 'Where we are so far',
 			content: {
+				// People, one count per pillar — not money. `funds_raised` is computed
+				// and reported to staff, but it is not in the vocabulary a page can
+				// publish from (see `$lib/metrics.ts`).
 				stats: [
 					{ metric: 'families_supported', label: 'Families supported' },
-					{ metric: 'students_sponsored', label: 'Students sponsored' },
-					{ metric: 'elders_cared_for', label: 'Elders cared for' },
-					// No `is_money` here: currency formatting follows from the metric
-					// (see `$lib/metrics.ts`), so it cannot be forgotten.
-					{ metric: 'funds_raised', label: 'Raised and disbursed' }
+					{ metric: 'students_sponsored', label: 'Students supported' },
+					{ metric: 'elders_cared_for', label: 'Elderly care provided' }
 				]
 			}
 		},

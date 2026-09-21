@@ -198,10 +198,19 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
+				{@const stats = list<Record<string, unknown>>(block, 'stats')}
 				<div class="on-sun sun-surface bleed py-16 md:py-28">
 					{@render heading(block, 'wrap max-w-none text-(--forest)')}
-					<div class="wrap grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
+					<!-- Three counters sit in three columns rather than three quarters of
+					     a row of four: the number of counters is a staff decision, so the
+					     row follows it instead of leaving a hole where money used to be. -->
+					<div
+						class={cn(
+							'wrap grid gap-x-12 gap-y-12 sm:grid-cols-2',
+							stats.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+						)}
+					>
+						{#each stats as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							<!-- Derived from the metric, never read from the block. A stat block
 							     saved without `is_money` used to render funds raised — stored in

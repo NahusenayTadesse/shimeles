@@ -14,14 +14,30 @@
  * rather than from the stored content.
  */
 
+/**
+ * The counters a public page may publish. All counts of people — what the
+ * Foundation has done, in the unit the work is actually done in.
+ */
 export const METRIC = {
 	FAMILIES_SUPPORTED: 'families_supported',
 	STUDENTS_SPONSORED: 'students_sponsored',
 	ELDERS_CARED_FOR: 'elders_cared_for',
-	FUNDS_RAISED: 'funds_raised',
 	VOLUNTEERS_ACTIVE: 'volunteers_active',
 	CASES_OPEN: 'cases_open'
 } as const;
+
+/**
+ * Money raised — computed and cached like any other metric, reported to staff
+ * on the dashboard, and deliberately **not** in `METRIC`.
+ *
+ * It is not in the vocabulary a page can choose from, so no public counter can
+ * name it: the Foundation's public figures are the people it has helped, not
+ * the money it has taken. Keeping the key here rather than deleting it leaves
+ * the dashboard's finance figures, the `impact.override_funds_raised` setting
+ * and the cache rows exactly as they were, and leaves `isMoneyMetric` able to
+ * recognise a counter stored before migration 0026 removed them.
+ */
+export const FUNDS_RAISED = 'funds_raised';
 
 export type MetricKey = (typeof METRIC)[keyof typeof METRIC];
 
@@ -30,7 +46,6 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
 	[METRIC.FAMILIES_SUPPORTED]: 'Families supported',
 	[METRIC.STUDENTS_SPONSORED]: 'Students sponsored',
 	[METRIC.ELDERS_CARED_FOR]: 'Elders cared for',
-	[METRIC.FUNDS_RAISED]: 'Funds raised',
 	[METRIC.VOLUNTEERS_ACTIVE]: 'Active volunteers',
 	[METRIC.CASES_OPEN]: 'Open cases'
 };
@@ -38,10 +53,12 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
 /**
  * The metrics held in minor units and shown as currency.
  *
- * Exactly one today. `impact.ts` already knows it — it writes
- * `currency: 'ETB'` on this row and null on every other.
+ * Exactly one, and it is no longer a public counter — but a block stored
+ * before it was withdrawn still names it, and rendering santim through the
+ * plain compact formatter is the hundredfold overstatement described above.
+ * The renderer therefore keeps asking, and this keeps answering.
  */
-const MONEY_METRICS = new Set<string>([METRIC.FUNDS_RAISED]);
+const MONEY_METRICS = new Set<string>([FUNDS_RAISED]);
 
 export const isMoneyMetric = (metric: string | null | undefined): boolean =>
 	MONEY_METRICS.has(String(metric ?? ''));

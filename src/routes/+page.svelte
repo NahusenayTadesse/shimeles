@@ -13,7 +13,6 @@
 	import {
 		FolderOpen,
 		GraduationCap,
-		HandCoins,
 		HandHeart,
 		HeartHandshake,
 		Sparkles,
@@ -37,22 +36,20 @@
 	 *
 	 * The figures and their labels come from the page's own counters block, so
 	 * a staff member renaming "Families supported" or dropping a counter changes
-	 * the hero too. With no counters block on the page it falls back to the four
-	 * headline metrics under their standard names. A figure that is still zero
-	 * is left out: the opening screen says what has been done, not what has not
-	 * started yet.
+	 * the hero too. With no counters block on the page it falls back to the
+	 * three headline metrics under their standard names — people helped, one
+	 * count per pillar, which is what the Foundation publishes about itself. A
+	 * figure that is still zero is left out: the opening screen says what has
+	 * been done, not what has not started yet.
 	 */
 	const accomplishments = $derived.by(() => {
 		const block = data.page.blocks.find((candidate) => candidate.type === 'stat_counter');
 		type Stat = { metric?: string; label?: string; suffix?: string };
 		const stats: Stat[] = Array.isArray(block?.content.stats)
 			? (block.content.stats as Stat[])
-			: [
-					METRIC.FAMILIES_SUPPORTED,
-					METRIC.STUDENTS_SPONSORED,
-					METRIC.ELDERS_CARED_FOR,
-					METRIC.FUNDS_RAISED
-				].map((metric) => ({ metric, label: METRIC_LABELS[metric as MetricKey] }));
+			: [METRIC.FAMILIES_SUPPORTED, METRIC.STUDENTS_SPONSORED, METRIC.ELDERS_CARED_FOR].map(
+					(metric) => ({ metric, label: METRIC_LABELS[metric as MetricKey] })
+				);
 
 		return stats.flatMap((stat) => {
 			const key = String(stat.metric ?? '');
@@ -60,8 +57,12 @@
 
 			const icon = metricIcons[key] ?? Sparkles;
 
+			// No counter names a money metric any more — `funds_raised` was
+			// withdrawn from `METRIC` — but a block stored before migration 0026
+			// still can, and santim through the plain formatter is a hundredfold
+			// overstatement. One line per currency: birr and dollars are never
+			// added together.
 			if (isMoneyMetric(key)) {
-				// One line per currency: birr and dollars are never added together.
 				const lines = (data.moneyTotals?.[key] ?? [])
 					.filter((total) => total.amount > 0)
 					.map((total) => ({
@@ -92,7 +93,6 @@
 		[METRIC.FAMILIES_SUPPORTED]: Users,
 		[METRIC.STUDENTS_SPONSORED]: GraduationCap,
 		[METRIC.ELDERS_CARED_FOR]: HandHeart,
-		[METRIC.FUNDS_RAISED]: HandCoins,
 		[METRIC.VOLUNTEERS_ACTIVE]: HeartHandshake,
 		[METRIC.CASES_OPEN]: FolderOpen
 	};
