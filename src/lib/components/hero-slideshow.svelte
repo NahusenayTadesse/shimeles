@@ -6,9 +6,10 @@
 	/**
 	 * The homepage hero's photographs — the dashboard-managed `hero` photo set,
 	 * one at a time and crossfading inside whatever frame the page gives it (on
-	 * the homepage, the arch). The photographs are not under any text, so they
-	 * are shown as they are: no shade, no tint. With no photos it falls back to
-	 * the single `hero.image` setting; with neither it draws nothing.
+	 * the homepage, the full-bleed hero). The photographs are not under any
+	 * text, so they are shown as they are: no shade, no tint. With no photos it
+	 * falls back to the single `hero.image` setting; with neither it draws
+	 * nothing.
 	 *
 	 * Motion is decoration here, so it stops for `prefers-reduced-motion`, for a
 	 * hidden tab, and while the visitor is choosing a slide with the dots.

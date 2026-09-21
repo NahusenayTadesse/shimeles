@@ -541,7 +541,7 @@
 				<!-- `{ name, photo, body, linkHref, linkLabel }` — a tribute, set apart
 				     from the surrounding prose rather than folded into it. -->
 				<!-- Set like a letter: centred, in the serif, on a slightly deeper paper,
-     with his portrait in the arch. A tribute to a life, not a notice of a
+     with his portrait in its frame. A tribute to a life, not a notice of a
      death, so there is no black here. -->
 				<div class="bleed sun-soft py-20 md:py-32">
 					{@render heading(block, 'wrap max-w-none')}
@@ -550,7 +550,7 @@
 					>
 						{#if str(block, 'photo')}
 							<div
-								class="arch-portrait mx-auto w-[min(70%,22rem)] ring-1 ring-(--gold) ring-offset-8 ring-offset-(--accent) md:w-full md:max-w-[34rem]"
+								class="photo-frame-portrait mx-auto w-[min(70%,22rem)] ring-1 ring-(--gold) ring-offset-8 ring-offset-(--accent) md:w-full md:max-w-[34rem]"
 							>
 								<img
 									src={assetUrl(str(block, 'photo'))}

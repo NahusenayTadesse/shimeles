@@ -12,7 +12,7 @@
 	 * spends its boldness.
 	 *
 	 * Forest green, like the homepage, so every page opens on the same ground.
-	 * With an image, the photograph stands in the arch beside the title; without
+	 * With an image, the photograph stands in its frame beside the title; without
 	 * one it is the title alone.
 	 */
 	let {
@@ -90,11 +90,11 @@
 				class="relative w-[62%] max-w-[20rem] md:w-[min(100%,calc((100svh-22rem)*0.8))] md:max-w-[30rem] md:justify-self-end"
 			>
 				<div
-					class="arch-line pointer-events-none absolute inset-x-0 top-0 -z-10 translate-x-4 translate-y-4"
+					class="photo-frame-line pointer-events-none absolute inset-x-0 top-0 -z-10 translate-x-4 translate-y-4"
 					aria-hidden="true"
 				></div>
 				<!-- `fetchpriority="high"` and not lazy: above the fold on every page
-				     that uses this. The intrinsic size matches the 4:5 arch, which is
+				     that uses this. The intrinsic size matches the 4:5 frame, which is
 				     what keeps the layout from shifting when it lands. -->
 				<img
 					src={assetUrl(image)}
@@ -105,7 +105,7 @@
 					height="800"
 					fetchpriority="high"
 					decoding="async"
-					class="arch w-full object-cover"
+					class="photo-frame w-full object-cover"
 				/>
 			</div>
 		{/if}

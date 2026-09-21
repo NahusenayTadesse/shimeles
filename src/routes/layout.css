@@ -447,13 +447,13 @@
    look. The brand is two colours: the Foundation's forest green and its gold.
    The green is the ground the site stands on — header, hero, footer and one
    band mid-page. The gold is light, used sparingly: the sun behind the hero,
-   the main button, the outline of an arch. Reading happens on a pale,
+   the main button, the outline behind a photograph. Reading happens on a pale,
    green-tinted paper rather than the cream every warm site reaches for.
 
-   The one recurring shape is the arch — the window and doorway of Lalibela
-   and Axum, and the "door that stays open" the Foundation's own values
-   describe. It is used three times and no more: the homepage photographs, the
-   photograph on a page header, and the portrait in the memoriam.
+   The one recurring shape is the softly rounded photo frame, always in the
+   same tall proportion. It is used twice and no more: the photograph on a page
+   header, where a gold outline of the same shape sits offset behind it, and
+   the portrait in the memoriam.
 =========================================================================== */
 
 .site-shell {
@@ -753,8 +753,8 @@
 	--gold-deep: #5a4410;
 	color: var(--forest);
 }
-.site-shell .on-sun .arch-line,
-.site-shell .sun-soft .arch-line {
+.site-shell .on-sun .photo-frame-line,
+.site-shell .sun-soft .photo-frame-line {
 	border-color: rgb(14 59 46 / 0.4);
 }
 .site-shell .on-sun :focus-visible,
@@ -846,29 +846,31 @@
 }
 
 /* ---------------------------------------------------------------------------
-   The arch
+   The photo frame
 
-   A rounded top that is a true semicircle for the box's own proportions: the
-   horizontal radius is half the width, and the vertical one is set to match
-   that same length on a 4:5 (or 3:4) box.
+   A tall box with one generous radius on every corner — the same softness at
+   the top as at the foot, so the shape reads as a frame and not as a motif.
+   The radius is a fixed length rather than a percentage: it must look the same
+   on the 4:5 page header and the 3:4 portrait, which a percentage would bend
+   to each box's own proportions.
 --------------------------------------------------------------------------- */
 
-.arch {
+.photo-frame {
 	aspect-ratio: 4 / 5;
-	border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
+	border-radius: 1.5rem;
 	overflow: hidden;
 }
-.arch-portrait {
+.photo-frame-portrait {
 	aspect-ratio: 3 / 4;
-	border-radius: 50% 50% 0.75rem 0.75rem / 37.5% 37.5% 0.75rem 0.75rem;
+	border-radius: 1.5rem;
 	overflow: hidden;
 }
 
-/* The same outline, offset behind a photo — a doorway drawn in gold. */
-.arch-line {
+/* The same outline, offset behind a photo — a second frame drawn in gold. */
+.photo-frame-line {
 	aspect-ratio: 4 / 5;
 	border: 1.5px solid var(--gold);
-	border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
+	border-radius: 1.5rem;
 }
 
 /* ---------------------------------------------------------------------------
