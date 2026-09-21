@@ -4,7 +4,6 @@
 	import { formatMoney } from '$lib/money';
 	import PageHero from '$lib/content/PageHero.svelte';
 	import Seo from '$lib/components/Seo.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -71,16 +70,15 @@
 	imageAlt="The Shimeles Abera Foundation at work"
 />
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-16 md:gap-28 md:py-24">
+<div class="wrap flex flex-col gap-20 py-16 md:gap-28 md:py-24">
 	<!-- Our Story -->
-	<section use:reveal class="mx-auto flex max-w-3xl flex-col gap-6">
+	<section class="mx-auto flex max-w-3xl flex-col gap-6">
 		<div class="flex items-center gap-3">
 			<div class="flex size-11 items-center justify-center rounded-full bg-accent text-primary">
 				<BookOpen class="size-5" />
 			</div>
 			<div class="flex flex-col gap-1">
 				<span class="eyebrow">Our Story</span>
-				<span class="h-[3px] w-10 rounded-full bg-olive"></span>
 			</div>
 		</div>
 		{#if content?.storyBody}
@@ -111,7 +109,6 @@
 				</div>
 				<div class="flex flex-col gap-1">
 					<span class="eyebrow">Watch</span>
-					<span class="h-[3px] w-10 rounded-full bg-olive"></span>
 				</div>
 			</div>
 
@@ -209,7 +206,6 @@
 	<div class="mb-10 flex flex-col items-center gap-2 text-center">
 		<span class="eyebrow">{showAmharic ? 'መታሰቢያ' : 'In Memoriam'}</span>
 		<h2 class="text-3xl md:text-4xl" lang={showAmharic ? 'am' : 'en'}>{memoriamName}</h2>
-		<span class="h-[3px] w-14 rounded-full bg-olive"></span>
 
 		{#if hasAmharic}
 			<div
@@ -243,7 +239,6 @@
 			class="pointer-events-none absolute -top-24 left-1/2 size-96 -translate-x-1/2 rounded-full bg-olive/10 blur-3xl"
 			aria-hidden="true"
 		></div>
-		<TrimBand thin class="relative" />
 
 		<div
 			class="relative grid gap-10 px-4 py-14 sm:px-8 md:grid-cols-[1.35fr_1fr] md:items-stretch md:gap-0 lg:px-16"
@@ -309,17 +304,15 @@
 				{/if}
 			</div>
 		</div>
-		<TrimBand thin class="relative" />
 	</div>
 </section>
 
 <!-- What we're building next -->
 {#if data.initiatives.length}
-	<div class="mx-auto flex w-full max-w-6xl flex-col px-4 pb-16 md:pb-24">
+	<div class="wrap flex flex-col pb-16 md:pb-24">
 		<section class="flex flex-col gap-8">
 			<div class="flex flex-col gap-2">
 				<h2 class="text-3xl md:text-4xl">What we are building next</h2>
-				<span class="h-[3px] w-14 rounded-full bg-olive"></span>
 			</div>
 			<div class="grid gap-6 md:grid-cols-3">
 				{#each data.initiatives as initiative, index (initiative.id)}

@@ -6,10 +6,11 @@
 	import BlogCard, { accentClass, formatPostDate } from '$lib/content/BlogCard.svelte';
 	import { reveal } from '$lib/actions/reveal';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { cn } from '$lib/utils';
-	import { ArrowRight, Clock, Search, X } from '@lucide/svelte';
+	import { Clock, Search, X } from '@lucide/svelte';
 
 	let { data } = $props();
 
@@ -81,9 +82,9 @@
 	description="Programme updates, field notes, and stories from the families and volunteers we work alongside."
 />
 
-<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+<div class="wrap py-16 md:py-24">
 	<!-- Filters -->
-	<div use:reveal class="flex flex-col gap-4">
+	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center gap-2">
 			<button
 				type="button"
@@ -192,10 +193,9 @@
 						{featured.readMinutes} min read
 					</span>
 				</div>
-				<span class="inline-flex w-fit items-center gap-2 font-medium text-primary">
-					Read the story <ArrowRight
-						class="size-4 transition-transform group-hover:translate-x-1"
-					/>
+				<span class="link-quiet w-fit font-medium text-primary">
+					Read the story
+					<LinkCue />
 				</span>
 			</div>
 		</a>
@@ -209,7 +209,7 @@
 			{/each}
 		</div>
 	{:else if !data.featured}
-		<div use:reveal class="mt-10 rounded-[2rem] border border-dashed p-12 text-center">
+		<div class="mt-10 rounded-[2rem] border border-dashed p-12 text-center">
 			<p class="text-lg font-medium">Nothing here yet.</p>
 			<p class="mt-2 text-muted-foreground">
 				{#if hasFilters}

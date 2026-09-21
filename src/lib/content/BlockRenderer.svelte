@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { reveal, stagger } from '$lib/actions/reveal';
+	import { reveal } from '$lib/actions/reveal';
 	import { countUp } from '$lib/actions/count-up';
 	import { assetUrl, imageSrcset } from '$lib/assets';
 	import { formatCompact, formatMoney, type MoneyTotal } from '$lib/money';
 	import { isMoneyMetric } from '$lib/metrics';
 	import DynamicIcon from '$lib/components/dynamic-icon.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { ArrowRight, Copy, Quote } from '@lucide/svelte';
+	import { Copy } from '@lucide/svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import PaymentNotice from '$lib/components/payment-notice.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
@@ -27,6 +27,7 @@
 	import ChartCanvas from '$lib/components/chart.svelte';
 	import type { ChartSeries } from '$lib/charts/types';
 	import type { SuperValidated } from 'sveltekit-superforms';
+	import type { Snippet } from 'svelte';
 
 	/**
 	 * The generic block renderer.
@@ -54,6 +55,7 @@
 		labels = {},
 		initiativeNotice = '',
 		paymentNotice = { en: '', am: '' },
+		ledeAside,
 		class: className = ''
 	}: {
 		blocks: RenderBlock[];
@@ -98,6 +100,13 @@
 		 * Passed in for the same reason as everything else here.
 		 */
 		paymentNotice?: { en: string; am: string };
+		/**
+		 * Drawn beside a page's opening paragraph, which otherwise leaves half
+		 * the width empty. A snippet from the route rather than block content,
+		 * because what belongs there is the page's own — the homepage puts the
+		 * Foundation's tagline in it — and every other page keeps its lede alone.
+		 */
+		ledeAside?: Snippet;
 		class?: string;
 	} = $props();
 
@@ -107,15 +116,6 @@
 
 	const list = <T,>(block: RenderBlock, key: string): T[] =>
 		Array.isArray(block.content[key]) ? (block.content[key] as T[]) : [];
-
-	/** Accent token → the Tailwind classes the pillar cards use. */
-	const accent = (color: string) =>
-		({
-			clay: 'text-clay border-clay/30 bg-clay/8',
-			olive: 'text-olive-bright border-olive/40 bg-olive/10',
-			plum: 'text-plum border-plum/30 bg-plum/8',
-			sky: 'text-sky border-sky/30 bg-sky/8'
-		})[color] ?? 'text-primary border-primary/30 bg-primary/8';
 
 	const copy = async (value: string) => {
 		await navigator.clipboard.writeText(value);
@@ -131,51 +131,65 @@
 	 * document that opens with a label — on the privacy policy it turned
 	 * "Website:" into a giant W sitting apart from "ebsite:".
 	 */
+	/**
+	 * Blocks drawn as edge-to-edge bands. Their heading goes inside the band,
+	 * on its colour, rather than hanging above it on the paper — a heading
+	 * outside a full-width band reads as a label for the gap.
+	 */
+	const bands = new Set(['stat_counter', 'cta_button', 'memoriam']);
+
 	const isLede = (block: RenderBlock, index: number) =>
 		block.type === 'rich_text' && index === 0 && block.content.lede !== false;
 </script>
 
-<div class={cn('flex flex-col gap-20 md:gap-28', className)}>
+{#snippet heading(block: RenderBlock, className = '')}
+	{#if block.heading}
+		<h2 class={cn('mb-12 max-w-3xl text-[clamp(2.1rem,1.2rem+2.6vw,4rem)]', className)}>
+			{block.heading}
+		</h2>
+	{/if}
+{/snippet}
+
+<div class={cn('flex flex-col gap-24 md:gap-40', className)}>
 	{#each blocks as block, index (block.id)}
-		<section
-			id={block.type === 'memoriam' ? 'in-memoriam' : undefined}
-			use:reveal={{ delay: stagger(index, 60, 3) }}
-		>
-			{#if block.heading}
-				<div class="mb-8 flex flex-col gap-2">
-					<h2 class="text-3xl md:text-4xl">{block.heading}</h2>
-					<span class="h-[3px] w-14 rounded-full bg-olive"></span>
-				</div>
+		<section id={block.type === 'memoriam' ? 'in-memoriam' : undefined}>
+			{#if !bands.has(block.type)}
+				{@render heading(block)}
 			{/if}
 
 			{#if block.type === 'rich_text'}
 				<!-- `{ body }` — HTML authored in the dashboard editor. -->
-				<div class={cn('prose-block max-w-prose', isLede(block, index) && 'prose-lede')}>
-					{@html str(block, 'body')}
-				</div>
+				{#if isLede(block, index) && ledeAside}
+					<div class="grid items-center gap-10 md:grid-cols-[minmax(0,1.5fr)_1fr] lg:gap-24">
+						<div class="prose-block prose-lede max-w-[48ch]">
+							{@html str(block, 'body')}
+						</div>
+						{@render ledeAside()}
+					</div>
+				{:else}
+					<div class={cn('prose-block max-w-prose', isLede(block, index) && 'prose-lede')}>
+						{@html str(block, 'body')}
+					</div>
+				{/if}
 			{:else if block.type === 'image'}
 				<!-- `{ src, alt, caption }` -->
-				<figure class="shadow-warm relative mx-auto flex max-w-5xl overflow-hidden rounded-[2rem]">
+				<!-- A split spread, edge to edge: the photograph fills one half of the
+     window and the sentence has the other half to itself, on paper rather
+     than through a dark gradient over the picture. -->
+				<figure class="bleed sun-soft grid md:min-h-[80svh] md:grid-cols-2">
 					<img
 						src={assetUrl(str(block, 'src'))}
 						srcset={imageSrcset(str(block, 'src'))}
-						sizes="(min-width: 1024px) 1024px, 100vw"
+						sizes="(min-width: 768px) 50vw, 100vw"
 						alt={str(block, 'alt')}
 						loading="lazy"
-						class="h-[22rem] w-full object-cover md:h-[28rem]"
+						class="aspect-[4/3] size-full object-cover md:aspect-auto"
 					/>
 					{#if str(block, 'caption')}
-						<div
-							class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"
-							aria-hidden="true"
-						></div>
-						<figcaption class="absolute inset-x-0 bottom-0 flex items-end gap-4 p-8 md:p-12">
-							<Quote class="size-9 shrink-0 text-olive-bright/90 md:size-11" fill="currentColor" />
-							<p
-								class="font-heading text-xl leading-snug text-white italic drop-shadow-sm md:text-2xl"
-							>
-								{str(block, 'caption')}
-							</p>
+						<figcaption
+							class="flex items-center px-[clamp(1.5rem,5vw,7rem)] py-14 font-serif text-[clamp(1.8rem,1rem+2.2vw,3.4rem)] leading-[1.15] font-bold text-balance"
+						>
+							{str(block, 'caption')}
 						</figcaption>
 					{/if}
 				</figure>
@@ -184,15 +198,19 @@
 				     `impact_metrics_cache`; the value comes from there, or from an
 				     `impact.override_*` setting. Whether a counter is money is a
 				     property of the metric, not of the block. -->
-				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
+				{@const stats = list<Record<string, unknown>>(block, 'stats')}
+				<div class="on-sun sun-surface bleed py-16 md:py-28">
+					{@render heading(block, 'wrap max-w-none text-(--forest)')}
+					<!-- Three counters sit in three columns rather than three quarters of
+					     a row of four: the number of counters is a staff decision, so the
+					     row follows it instead of leaving a hole where money used to be. -->
 					<div
-						class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-olive/10 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<div
-						class="relative grid divide-y divide-olive/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
+						class={cn(
+							'wrap grid gap-x-12 gap-y-12 sm:grid-cols-2',
+							stats.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+						)}
 					>
-						{#each list<Record<string, unknown>>(block, 'stats') as stat, statIndex (statIndex)}
+						{#each stats as stat, statIndex (statIndex)}
 							{@const key = String(stat.metric ?? '')}
 							<!-- Derived from the metric, never read from the block. A stat block
 							     saved without `is_money` used to render funds raised — stored in
@@ -205,13 +223,10 @@
 							     `moneyTotals` is empty until the cache is first warmed, so a
 							     cold homepage still shows a zero rather than a blank panel. -->
 							{@const totals = money ? (moneyTotals[key] ?? [{ currency: 'ETB', amount: 0 }]) : []}
-							<div
-								use:reveal={{ delay: stagger(statIndex, 80, 4), scale: 0.92 }}
-								class="group flex flex-col items-center gap-1.5 px-6 py-10 text-center"
-							>
+							<div class="flex flex-col gap-3 border-t border-(--forest)/25 pt-6">
 								{#if money}
 									<div
-										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+										class="font-serif text-[clamp(1.5rem,1rem+1.2vw,2.2rem)] leading-tight font-bold text-(--forest) tabular-nums"
 									>
 										{#each totals as total (total.currency)}
 											<p
@@ -231,12 +246,12 @@
 											value,
 											format: (n) => `${formatCompact(n)}${stat.suffix ?? ''}`
 										}}
-										class="font-heading text-2xl font-semibold text-olive tabular-nums transition-transform duration-300 group-hover:scale-110"
+										class="font-serif text-[clamp(3rem,1.8rem+3.8vw,5.75rem)] leading-none font-bold text-(--forest) tabular-nums"
 									>
 										{`${formatCompact(value)}${stat.suffix ?? ''}`}
 									</p>
 								{/if}
-								<p class="text-sm text-[oklch(0.94_0.012_80)]/65">
+								<p class="text-[clamp(1.1rem,0.9rem+0.5vw,1.45rem)]">
 									{stat.label ?? key}
 								</p>
 							</div>
@@ -261,99 +276,86 @@
 						member typed into "heading above the block", and a second one drew
 						the same words twice.
 					-->
-					<div use:reveal class="max-w-2xl">
+					<div use:reveal class="max-w-5xl">
 						{#if block.content.caption}
 							<p class="text-muted-foreground">{block.content.caption}</p>
 						{/if}
 						<div class="mt-6">
-							<ChartCanvas {series} kind={series.kinds[0]} height={320} />
+							<ChartCanvas {series} kind={series.kinds[0]} height={460} />
 						</div>
 					</div>
 				{/if}
 			{:else if block.type === 'quote'}
 				<!-- `{ text, attribution }` -->
-				<div class="mx-auto flex max-w-2xl justify-center">
-					<div
-						class="tilt-left shadow-warm relative rounded-[2rem] bg-card px-8 py-12 text-center sm:px-14"
-					>
-						<Quote
-							class="absolute top-4 left-6 size-16 text-terracotta/15 sm:size-20"
-							fill="currentColor"
-						/>
-						<p class="relative font-heading text-2xl leading-snug italic md:text-3xl">
-							{str(block, 'text')}
-						</p>
-						{#if str(block, 'attribution')}
-							<footer
-								class="relative mt-5 flex items-center justify-center gap-3 text-sm text-muted-foreground"
-							>
-								<span class="h-px w-8 bg-olive/50"></span>
-								{str(block, 'attribution')}
-								<span class="h-px w-8 bg-olive/50"></span>
-							</footer>
-						{/if}
-					</div>
-				</div>
+				<blockquote class="max-w-3xl border-l-2 border-(--gold) pl-6 md:pl-8">
+					<p class="font-serif text-2xl leading-snug md:text-3xl">{str(block, 'text')}</p>
+					{#if str(block, 'attribution')}
+						<footer class="mt-4 font-sans text-base text-muted-foreground">
+							{str(block, 'attribution')}
+						</footer>
+					{/if}
+				</blockquote>
 			{:else if block.type === 'cta_button'}
 				<!-- `{ label, url, variant, note }` -->
-				<div
-					class="shadow-warm relative flex flex-col items-start gap-5 overflow-hidden rounded-[2rem] bg-clay-deep p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10"
-				>
+				<!-- The one forest band in the middle of a page: the sentence, and the gold button. -->
+				<div class="on-forest forest-glow bleed py-20 text-[#fcefc9] md:py-32">
+					{@render heading(block, 'wrap max-w-none')}
 					<div
-						class="pointer-events-none absolute -bottom-12 -left-10 size-48 rounded-full bg-olive/10 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<p class="relative max-w-md font-heading text-xl text-[oklch(0.94_0.012_80)] md:text-2xl">
-						{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
-					</p>
-					<a
-						href={str(block, 'url') || '#'}
-						class={cn(
-							buttonVariants({ size: 'lg' }),
-							'relative shrink-0 bg-olive text-clay-deep hover:bg-olive-bright'
-						)}
+						class="wrap flex flex-col items-start gap-10 md:flex-row md:items-center md:justify-between"
 					>
-						{str(block, 'label') || 'Learn more'}
-						<ArrowRight class="size-4" />
-					</a>
+						<p
+							class="max-w-[22ch] font-serif text-[clamp(2.1rem,1rem+3.2vw,4.5rem)] leading-[1.05] font-bold"
+						>
+							{str(block, 'note') || 'Every gift reaches a family this month, not a fund.'}
+						</p>
+						<a
+							href={str(block, 'url') || '#'}
+							class={cn(
+								buttonVariants({ size: 'lg' }),
+								'btn-gold h-16 shrink-0 px-11 text-[1.3rem]'
+							)}
+						>
+							<LinkCue kind={str(block, 'url').startsWith('/donate') ? 'give' : 'next'} />
+							{str(block, 'label') || 'Learn more'}
+						</a>
+					</div>
 				</div>
 			{:else if block.type === 'pillar_grid'}
 				<!-- `{ show_apply_links }` — the pillars themselves come from the
 				     `pillars` table, never from this block's JSON. -->
-				<div class="grid items-stretch gap-6 md:grid-cols-2">
-					{#each pillars as pillar, pillarIndex (pillar.id)}
-						<div
-							use:reveal={{ delay: stagger(pillarIndex, 80, 4), scale: 0.95, blur: 6 }}
-							class="flex"
-						>
-							<Card.Root class="card-lift group flex w-full flex-col gap-3 overflow-hidden p-0">
-								{#if pillar.image}
-									<div class="overflow-hidden">
-										<img
-											src={assetUrl(pillar.image)}
-											srcset={imageSrcset(pillar.image)}
-											sizes="(min-width: 768px) 50vw, 100vw"
-											alt={pillar.name}
-											loading="lazy"
-											class="aspect-video w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
-										/>
-									</div>
-								{/if}
-								<div class="flex flex-1 flex-col gap-3 p-7">
-									<div
-										class={cn(
-											'w-fit rounded-2xl border p-3 transition-transform duration-300 group-hover:scale-110',
-											accent(pillar.color)
-										)}
-									>
-										<DynamicIcon name={pillar.icon} class="size-6" />
-									</div>
-									<h3 class="font-heading text-xl font-semibold">{pillar.name}</h3>
-									{#if pillar.summary}
-										<p class="text-muted-foreground">{pillar.summary}</p>
-									{/if}
-									<div class="mt-auto flex flex-wrap gap-2 pt-3">
-										<!-- The programme's name is in the link, not only in an
+				<!-- No card around each programme: a photograph, its name and a line
+     about it, the way a printed report would set them. -->
+				<div class="grid gap-x-[clamp(1.5rem,2.5vw,3.5rem)] gap-y-16 md:grid-cols-2 xl:grid-cols-4">
+					{#each pillars as pillar (pillar.id)}
+						<article class="flex flex-col gap-4">
+							{#if pillar.image}
+								<!-- The photograph opens the programme too. Out of the tab order and
+								     hidden from screen readers, because the name just below is the
+								     same link: one programme, one stop, not two identical anchors. -->
+								<a
+									href={`/programs/${pillar.slug}`}
+									tabindex="-1"
+									aria-hidden="true"
+									class="group block overflow-hidden rounded-[1.25rem]"
+								>
+									<img
+										src={assetUrl(pillar.image)}
+										srcset={imageSrcset(pillar.image)}
+										sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+										alt=""
+										loading="lazy"
+										class="aspect-[4/5] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] motion-reduce:transition-none"
+									/>
+								</a>
+							{/if}
+							<h3 class="mt-2 text-[clamp(1.6rem,1.1rem+1vw,2.2rem)]">
+								<a href={`/programs/${pillar.slug}`} class="link-title">{pillar.name}</a>
+							</h3>
+							{#if pillar.summary}
+								<p class="max-w-prose text-muted-foreground">{pillar.summary}</p>
+							{/if}
+							<div class="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+								<!-- The programme's name is in the link, not only in an
 										     `aria-label`: four cards side by side each saying "Learn
 										     more" are four identical anchors to four different pages,
 										     which is the least useful anchor text on the site for a
@@ -362,46 +364,30 @@
 										     above it is already headed with the name, and repeating it
 										     in the button would read as clutter to someone who can see
 										     both. -->
-										<a
-											href={`/programs/${pillar.slug}`}
-											class={buttonVariants({ variant: 'outline', size: 'sm' })}
-										>
-											Learn more<span class="sr-only"> about {pillar.name}</span>
-										</a>
-										{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
-											<a
-												href={`/programs/${pillar.slug}#apply`}
-												class={buttonVariants({ variant: 'ghost', size: 'sm' })}
-											>
-												Apply for support<span class="sr-only"> from {pillar.name}</span>
-											</a>
-										{/if}
-									</div>
-								</div>
-							</Card.Root>
-						</div>
+								<a href={`/programs/${pillar.slug}`} class="link-quiet font-medium">
+									Learn more<span class="sr-only"> about {pillar.name}</span>
+									<LinkCue />
+								</a>
+								{#if block.content.show_apply_links !== false && pillar.hasPublicApplication}
+									<a href={`/programs/${pillar.slug}#apply`} class="link-quiet font-medium">
+										Apply for support<span class="sr-only"> from {pillar.name}</span>
+										<LinkCue />
+									</a>
+								{/if}
+							</div>
+						</article>
 					{/each}
 				</div>
 			{:else if block.type === 'values_list'}
 				<!-- `{ values: [{ icon, title, body }] }` -->
-				<div class="grid gap-8 md:grid-cols-3">
+				<div class="grid gap-12 md:grid-cols-3 md:gap-[clamp(2rem,4vw,6rem)]">
 					{#each list<Record<string, unknown>>(block, 'values') as value, valueIndex (valueIndex)}
-						<div
-							use:reveal={{ delay: stagger(valueIndex, 90, 3) }}
-							class={cn(
-								'flex flex-col gap-3',
-								valueIndex % 2 === 0 ? 'sm:tilt-left' : 'sm:tilt-right'
-							)}
-						>
-							<div
-								class="group flex size-16 items-center justify-center rounded-full bg-clay-deep text-olive ring-4 ring-olive/15 transition-all duration-300 ease-out hover:scale-110 hover:rotate-6 hover:ring-olive/30"
-							>
-								<DynamicIcon
-									name={String(value.icon ?? '')}
-									class="size-7 transition-transform duration-300 ease-out group-hover:scale-110"
-								/>
-							</div>
-							<h3 class="font-heading text-lg font-semibold">
+						<div class="flex flex-col gap-3">
+							<DynamicIcon
+								name={String(value.icon ?? '')}
+								class="size-10 text-(--gold-deep) md:size-14 [&_*]:[stroke-width:1.25]"
+							/>
+							<h3 class="text-[clamp(1.7rem,1.1rem+1.2vw,2.5rem)]">
 								{value.title}
 							</h3>
 							<p class="text-muted-foreground">
@@ -413,9 +399,9 @@
 			{:else if block.type === 'initiative_grid'}
 				<!-- Rows come from `future_initiatives`; the block carries no copy. -->
 				<div class="grid gap-6 md:grid-cols-3">
-					{#each initiatives as initiative, initiativeIndex (initiative.id)}
-						<div use:reveal={{ delay: stagger(initiativeIndex, 80, 3) }} class="flex">
-							<Card.Root class="card-lift flex w-full flex-col gap-3 p-0">
+					{#each initiatives as initiative (initiative.id)}
+						<div class="flex">
+							<Card.Root class="flex w-full flex-col gap-3 overflow-hidden p-0">
 								{#if initiative.image}
 									<img
 										src={assetUrl(initiative.image)}
@@ -485,7 +471,6 @@
 						>
 							<a href={`/forms/${slug}`} class={cn(buttonVariants({ size: 'lg' }), 'shrink-0')}>
 								Open the form
-								<ArrowRight class="size-4" />
 							</a>
 						</div>
 					{/if}
@@ -496,8 +481,7 @@
 				     is a copy button rather than text to be retyped. -->
 				<div class="grid gap-5 md:grid-cols-2">
 					{#each payments as account (account.accountId)}
-						<Card.Root class="flex flex-col gap-0 p-0">
-							<TrimBand thin />
+						<Card.Root class="flex flex-col gap-0 border-t-2 border-t-(--gold) p-0">
 							<div class="flex flex-col gap-3 p-6">
 								<div class="flex items-center justify-between gap-2">
 									<h3 class="font-heading text-lg font-semibold">{account.methodName}</h3>
@@ -565,50 +549,50 @@
 			{:else if block.type === 'memoriam'}
 				<!-- `{ name, photo, body, linkHref, linkLabel }` — a tribute, set apart
 				     from the surrounding prose rather than folded into it. -->
-				<div class="shadow-warm relative overflow-hidden rounded-[2rem] bg-clay-deep">
+				<!-- Set like a letter: centred, in the serif, on a slightly deeper paper,
+     with his portrait in its frame. A tribute to a life, not a notice of a
+     death, so there is no black here. -->
+				<div class="bleed sun-soft py-20 md:py-32">
+					{@render heading(block, 'wrap max-w-none')}
 					<div
-						class="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-olive/10 blur-3xl"
-						aria-hidden="true"
-					></div>
-					<TrimBand thin class="relative" />
-					<div
-						class="relative mx-auto flex max-w-2xl flex-col items-center gap-5 px-6 py-14 text-center sm:px-12"
+						class="wrap grid items-center gap-12 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-[clamp(3rem,7vw,10rem)]"
 					>
 						{#if str(block, 'photo')}
-							<img
-								src={assetUrl(str(block, 'photo'))}
-								srcset={imageSrcset(str(block, 'photo'))}
-								sizes="112px"
-								alt={str(block, 'name')}
-								class="size-28 rounded-full object-cover ring-4 ring-olive/25"
-							/>
-						{/if}
-						{#if str(block, 'name')}
-							<h3
-								class="font-heading text-2xl font-semibold text-[oklch(0.97_0.01_80)] md:text-3xl"
+							<div
+								class="photo-frame-portrait mx-auto w-[min(70%,22rem)] ring-1 ring-(--gold) ring-offset-8 ring-offset-(--accent) md:w-full md:max-w-[34rem]"
 							>
-								{str(block, 'name')}
-							</h3>
+								<img
+									src={assetUrl(str(block, 'photo'))}
+									srcset={imageSrcset(str(block, 'photo'))}
+									sizes="(min-width: 768px) 34rem, 70vw"
+									alt={str(block, 'name')}
+									loading="lazy"
+									class="size-full object-cover"
+								/>
+							</div>
 						{/if}
-						<span class="h-px w-16 bg-olive/40"></span>
-						<div
-							class="prose-block prose-invert text-left text-[oklch(0.97_0.01_80)]/80 sm:text-center"
-						>
-							{@html str(block, 'body')}
+						<div class="flex flex-col items-start gap-7">
+							{#if str(block, 'name')}
+								<h3 class="text-[clamp(2.2rem,1.1rem+2.8vw,3.75rem)]">
+									{str(block, 'name')}
+								</h3>
+							{/if}
+							<div
+								class="prose-block max-w-[46ch] font-serif text-[clamp(1.2rem,0.9rem+0.8vw,1.7rem)] leading-relaxed text-foreground/85 [&_p]:font-serif"
+							>
+								{@html str(block, 'body')}
+							</div>
+							{#if str(block, 'linkHref')}
+								<a
+									href={str(block, 'linkHref')}
+									class={cn(buttonVariants({ size: 'lg' }), 'mt-2 h-14 px-9 text-[1.15rem]')}
+								>
+									{str(block, 'linkLabel') || 'Read more'}
+									<LinkCue />
+								</a>
+							{/if}
 						</div>
-						{#if str(block, 'linkHref')}
-							<a
-								href={str(block, 'linkHref')}
-								class={cn(
-									buttonVariants({ size: 'lg' }),
-									'mt-2 bg-olive text-clay-deep hover:bg-olive-bright'
-								)}
-							>
-								{str(block, 'linkLabel') || 'Read more'}
-							</a>
-						{/if}
 					</div>
-					<TrimBand thin class="relative" />
 				</div>
 			{/if}
 		</section>

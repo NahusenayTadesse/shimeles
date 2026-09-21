@@ -101,7 +101,7 @@
 	image={data.page?.shareImage}
 />
 
-<div class="mx-auto grid w-full gap-10 px-4 py-14 md:py-20 lg:max-w-6xl lg:grid-cols-[1.3fr_1fr]">
+<div class="wrap grid gap-10 py-14 md:py-20 lg:grid-cols-[1.3fr_1fr]">
 	<div class="order-2 flex min-w-0 flex-col gap-8 lg:order-1">
 		{#if contentBlocks.length}
 			<BlockRenderer

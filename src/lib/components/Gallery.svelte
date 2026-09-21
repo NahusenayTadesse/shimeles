@@ -37,7 +37,7 @@
 <svelte:window {onkeydown} />
 
 {#if images.length}
-	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4 2xl:grid-cols-5">
 		{#each images as image, index (image.id)}
 			<!-- The `alt` on the image inside does not name the *button*: the
 			     caption is often empty, and an empty alt is the correct choice for

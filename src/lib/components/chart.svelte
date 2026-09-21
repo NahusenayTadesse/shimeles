@@ -98,7 +98,7 @@
 			: Number(value).toLocaleString();
 
 	function config() {
-		const theme = readChartTheme();
+		const theme = readChartTheme(canvas);
 		const colors = series.points.map((point, index) => theme.named(point.color, index));
 		const single = theme.palette[0];
 

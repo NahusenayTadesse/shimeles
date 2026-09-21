@@ -46,9 +46,11 @@ export function withAlpha(hex: string, alpha: number): string {
 	return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function token(name: string, fallback: string): string {
+function token(name: string, fallback: string, root?: Element | null): string {
 	if (typeof document === 'undefined') return fallback;
-	const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+	const raw = getComputedStyle(root ?? document.documentElement)
+		.getPropertyValue(name)
+		.trim();
 	return raw ? toHex(raw) : fallback;
 }
 
@@ -65,14 +67,22 @@ export type ChartTheme = {
 	named: (name?: string | null, index?: number) => string;
 };
 
-/** Read once per render; call again when the theme changes. */
-export function readChartTheme(): ChartTheme {
+/**
+ * Read once per render; call again when the theme changes.
+ *
+ * `root` is the element the chart is drawn in. Tokens are resolved from there
+ * rather than from `<html>`, so a chart on the public site takes the public
+ * site's palette (scoped to `.site-shell`) and a chart in the dashboard keeps
+ * the dashboard's.
+ */
+export function readChartTheme(root?: Element | null): ChartTheme {
+	const t = (name: string, fallback: string) => token(name, fallback, root);
 	const palette = [
-		token('--chart-1', '#0e3b2e'),
-		token('--chart-2', '#6b7a3a'),
-		token('--chart-3', '#6b3a5a'),
-		token('--chart-4', '#3a6b7a'),
-		token('--chart-5', '#c98a2b')
+		t('--chart-1', '#0e3b2e'),
+		t('--chart-2', '#6b7a3a'),
+		t('--chart-3', '#6b3a5a'),
+		t('--chart-4', '#3a6b7a'),
+		t('--chart-5', '#c98a2b')
 	];
 
 	/*
@@ -87,17 +97,17 @@ export function readChartTheme(): ChartTheme {
 		olive: palette[1],
 		plum: palette[2],
 		sky: palette[3],
-		amber: token('--warning', palette[4]),
-		rose: token('--destructive', '#b3261e'),
-		green: token('--success', '#2f7d4f'),
-		slate: token('--muted-foreground', '#6b7280')
+		amber: t('--warning', palette[4]),
+		rose: t('--destructive', '#b3261e'),
+		green: t('--success', '#2f7d4f'),
+		slate: t('--muted-foreground', '#6b7280')
 	};
 
 	return {
 		palette,
-		text: token('--muted-foreground', '#6b7280'),
-		grid: withAlpha(token('--border', '#d4d4d8'), 0.6),
-		surface: token('--card', '#ffffff'),
+		text: t('--muted-foreground', '#6b7280'),
+		grid: withAlpha(t('--border', '#d4d4d8'), 0.6),
+		surface: t('--card', '#ffffff'),
 		named: (name, index = 0) => byName[name ?? ''] ?? palette[index % palette.length]
 	};
 }

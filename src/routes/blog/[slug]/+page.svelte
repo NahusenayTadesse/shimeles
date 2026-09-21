@@ -5,7 +5,6 @@
 	import Gallery from '$lib/components/Gallery.svelte';
 	import VideoCarousel from '$lib/content/VideoCarousel.svelte';
 	import SectionHeading from '$lib/components/section-heading.svelte';
-	import { reveal } from '$lib/actions/reveal';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils';
 	import { ArrowLeft, Clock, HeartHandshake } from '@lucide/svelte';
@@ -14,6 +13,12 @@
 
 	const post = $derived(data.post);
 	const description = $derived(post.metaDescription || post.excerpt || '');
+	/** One trail for `<Seo>` and for the visible breadcrumbs, so they cannot disagree. */
+	const trail = $derived([
+		{ name: 'Home', path: '/' },
+		{ name: 'Blog', path: '/blog' },
+		{ name: post.title, path: `/blog/${post.slug}` }
+	]);
 </script>
 
 <Seo
@@ -27,14 +32,12 @@
 	modifiedAt={post.updatedAt}
 	author={post.authorName}
 	section={post.category?.name}
-	breadcrumbs={[
-		{ name: 'Home', path: '/' },
-		{ name: 'Blog', path: '/blog' },
-		{ name: post.title, path: `/blog/${post.slug}` }
-	]}
+	breadcrumbs={trail}
 />
 
 <PageHero
+	breadcrumbs={trail}
+	breadcrumbLabel={data.strings?.['nav.breadcrumb_label']}
 	eyebrow={post.category?.name ?? 'From the Foundation'}
 	title={post.title}
 	description={post.excerpt}
@@ -63,14 +66,14 @@
 <article class="mx-auto w-full max-w-3xl px-4 py-16 md:py-24">
 	{#if post.body}
 		<!-- Authored in the dashboard's rich-text editor. -->
-		<div use:reveal class="prose-block prose-lede">
+		<div class="prose-block prose-lede">
 			{@html post.body}
 		</div>
 	{/if}
 
 	{#if post.videos.length}
 		<div class="mt-16">
-			<SectionHeading title="Watch" eyebrow={post.videos.length === 1 ? 'Video' : 'Videos'} />
+			<SectionHeading title="Watch" />
 			<div class="mt-8">
 				<VideoCarousel videos={post.videos} title={post.title} />
 			</div>
@@ -79,7 +82,7 @@
 
 	{#if post.gallery.length}
 		<div class="mt-16">
-			<SectionHeading title="From the day" eyebrow="Photographs" />
+			<SectionHeading title="From the day" />
 			<div class="mt-8">
 				<Gallery images={post.gallery} />
 			</div>
@@ -98,8 +101,8 @@
 
 {#if data.related.length}
 	<section class="border-t bg-muted/40">
-		<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
-			<SectionHeading title="More from the Foundation" eyebrow="Keep reading" />
+		<div class="wrap py-16 md:py-24">
+			<SectionHeading title="More from the Foundation" />
 			<div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.related as related, index (related.id)}
 					<BlogCard post={related} {index} />

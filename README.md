@@ -145,9 +145,13 @@ Computed, never entered. Derived hourly from case and donation records into
 A `site_settings` override is available for a manually-verified figure, and the
 impact screen says plainly when one is in effect.
 
-`funds_raised` sums only `completed` donations — a pledge in the reconciliation
-queue is a promise, not money, so the public counter cannot show funds that have
-not landed.
+**The public counters are people, not money.** `funds_raised` is computed and
+cached like every other metric and is reported to staff on the dashboard, but it
+is not in `METRIC` in `$lib/metrics.ts`, so no `stat_counter` block can name it:
+what the site publishes about itself is families supported, students supported
+and elderly care provided. Migration `0026` removed the counter from the pages
+that already held one. The figure itself sums only `completed` donations — a
+pledge in the reconciliation queue is a promise, not money.
 
 ### Donations, and why "monthly" is a pledge
 
@@ -176,8 +180,8 @@ and a link flagged as PayPal must contain a parseable identifier.
 
 **These gifts are not recorded in this system.** The platform collects the money
 and sends its own receipt, so they never create a `donations` row, never reach
-the reconciliation queue, and are not counted in the public "funds raised"
-figure. Finance reconciles them from the platforms' own reports. The dashboard
+the reconciliation queue, and are not counted in the `funds_raised` figure
+finance works from. Finance reconciles them from the platforms' own reports. The dashboard
 screen says exactly this, because a staff member who assumed otherwise would
 under-report the Foundation's income.
 

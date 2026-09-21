@@ -34,6 +34,8 @@
 		labels = {},
 		/** Rendered above the blocks, for routes with their own hero. */
 		header,
+		/** Drawn beside the opening paragraph — see `BlockRenderer`. */
+		ledeAside,
 		children
 	}: {
 		page: RenderPage;
@@ -52,6 +54,7 @@
 		testimonials?: RenderTestimonial[];
 		labels?: Record<string, string>;
 		header?: import('svelte').Snippet;
+		ledeAside?: import('svelte').Snippet;
 		children?: import('svelte').Snippet;
 	} = $props();
 
@@ -86,7 +89,7 @@
 	<PageHero title={page.title} description={page.metaDescription} image={page.shareImage} />
 {/if}
 
-<div class="mx-auto w-full max-w-6xl px-4 py-16 md:py-24">
+<div class="wrap py-16 md:py-24">
 	<BlockRenderer
 		blocks={page.blocks}
 		{pillars}
@@ -98,6 +101,7 @@
 		{forms}
 		{testimonials}
 		{labels}
+		{ledeAside}
 		initiativeNotice={settings['initiatives.disclaimer'] ?? ''}
 		paymentNotice={{
 			en: settings['donation.notice_bank'] ?? '',

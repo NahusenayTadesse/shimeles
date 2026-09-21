@@ -1455,13 +1455,13 @@ async function seedPages() {
 			blockType: 'stat_counter',
 			heading: 'Where we are so far',
 			content: {
+				// People, one count per pillar — not money. `funds_raised` is computed
+				// and reported to staff, but it is not in the vocabulary a page can
+				// publish from (see `$lib/metrics.ts`).
 				stats: [
 					{ metric: 'families_supported', label: 'Families supported' },
-					{ metric: 'students_sponsored', label: 'Students sponsored' },
-					{ metric: 'elders_cared_for', label: 'Elders cared for' },
-					// No `is_money` here: currency formatting follows from the metric
-					// (see `$lib/metrics.ts`), so it cannot be forgotten.
-					{ metric: 'funds_raised', label: 'Raised and disbursed' }
+					{ metric: 'students_sponsored', label: 'Students supported' },
+					{ metric: 'elders_cared_for', label: 'Elderly care provided' }
 				]
 			}
 		},
@@ -2928,6 +2928,13 @@ async function seedContact() {
 
 async function seedTranslations() {
 	const strings: { key: string; en: string; am?: string; group: string }[] = [
+		// Wayfinding on every public page — see `next-steps.svelte`,
+		// `breadcrumbs.svelte` and the skip link in the root layout.
+		{ key: 'nav.next_heading', en: 'Where to next', group: 'nav' },
+		{ key: 'nav.breadcrumb_label', en: 'You are here', group: 'nav' },
+		{ key: 'nav.skip_to_content', en: 'Skip to content', group: 'nav' },
+		{ key: 'nav.scroll_down', en: 'See more below', group: 'nav' },
+		{ key: 'nav.back_to_top', en: 'Back to top', group: 'nav' },
 		{ key: 'form.submit', en: 'Submit', group: 'form' },
 		{ key: 'form.sending', en: 'Sending', group: 'form' },
 		{ key: 'form.your_name', en: 'Your name', group: 'form' },

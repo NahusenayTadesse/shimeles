@@ -1,9 +1,7 @@
 <script lang="ts">
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
+	import LinkCue from '$lib/components/link-cue.svelte';
 	import { assetUrl, imageSrcset } from '$lib/assets';
-	import { reveal } from '$lib/actions/reveal';
-	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ArrowRight, Quote } from '@lucide/svelte';
 	import type { RenderTestimonial } from '$lib/content/types';
 
 	/**
@@ -22,23 +20,19 @@
 </script>
 
 {#if testimonials.length}
-	<div use:reveal class="relative">
+	<div class="relative">
 		<Carousel.Root opts={{ loop: testimonials.length > 1, align: 'start' }} class="w-full">
 			<Carousel.Content>
 				{#each testimonials as testimonial (testimonial.id)}
 					<Carousel.Item>
-						<figure
-							class="shadow-warm flex flex-col items-center gap-6 rounded-[2rem] border bg-card px-6 py-12 text-center md:px-16"
-						>
-							<Quote class="size-9 text-olive" fill="currentColor" />
-
-							<blockquote
-								class="max-w-3xl font-heading text-xl leading-snug text-balance md:text-2xl"
-							>
+						<!-- A voice, given the width of the page: the quote in the serif,
+						     large, with the person beneath it. No card, no quotation-mark
+						     ornament — the typographic quotes already say it. -->
+						<figure class="flex max-w-4xl flex-col gap-8 md:px-14">
+							<blockquote class="text-[clamp(1.7rem,1rem+2.2vw,3rem)] leading-[1.2] text-pretty">
 								“{testimonial.quote}”
 							</blockquote>
-
-							<figcaption class="flex flex-col items-center gap-3">
+							<figcaption class="flex items-center gap-4">
 								{#if testimonial.photo}
 									<img
 										src={assetUrl(testimonial.photo)}
@@ -46,13 +40,13 @@
 										sizes="96px"
 										alt=""
 										loading="lazy"
-										class="size-14 rounded-full object-cover"
+										class="size-14 rounded-full object-cover ring-1 ring-(--gold)"
 									/>
 								{/if}
 								<div>
-									<p class="font-medium">{testimonial.name}</p>
+									<p class="font-serif text-xl font-bold">{testimonial.name}</p>
 									{#if testimonial.role}
-										<p class="text-sm text-muted-foreground">{testimonial.role}</p>
+										<p class="text-muted-foreground">{testimonial.role}</p>
 									{/if}
 								</div>
 							</figcaption>
@@ -62,15 +56,19 @@
 			</Carousel.Content>
 
 			{#if testimonials.length > 1}
-				<Carousel.Previous class="left-2 md:-left-6" />
-				<Carousel.Next class="right-2 md:-right-6" />
+				<Carousel.Previous
+					class="top-auto -bottom-16 left-0 translate-y-0 md:top-1/2 md:bottom-auto md:-left-2 md:-translate-y-1/2"
+				/>
+				<Carousel.Next
+					class="top-auto -bottom-16 left-12 translate-y-0 md:top-1/2 md:right-0 md:bottom-auto md:left-auto md:-translate-y-1/2"
+				/>
 			{/if}
 		</Carousel.Root>
 
-		<div class="mt-8 flex justify-center">
-			<a href={showAllHref} class={buttonVariants({ variant: 'outline' })}>
+		<div class="mt-24 md:mt-10 md:pl-14">
+			<a href={showAllHref} class="link-quiet font-medium">
 				Read more of what people say
-				<ArrowRight class="size-4" />
+				<LinkCue />
 			</a>
 		</div>
 	</div>

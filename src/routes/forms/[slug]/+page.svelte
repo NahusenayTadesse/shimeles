@@ -1,7 +1,5 @@
 <script lang="ts">
 	import DynamicForm from '$lib/forms/DynamicForm.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
-	import { reveal } from '$lib/actions/reveal';
 
 	let { data } = $props();
 </script>
@@ -22,13 +20,12 @@
 		aria-hidden="true"
 	></div>
 	<div class="relative mx-auto w-full max-w-3xl px-4 pt-16 pb-14 md:pt-20">
-		<h1 use:reveal class="font-heading text-3xl md:text-4xl">{data.definition.title}</h1>
+		<h1 class="font-heading text-3xl md:text-4xl">{data.definition.title}</h1>
 	</div>
-	<TrimBand class="relative w-full" thin />
 </div>
 
 <div class="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
-	<div use:reveal={{ delay: 100 }} class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
+	<div class="shadow-warm rounded-[2rem] border bg-card p-6 md:p-10">
 		<DynamicForm form={data.definition} data={data.form} labels={data.strings ?? {}} />
 	</div>
 </div>

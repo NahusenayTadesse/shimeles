@@ -2,10 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { Mail, MapPin, Phone, Send } from '@lucide/svelte';
+	import { Mail, MapPin, Phone } from '@lucide/svelte';
 	import SocialIcon, { socialPlatforms } from '$lib/components/social-icon.svelte';
-	import TrimBand from '$lib/components/trim-band.svelte';
-	import { reveal, stagger } from '$lib/actions/reveal';
 	import { toast } from 'svelte-sonner';
 	import type { RenderNavItem } from '$lib/content/types';
 
@@ -52,124 +50,138 @@
 	let subscribing = $state(false);
 </script>
 
-<footer class="relative mt-32 overflow-hidden bg-clay-deep text-[oklch(0.94_0.012_80)]">
-	<TrimBand class="absolute top-0 left-0 w-full" />
-	<div
-		class="pointer-events-none absolute -top-40 right-[-10%] size-96 rounded-full bg-olive/10 blur-3xl"
-		aria-hidden="true"
-	></div>
-
-	<div class="relative mx-auto grid w-full max-w-6xl gap-10 px-4 pt-16 pb-10 md:grid-cols-4">
-		<div use:reveal class="flex flex-col gap-4 md:col-span-2">
-			<div class="flex items-center gap-2.5">
-				<!-- Drawn at 80px tall in a footer nobody scrolls to immediately: lazy, and
-				     with its real dimensions so the row does not jump when it lands. -->
-				<img
-					src="/logo.png"
-					alt=""
-					width="720"
-					height="238"
-					loading="lazy"
-					decoding="async"
-					class="h-20 w-auto shrink-0 rounded-full object-contain"
-				/>
-				<!-- <p class="font-heading text-xl font-semibold">
+<footer class="on-forest forest-glow mt-24">
+	<div class="wrap pt-20 pb-10">
+		<!-- The name, large, in the serif: the last thing on every page is who
+		     this is, said plainly. -->
+		<div
+			class="flex flex-col gap-6 border-b border-(--honey)/15 pb-14 md:flex-row md:items-end md:justify-between"
+		>
+			<div class="flex flex-col gap-3">
+				<p
+					class="max-w-2xl font-serif text-[clamp(2.2rem,1rem+3.8vw,5.25rem)] leading-[1.05] font-bold text-[#f6f3e6]"
+				>
 					{s('site.name') || 'Shimeles Abera Foundation'}
-				</p> -->
+				</p>
+				{#if s('site.tagline')}
+					<p class="font-serif text-xl text-(--gold)">{s('site.tagline')}</p>
+				{/if}
 			</div>
-			{#if s('footer.blurb')}
-				<p class="max-w-md text-sm text-[oklch(0.94_0.012_80)]/70">{s('footer.blurb')}</p>
-			{/if}
-
-			{#if socials.length}
-				<div class="mt-2 flex gap-2">
-					{#each socials as social (social.platform)}
-						<a
-							href={social.url}
-							target="_blank"
-							rel="noreferrer noopener"
-							aria-label={social.platform}
-							class="flex size-9 items-center justify-center rounded-full border border-olive/30 text-[oklch(0.94_0.012_80)]/80 transition-colors hover:border-olive hover:bg-olive/10 hover:text-olive"
-						>
-							<SocialIcon platform={social.platform} />
-						</a>
-					{/each}
-				</div>
-			{/if}
+			<img
+				src="/logo.png"
+				alt=""
+				width="720"
+				height="238"
+				loading="lazy"
+				decoding="async"
+				class="h-16 w-auto shrink-0 self-start object-contain md:self-end"
+			/>
 		</div>
 
-		{#if items.length}
-			<nav use:reveal={{ delay: stagger(1, 80, 3) }} class="flex flex-col gap-2.5">
-				<p class="eyebrow text-olive/90">{s('footer.links_heading') || 'Explore'}</p>
-				{#each items as item (item.id)}
-					<a
-						href={item.href}
-						class="w-fit text-sm text-[oklch(0.94_0.012_80)]/70 transition-colors hover:text-olive"
-					>
-						{item.label}
-					</a>
+		<div class="grid gap-12 pt-12 md:grid-cols-[1.4fr_1fr_1.2fr]">
+			<div class="flex flex-col gap-5">
+				{#if s('footer.blurb')}
+					<p class="max-w-md text-(--honey)/85">{s('footer.blurb')}</p>
+				{/if}
+				{#if socials.length}
+					<div class="flex gap-2">
+						{#each socials as social (social.platform)}
+							<a
+								href={social.url}
+								target="_blank"
+								rel="noreferrer noopener"
+								aria-label={social.platform}
+								class="flex size-10 items-center justify-center rounded-full border border-(--honey)/25 text-(--honey) transition-colors hover:border-(--gold) hover:text-(--gold)"
+							>
+								<SocialIcon platform={social.platform} />
+							</a>
+						{/each}
+					</div>
+				{/if}
+			</div>
+
+			{#if items.length}
+				<nav class="flex flex-col gap-3" aria-label={s('footer.links_heading') || 'Explore'}>
+					<p class="font-serif text-xl font-bold text-[#f6f3e6]">
+						{s('footer.links_heading') || 'Explore'}
+					</p>
+					<ul class="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-1">
+						{#each items as item (item.id)}
+							<li>
+								<a
+									href={item.href}
+									class="text-(--honey)/85 transition-colors hover:text-[#f6f3e6]"
+								>
+									{item.label}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</nav>
+			{/if}
+
+			<div class="flex flex-col gap-3">
+				<p class="font-serif text-xl font-bold text-[#f6f3e6]">
+					{s('footer.contact_heading') || 'Get in touch'}
+				</p>
+				{#each contacts as contact (contact.key)}
+					{@const Icon = contact.icon}
+					{@const value = s(contact.key)}
+					{@const href = contact.href(value)}
+					<div class="flex items-start gap-2.5 text-(--honey)/85">
+						<Icon class="mt-1 size-4 shrink-0 text-(--gold)" />
+						{#if href}
+							<a {href} class="break-all transition-colors hover:text-[#f6f3e6]">{value}</a>
+						{:else}
+							<span>{value}</span>
+						{/if}
+					</div>
 				{/each}
-			</nav>
-		{/if}
 
-		<div use:reveal={{ delay: stagger(2, 80, 3) }} class="flex flex-col gap-3">
-			<p class="eyebrow text-olive/90">{s('footer.contact_heading') || 'Get in touch'}</p>
-			{#each contacts as contact (contact.key)}
-				{@const Icon = contact.icon}
-				{@const value = s(contact.key)}
-				{@const href = contact.href(value)}
-				<div class="flex items-start gap-2 text-sm text-[oklch(0.94_0.012_80)]/70">
-					<Icon class="mt-0.5 size-4 shrink-0 text-olive/80" />
-					{#if href}
-						<a {href} class="hover:text-olive">{value}</a>
-					{:else}
-						<span>{value}</span>
-					{/if}
-				</div>
-			{/each}
-
-			<!-- The newsletter signup posts to a root-level action, so it works from
-			     any page the footer appears on. -->
-			<form
-				method="post"
-				action="/?/subscribe"
-				class="mt-2 flex gap-2"
-				use:enhance={() => {
-					subscribing = true;
-					return async ({ result, update }) => {
-						subscribing = false;
-						if (result.type === 'success') toast.success('Thank you for subscribing.');
-						if (result.type === 'failure') toast.error('That email address did not look right.');
-						await update({ reset: true });
-					};
-				}}
-			>
-				<Input
-					type="email"
-					name="email"
-					required
-					placeholder={s('footer.newsletter_placeholder') || 'Your email'}
-					class="h-10 rounded-full border-olive/25 bg-[oklch(0.94_0.012_80)]/5 text-[oklch(0.94_0.012_80)] placeholder:text-[oklch(0.94_0.012_80)]/40 focus-visible:border-olive"
-				/>
-				<Button
-					type="submit"
-					size="icon"
-					disabled={subscribing}
-					class="shrink-0 rounded-full bg-olive text-clay-deep hover:bg-olive-bright"
-					aria-label="Join the newsletter"
+				<!-- The newsletter signup posts to a root-level action, so it works from
+				     any page the footer appears on. -->
+				<form
+					method="post"
+					action="/?/subscribe"
+					class="mt-4 flex flex-col gap-2"
+					use:enhance={() => {
+						subscribing = true;
+						return async ({ result, update }) => {
+							subscribing = false;
+							if (result.type === 'success') toast.success('Thank you for subscribing.');
+							if (result.type === 'failure') toast.error('That email address did not look right.');
+							await update({ reset: true });
+						};
+					}}
 				>
-					<Send class="size-4" />
-				</Button>
-			</form>
+					<label for="footer-newsletter" class="text-(--honey)/85">
+						{s('footer.newsletter_label') || 'News from the Foundation, now and then'}
+					</label>
+					<div class="flex gap-2">
+						<Input
+							id="footer-newsletter"
+							type="email"
+							name="email"
+							required
+							placeholder={s('footer.newsletter_placeholder') || 'Your email'}
+							class="h-11 rounded-full border-(--honey)/25 bg-white/5 text-[#f6f3e6] placeholder:text-(--honey)/50 focus-visible:border-(--gold)"
+						/>
+						<Button
+							type="submit"
+							disabled={subscribing}
+							class="btn-gold h-11 shrink-0 rounded-full px-5"
+						>
+							Subscribe
+						</Button>
+					</div>
+				</form>
+			</div>
 		</div>
 	</div>
 
-	<div class="relative border-t border-olive/15">
-		<!-- 90% rather than 50%: at half opacity this sand-on-green measured
-		     2.7:1, well under the 4.5:1 small text needs, and 80% still landed at
-		     4.47:1 — close enough to fail. Measured with Lighthouse, not guessed. -->
+	<div class="border-t border-(--honey)/15">
 		<div
-			class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-[oklch(0.94_0.012_80)]/90 sm:flex-row sm:justify-between"
+			class="wrap flex flex-col gap-2 py-6 text-sm text-(--honey)/85 sm:flex-row sm:justify-between"
 		>
 			<p>
 				© {new Date().getFullYear()}
@@ -177,9 +189,14 @@
 					'All rights reserved.'}
 			</p>
 			<p>{s('footer.registration') || ''}</p>
+			<p>
+				Developed by <a
+					target="_blank"
+					rel="noopener"
+					href="https://nahusenaytadesse.vercel.app"
+					class="link-quiet">NT</a
+				>
+			</p>
 		</div>
-		<p class="mb-2 text-center text-[10px] text-[oklch(0.94_0.012_80)]/90">
-			Developed By: <a target="_blank" href="https://nahusenaytadesse.vercel.app">NT</a>
-		</p>
 	</div>
 </footer>

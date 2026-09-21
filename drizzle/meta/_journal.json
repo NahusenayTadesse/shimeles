@@ -183,6 +183,13 @@
       "when": 1788073576265,
       "tag": "0025_note_reply_subjects",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1788073577265,
+      "tag": "0026_counters_without_money",
+      "breakpoints": true
     }
   ]
 }

@@ -17,23 +17,55 @@ export type RevealParams = {
 	repeat?: boolean;
 	/** Fraction of the element that must be visible before it fires. */
 	threshold?: number;
+	/**
+	 * Take part in the page's one entrance. Without this the element is simply
+	 * there — see `reveal` below.
+	 */
+	orchestrate?: boolean;
 };
 
 const DEFAULTS = {
 	delay: 0,
-	y: 24,
+	y: 16,
 	x: 0,
 	scale: 1,
 	blur: 0,
-	duration: 900,
+	duration: 450,
 	repeat: false,
-	threshold: 0.12
+	threshold: 0.12,
+	orchestrate: false
 } satisfies Required<RevealParams>;
 
 const reduceMotion = () =>
 	typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 type Entry = { params: Required<RevealParams>; timer?: ReturnType<typeof setTimeout> };
+
+/**
+ * The ceilings every reveal is held to, whatever a call site asks for.
+ *
+ * A fade that takes most of a second, after a staggered delay, with a blur,
+ * makes a fast site feel slow: the page has arrived and the visitor is still
+ * waiting for it, and someone scrolling quickly or following a link to a
+ * section finds blank space. Clamped here rather than at each of the fifty-odd
+ * call sites, so a new one cannot quietly bring the slow version back.
+ */
+const LIMITS = { duration: 450, delay: 240, travel: 24 } as const;
+
+const settle = (params?: RevealParams): Required<RevealParams> => {
+	const merged = { ...DEFAULTS, ...params };
+	const clampTravel = (value: number) => Math.max(-LIMITS.travel, Math.min(LIMITS.travel, value));
+	return {
+		...merged,
+		duration: Math.min(merged.duration, LIMITS.duration),
+		delay: Math.min(merged.delay, LIMITS.delay),
+		x: clampTravel(merged.x),
+		y: clampTravel(merged.y),
+		// Blur is the most expensive property to animate and the least legible
+		// while it runs; on a one-core phone it is also the one that stutters.
+		blur: 0
+	};
+};
 
 const registry = new WeakMap<Element, Entry>();
 /** One observer per threshold — elements sharing a threshold share the callback. */
@@ -139,10 +171,15 @@ function applyVars(node: HTMLElement, params: Required<RevealParams>) {
  * to flip them on. Honours `prefers-reduced-motion` by revealing immediately.
  */
 export const reveal: Action<HTMLElement, RevealParams | undefined> = (node, params) => {
-	const entry: Entry = { params: { ...DEFAULTS, ...params } };
+	const entry: Entry = { params: settle(params) };
 	registry.set(node, entry);
 
-	if (reduceMotion()) {
+	// One orchestrated moment per page — the homepage sunrise, a page header
+	// settling — rather than every card and heading fading up as it scrolls
+	// past, which reads as decoration and makes a fast page feel slow. Call
+	// sites that are not part of that moment render as they are; they keep the
+	// action so an element can be promoted into an entrance without rewiring.
+	if (reduceMotion() || !entry.params.orchestrate) {
 		node.dataset.reveal = 'in';
 		return {
 			destroy() {
@@ -161,7 +198,7 @@ export const reveal: Action<HTMLElement, RevealParams | undefined> = (node, para
 	return {
 		update(next) {
 			const threshold = entry.params.threshold;
-			entry.params = { ...DEFAULTS, ...next };
+			entry.params = settle(next);
 			applyVars(node, entry.params);
 
 			if (entry.params.threshold !== threshold) {

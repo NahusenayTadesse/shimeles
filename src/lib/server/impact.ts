@@ -9,7 +9,7 @@ import {
 } from '$lib/server/db/schema';
 import { cached, invalidate } from '$lib/server/cache';
 import { toMoneyTotals, type MoneyTotal } from '$lib/money';
-import { isMoneyMetric } from '$lib/metrics';
+import { FUNDS_RAISED, isMoneyMetric } from '$lib/metrics';
 import { setting, settingNumber } from '$lib/server/settings';
 import { SUPPORTED_STAGES } from '$lib/server/workflow';
 
@@ -35,10 +35,18 @@ import { SUPPORTED_STAGES } from '$lib/server/workflow';
  * the stat-block editor needs to know which metric is money.
  */
 export { METRIC, type MetricKey } from '$lib/metrics';
-import { METRIC, type MetricKey } from '$lib/metrics';
+import { METRIC } from '$lib/metrics';
+
+/**
+ * Every metric this module computes — the public counters plus `funds_raised`,
+ * which is no longer one of them. It is still cached, still overridable and
+ * still shown to staff on the dashboard; it is only withdrawn from what a page
+ * may publish, so the loops here must not read `METRIC` alone.
+ */
+const ALL_METRICS: string[] = [...Object.values(METRIC), FUNDS_RAISED];
 
 /** The `site_settings` key that overrides each metric, per §3.1. */
-const OVERRIDE_KEY = (metric: MetricKey) => `impact.override_${metric}`;
+const OVERRIDE_KEY = (metric: string) => `impact.override_${metric}`;
 
 /**
  * Which currency a money metric's override is denominated in.
@@ -49,7 +57,7 @@ const OVERRIDE_KEY = (metric: MetricKey) => `impact.override_${metric}`;
  * to ETB, so an installation that predates this setting publishes what it
  * always did.
  */
-const OVERRIDE_CURRENCY_KEY = (metric: MetricKey) => `impact.override_${metric}_currency`;
+const OVERRIDE_CURRENCY_KEY = (metric: string) => `impact.override_${metric}_currency`;
 
 /**
  * Which pillar feeds the two per-pillar counters.
@@ -175,7 +183,7 @@ export async function recomputeImpactMetrics(): Promise<{
 
 	/** Metric → one total per currency, which is the only honest shape for money. */
 	const moneyResults: Record<string, MoneyTotal[]> = {
-		[METRIC.FUNDS_RAISED]: toMoneyTotals(funds.map((row) => ({ ...row, amount: row.value })))
+		[FUNDS_RAISED]: toMoneyTotals(funds.map((row) => ({ ...row, amount: row.value })))
 	};
 
 	// The slugs that actually exist, to tell a misconfigured counter apart from a
@@ -316,7 +324,7 @@ export const getImpactMetrics = (): Promise<ImpactMetrics> =>
 			for (const key of Object.keys(moneyRows)) money[key] = toMoneyTotals(moneyRows[key]);
 
 			const overridden: string[] = [];
-			for (const key of Object.values(METRIC)) {
+			for (const key of ALL_METRICS) {
 				const override = await settingNumber(OVERRIDE_KEY(key));
 				if (override == null) continue;
 				overridden.push(key);
