@@ -52,30 +52,36 @@
 
 <footer class="on-forest forest-glow mt-24">
 	<div class="wrap pt-20 pb-10">
-		<!-- The name, large, in the serif, with the mark beside it: the last thing
-		     on every page is who this is, said plainly and in one place. Both sit
-		     to the left rather than the name and the mark facing each other across
-		     the width. -->
+		<!-- The last thing on every page is who this is, said once.
+		     `logo.png` is the full lockup — the emblem, the name in English and
+		     Amharic, and the tagline in both — so setting the name beside it in
+		     the serif said all of it twice and the tagline three times. Its flat
+		     `--forest` rectangle also showed as a pasted box against this band,
+		     whose `.forest-glow` carries gold in the corners.
+		     So the footer speaks the header's language instead: the round emblem
+		     (`mark.png`, cut from the lockup by `npm run logo:mark`, transparent
+		     outside the circle) and the name in type beside it. The emblem is
+		     `alt=""` because the name is right there in text. -->
 		<div
-			class="flex flex-col items-start gap-6 border-b border-(--honey)/15 pb-14 md:flex-row md:items-end md:gap-8"
+			class="flex flex-col items-start gap-6 border-b border-(--honey)/15 pb-14 sm:flex-row sm:items-center sm:gap-7"
 		>
 			<img
-				src="/logo.png"
+				src="/mark.png"
 				alt=""
-				width="720"
-				height="238"
+				width="226"
+				height="226"
 				loading="lazy"
 				decoding="async"
-				class="h-16 w-auto shrink-0 object-contain"
+				class="size-20 shrink-0 rounded-full object-contain ring-1 ring-(--gold)/60 md:size-24"
 			/>
-			<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-2">
 				<p
-					class="max-w-2xl font-serif text-[clamp(2.2rem,1rem+3.8vw,5.25rem)] leading-[1.05] font-bold text-[#f6f3e6]"
+					class="max-w-2xl font-serif text-[clamp(1.9rem,1.1rem+2.4vw,3.4rem)] leading-[1.1] font-bold text-[#f6f3e6]"
 				>
 					{s('site.name') || 'Shimeles Abera Foundation'}
 				</p>
 				{#if s('site.tagline')}
-					<p class="font-serif text-xl text-(--gold)">{s('site.tagline')}</p>
+					<p class="font-serif text-lg text-(--gold)">{s('site.tagline')}</p>
 				{/if}
 			</div>
 		</div>

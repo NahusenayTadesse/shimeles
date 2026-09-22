@@ -25,6 +25,7 @@
 		"db:demo-money": "tsx scripts/demo-money.ts",
 		"mail:test": "tsx scripts/send-test-emails.ts",
 		"og:image": "tsx scripts/og-image.ts",
+		"logo:mark": "node scripts/logo-mark.mjs",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run"
 	},
