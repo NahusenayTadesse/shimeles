@@ -4,6 +4,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Mail, MapPin, Phone } from '@lucide/svelte';
 	import SocialIcon, { socialPlatforms } from '$lib/components/social-icon.svelte';
+	import Wordmark from '$lib/components/wordmark.svelte';
 	import { toast } from 'svelte-sonner';
 	import type { RenderNavItem } from '$lib/content/types';
 
@@ -52,38 +53,19 @@
 
 <footer class="on-forest forest-glow mt-24">
 	<div class="wrap pt-20 pb-10">
-		<!-- The last thing on every page is who this is, said once.
-		     `logo.png` is the full lockup — the emblem, the name in English and
-		     Amharic, and the tagline in both — so setting the name beside it in
-		     the serif said all of it twice and the tagline three times. Its flat
-		     `--forest` rectangle also showed as a pasted box against this band,
-		     whose `.forest-glow` carries gold in the corners.
-		     So the footer speaks the header's language instead: the round emblem
-		     (`mark.png`, cut from the lockup by `npm run logo:mark`, transparent
-		     outside the circle) and the name in type beside it. The emblem is
-		     `alt=""` because the name is right there in text. -->
-		<div
-			class="flex flex-col items-start gap-6 border-b border-(--honey)/15 pb-14 sm:flex-row sm:items-center sm:gap-7"
-		>
-			<img
-				src="/mark.png"
-				alt=""
-				width="226"
-				height="226"
-				loading="lazy"
-				decoding="async"
-				class="size-20 shrink-0 rounded-full object-contain ring-1 ring-(--gold)/60 md:size-24"
+		<!-- The last thing on every page is who this is, said once, as the
+		     Foundation's own lockup — but drawn rather than photographed, so it
+		     is sharp at any density, scales with the page, and follows the name
+		     and tagline settings instead of freezing them into a bitmap. See
+		     `Wordmark`. -->
+		<div class="border-b border-(--honey)/15 pb-14">
+			<Wordmark
+				name={s('site.name') || 'Shimeles Abera Foundation'}
+				nameAmharic={s('site.name_am') || 'ሽመልስ አበራ ፋውንዴሽን'}
+				tagline={s('site.tagline')}
+				taglineAmharic={s('site.tagline_am') || 'የተስፋ፣ የርህራሄና የዕድል መሰረት።'}
+				class="h-auto w-[min(100%,34rem)]"
 			/>
-			<div class="flex flex-col gap-2">
-				<p
-					class="max-w-2xl font-serif text-[clamp(1.9rem,1.1rem+2.4vw,3.4rem)] leading-[1.1] font-bold text-[#f6f3e6]"
-				>
-					{s('site.name') || 'Shimeles Abera Foundation'}
-				</p>
-				{#if s('site.tagline')}
-					<p class="font-serif text-lg text-(--gold)">{s('site.tagline')}</p>
-				{/if}
-			</div>
 		</div>
 
 		<div class="grid gap-12 pt-12 md:grid-cols-[1.4fr_1fr_1.2fr]">

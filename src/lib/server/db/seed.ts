@@ -180,6 +180,13 @@ async function seedSettings() {
 			group: 'general',
 			value: 'Hope. Compassion. Opportunity.'
 		},
+		{
+			key: 'site.tagline_am',
+			label: 'Tagline — Amharic',
+			group: 'general',
+			value: 'የተስፋ፣ የርህራሄና የዕድል መሰረት።',
+			hint: 'The second line under the tagline in the footer lockup, as the printed logo sets it. Not a translation the site switches to — v1 is English, and the mark says both at once.'
+		},
 		{ key: 'site.logo', label: 'Logo', group: 'general', valueType: 'image' },
 		{
 			key: 'seo.description',
